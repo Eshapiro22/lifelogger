@@ -1,17 +1,25 @@
-# LifeLogger
+# Dunkapedia
 
-A personal landing page for documenting your journey — track habits, journal daily, and celebrate milestones.
+A static, GitHub Pages-friendly rebuild of Dunkapedia: a curated dunk catalog with filters, modal video playback, and optional live YouTube search.
 
-## Getting Started
+## Features
 
-Just open `index.html` in your browser. No build tools or dependencies required.
+- Curated dunk archive that works with no build step
+- Filter by player, team, year, tag, or free-text search
+- Embedded YouTube playback in a modal
+- Optional YouTube Data API search using a browser-stored API key
 
-## Structure
+## Run Locally
 
-- `index.html` — Main page
-- `style.css` — Styles
-- `images/` — Image assets
+Open `index.html` directly in a browser, or serve the folder with any static file server.
 
-## Customization
+## YouTube API Setup
 
-Edit `index.html` to update your name, bio, and content. Swap out images in the `images/` folder to personalize.
+Live search is optional. Use the `API Key` button in the site header to store a YouTube Data API key in `localStorage`.
+
+## Project Files
+
+- `index.html` — App structure
+- `style.css` — Visual design and layout
+- `app.js` — Catalog data, filters, modal playback, and YouTube search
+- `favicon.svg` — Site icon

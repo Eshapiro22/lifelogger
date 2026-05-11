@@ -17,6 +17,10 @@ Open `index.html` directly in a browser, or serve the folder with any static fil
 
 Live search is optional. Use the `API Key` button in the site header to store a YouTube Data API key in `localStorage`.
 
+## Deployment
+
+GitHub Pages is configured to deploy this static site from the `devin/1778245885-personal-landing-page` branch.
+
 ## Project Files
 
 - `index.html` — App structure

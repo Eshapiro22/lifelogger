@@ -3,139 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LifeLogger — Track Your Journey</title>
+    <title>Dunkapedia | The Ultimate Dunk Encyclopedia</title>
+    <meta name="description" content="Browse iconic dunks, filter by player or era, and search YouTube for more poster-worthy chaos.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="page-shell">
+        <header class="hero">
+            <nav class="topbar">
+                <a href="#top" class="brand">
+                    <span class="brand-ball"></span>
+                    <span>Dunkapedia</span>
+                </a>
+                <div class="topbar-links">
+                    <a href="#catalog">Catalog</a>
+                    <a href="#search">YouTube Search</a>
+                    <button id="api-key-toggle" class="ghost-button" type="button">API Key</button>
+                </div>
+            </nav>
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <a href="#" class="logo">LifeLogger</a>
-            <ul class="nav-links">
-                <li><a href="#about">About</a></li>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-        </div>
-    </nav>
+            <div class="hero-grid" id="top">
+                <section class="hero-copy">
+                    <p class="eyebrow">Basketball's airborne archive</p>
+                    <h1>The ultimate dunk encyclopedia, rebuilt from the rim up.</h1>
+                    <p class="hero-text">
+                        Explore a curated vault of famous dunks, filter by player, team, year, and style,
+                        then branch out into live YouTube search when you want fresh chaos.
+                    </p>
+                    <div class="hero-actions">
+                        <a class="primary-button" href="#catalog">Start Browsing</a>
+                        <a class="secondary-button" href="#search">Search YouTube</a>
+                    </div>
+                    <dl class="stat-row">
+                        <div>
+                            <dt>Curated Dunks</dt>
+                            <dd id="stat-dunks">0</dd>
+                        </div>
+                        <div>
+                            <dt>Players</dt>
+                            <dd id="stat-players">0</dd>
+                        </div>
+                        <div>
+                            <dt>Eras</dt>
+                            <dd id="stat-years">0</dd>
+                        </div>
+                    </dl>
+                </section>
 
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-            <img src="images/profile.jpg" alt="Profile photo" class="hero-avatar" onerror="this.src='https://placehold.co/160x160/png'">
-            <h1>Welcome to <span class="highlight">LifeLogger</span></h1>
-            <p class="hero-subtitle">Document your experiences. Reflect on your growth. Own your story.</p>
-            <a href="#about" class="cta-button">Learn More</a>
-        </div>
-    </section>
+                <aside class="hero-card">
+                    <p class="card-label">Featured Flight</p>
+                    <h2 id="featured-title">Loading highlight...</h2>
+                    <p id="featured-meta" class="featured-meta"></p>
+                    <p id="featured-description" class="featured-description"></p>
+                    <button id="featured-watch" class="primary-button full-width" type="button">Watch Dunk</button>
+                </aside>
+            </div>
+        </header>
 
-    <!-- About Section -->
-    <section id="about" class="section about">
-        <div class="container">
-            <h2 class="section-title">About</h2>
-            <div class="about-content">
-                <p>
-                    LifeLogger is your personal space to capture moments, track habits,
-                    and reflect on the journey that makes you <em>you</em>. Whether it's daily
-                    journal entries, milestone celebrations, or simple gratitude notes —
-                    everything lives here.
-                </p>
-                <p>
-                    Built with the belief that small, consistent reflections lead to
-                    meaningful growth over time.
-                </p>
+        <main>
+            <section class="controls-section" id="catalog">
+                <div class="section-heading">
+                    <p class="eyebrow">Catalog</p>
+                    <h2>Filter the poster archive</h2>
+                    <p>Every card opens an embedded YouTube player with tags, context, and dunk details.</p>
+                </div>
+
+                <div class="filter-panel">
+                    <label class="field search-field">
+                        <span>Search</span>
+                        <input id="catalog-search" type="search" placeholder="Jordan, windmill, finals, poster...">
+                    </label>
+
+                    <label class="field">
+                        <span>Player</span>
+                        <select id="player-filter"></select>
+                    </label>
+
+                    <label class="field">
+                        <span>Team</span>
+                        <select id="team-filter"></select>
+                    </label>
+
+                    <label class="field">
+                        <span>Year</span>
+                        <select id="year-filter"></select>
+                    </label>
+
+                    <label class="field">
+                        <span>Tag</span>
+                        <select id="tag-filter"></select>
+                    </label>
+
+                    <button id="clear-filters" class="ghost-button" type="button">Clear Filters</button>
+                </div>
+
+                <div class="results-toolbar">
+                    <p id="results-count">Showing 0 dunks</p>
+                </div>
+
+                <div id="catalog-grid" class="catalog-grid"></div>
+                <div id="empty-state" class="empty-state hidden">
+                    <h3>No dunks matched that combo.</h3>
+                    <p>Try clearing a filter or searching with a broader keyword.</p>
+                </div>
+            </section>
+
+            <section class="search-section" id="search">
+                <div class="section-heading">
+                    <p class="eyebrow">Live Search</p>
+                    <h2>Search YouTube for more rim destruction</h2>
+                    <p>
+                        Add a YouTube Data API key below to search without rebuilding the site.
+                        Curated mode always works, even without a key.
+                    </p>
+                </div>
+
+                <div class="youtube-panel">
+                    <div class="search-row">
+                        <input id="youtube-query" type="search" placeholder="LeBron poster dunk, Vince Carter Olympic dunk...">
+                        <button id="youtube-search-button" class="primary-button" type="button">Search</button>
+                    </div>
+                    <p id="youtube-status" class="helper-text">
+                        No results yet. Add an API key to enable live YouTube search, or keep exploring the curated catalog above.
+                    </p>
+                    <div id="youtube-results" class="catalog-grid compact-grid"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <dialog id="video-modal" class="video-modal">
+        <div class="modal-card">
+            <button id="modal-close" class="modal-close" type="button" aria-label="Close video">×</button>
+            <div class="video-frame">
+                <iframe
+                    id="video-frame"
+                    src=""
+                    title="Dunk video"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                ></iframe>
+            </div>
+            <div class="modal-copy">
+                <p id="modal-kicker" class="eyebrow"></p>
+                <h3 id="modal-title"></h3>
+                <p id="modal-description"></p>
+                <div id="modal-tags" class="tag-row"></div>
             </div>
         </div>
-    </section>
+    </dialog>
 
-    <!-- Features Section -->
-    <section id="features" class="section features">
-        <div class="container">
-            <h2 class="section-title">Features</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">📝</div>
-                    <h3>Daily Journal</h3>
-                    <p>Write freely about your day, your thoughts, and your feelings. No judgment, just expression.</p>
+    <dialog id="api-key-modal" class="settings-modal">
+        <form method="dialog" class="settings-card">
+            <div class="settings-header">
+                <div>
+                    <p class="eyebrow">YouTube Setup</p>
+                    <h3>Store an API key in this browser</h3>
                 </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Habit Tracking</h3>
-                    <p>Set goals and track your habits over time. Watch your streaks grow and celebrate consistency.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Milestone Markers</h3>
-                    <p>Flag the big moments — promotions, travels, personal wins — so you never forget how far you've come.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Private & Secure</h3>
-                    <p>Your data stays yours. No ads, no tracking, no sharing. Just a safe space for self-reflection.</p>
-                </div>
+                <button class="modal-close" type="submit" aria-label="Close settings">×</button>
             </div>
-        </div>
-    </section>
 
-    <!-- Contact Section -->
-    <section id="contact" class="section contact">
-        <div class="container">
-            <h2 class="section-title">Get in Touch</h2>
-            <p class="contact-text">Interested in LifeLogger or want to collaborate? Drop a message!</p>
-            <form class="contact-form" onsubmit="handleSubmit(event)">
-                <input type="text" placeholder="Your Name" required>
-                <input type="email" placeholder="Your Email" required>
-                <textarea placeholder="Your Message" rows="5" required></textarea>
-                <button type="submit" class="cta-button">Send Message</button>
-            </form>
-            <p id="form-confirmation" class="confirmation-msg" style="display:none;">Thanks for reaching out! 🎉</p>
-        </div>
-    </section>
+            <label class="field">
+                <span>YouTube Data API key</span>
+                <input id="api-key-input" type="password" placeholder="AIza...">
+            </label>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 LifeLogger. Built with care.</p>
-            <div class="footer-links">
-                <a href="https://github.com/Eshapiro22" target="_blank" rel="noopener">GitHub</a>
+            <p class="helper-text">
+                The key is stored locally in your browser using <code>localStorage</code>. It is not required for the curated catalog.
+            </p>
+
+            <div class="settings-actions">
+                <button id="save-api-key" class="primary-button" type="button">Save Key</button>
+                <button id="clear-api-key" class="ghost-button" type="button">Clear Key</button>
             </div>
-        </div>
-    </footer>
+        </form>
+    </dialog>
 
-    <script>
-        // Smooth scroll for nav links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth' });
-                }
-            });
-        });
-
-        // Navbar background on scroll
-        window.addEventListener('scroll', () => {
-            const navbar = document.querySelector('.navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-
-        // Contact form handler
-        function handleSubmit(e) {
-            e.preventDefault();
-            e.target.style.display = 'none';
-            document.getElementById('form-confirmation').style.display = 'block';
-        }
-    </script>
-
+    <script src="app.js"></script>
 </body>
 </html>

@@ -5,11 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dunkapedia | The Ultimate Dunk Encyclopedia</title>
     <meta name="description" content="Browse iconic dunks, filter by player or era, and search YouTube for more poster-worthy chaos.">
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#120d08">
+    <link rel="canonical" href="https://eshapiro22.github.io/lifelogger/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Dunkapedia | The Ultimate Dunk Encyclopedia">
+    <meta property="og:description" content="Browse iconic dunks, filter the archive, and jump straight into YouTube clip hunts without any setup.">
+    <meta property="og:url" content="https://eshapiro22.github.io/lifelogger/">
+    <meta property="og:image" content="https://eshapiro22.github.io/lifelogger/social-preview.svg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Dunkapedia | The Ultimate Dunk Encyclopedia">
+    <meta name="twitter:description" content="Browse iconic dunks, filter the archive, and jump straight into YouTube clip hunts without any setup.">
+    <meta name="twitter:image" content="https://eshapiro22.github.io/lifelogger/social-preview.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "Dunkapedia",
+            "url": "https://eshapiro22.github.io/lifelogger/",
+            "description": "A searchable archive of iconic basketball dunks with verified clips and fast YouTube clip-hunt links.",
+            "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://www.youtube.com/results?search_query={search_term_string}",
+                "query-input": "required name=search_term_string"
+            }
+        }
+    </script>
 </head>
 <body>
     <div class="page-shell">
@@ -21,8 +47,8 @@
                 </a>
                 <div class="topbar-links">
                     <a href="#catalog">Catalog</a>
-                    <a href="#search">YouTube Search</a>
-                    <button id="api-key-toggle" class="ghost-button" type="button">API Key</button>
+                    <a href="#search">Clip Finder</a>
+                    <button id="random-dunk" class="ghost-button" type="button">Surprise Me</button>
                 </div>
             </nav>
 
@@ -69,7 +95,7 @@
                 <div class="section-heading">
                     <p class="eyebrow">Catalog</p>
                     <h2>Filter the poster archive</h2>
-                    <p>Every card opens an embedded YouTube player with tags, context, and dunk details.</p>
+                    <p>Verified clips play inline. Archive-only entries still stay useful by jumping you directly into a YouTube clip hunt.</p>
                 </div>
 
                 <div class="filter-panel">
@@ -114,22 +140,28 @@
 
             <section class="search-section" id="search">
                 <div class="section-heading">
-                    <p class="eyebrow">Live Search</p>
-                    <h2>Search YouTube for more rim destruction</h2>
+                    <p class="eyebrow">Clip Finder</p>
+                    <h2>Find more dunks without setup</h2>
                     <p>
-                        Add a YouTube Data API key below to search without rebuilding the site.
-                        Curated mode always works, even without a key.
+                        Type a dunk, player, or vibe. We will surface archive matches here and give you a one-click YouTube search link.
                     </p>
                 </div>
 
                 <div class="youtube-panel">
+                    <div class="search-chip-row" aria-label="Quick searches">
+                        <button class="search-chip" data-query="Vince Carter dunk contest" type="button">Vince contest</button>
+                        <button class="search-chip" data-query="poster dunk playoffs" type="button">Playoff posters</button>
+                        <button class="search-chip" data-query="windmill dunk" type="button">Windmills</button>
+                        <button class="search-chip" data-query="alley oop dunk" type="button">Alley-oops</button>
+                    </div>
                     <div class="search-row">
                         <input id="youtube-query" type="search" placeholder="LeBron poster dunk, Vince Carter Olympic dunk...">
-                        <button id="youtube-search-button" class="primary-button" type="button">Search</button>
+                        <button id="youtube-search-button" class="primary-button" type="button">Find Clips</button>
                     </div>
                     <p id="youtube-status" class="helper-text">
-                        No results yet. Add an API key to enable live YouTube search, or keep exploring the curated catalog above.
+                        No API key needed. Search to get archive matches and a direct YouTube results link.
                     </p>
+                    <div id="search-launch" class="search-launch hidden"></div>
                     <div id="youtube-results" class="catalog-grid compact-grid"></div>
                 </div>
             </section>
@@ -139,7 +171,7 @@
     <dialog id="video-modal" class="video-modal">
         <div class="modal-card">
             <button id="modal-close" class="modal-close" type="button" aria-label="Close video">×</button>
-            <div class="video-frame">
+            <div id="video-shell" class="video-frame">
                 <iframe
                     id="video-frame"
                     src=""
@@ -152,35 +184,13 @@
                 <p id="modal-kicker" class="eyebrow"></p>
                 <h3 id="modal-title"></h3>
                 <p id="modal-description"></p>
+                <p id="modal-status" class="modal-status"></p>
+                <div class="modal-actions">
+                    <a id="modal-youtube-link" class="secondary-button" href="#" target="_blank" rel="noopener noreferrer">Open on YouTube</a>
+                </div>
                 <div id="modal-tags" class="tag-row"></div>
             </div>
         </div>
-    </dialog>
-
-    <dialog id="api-key-modal" class="settings-modal">
-        <form method="dialog" class="settings-card">
-            <div class="settings-header">
-                <div>
-                    <p class="eyebrow">YouTube Setup</p>
-                    <h3>Store an API key in this browser</h3>
-                </div>
-                <button class="modal-close" type="submit" aria-label="Close settings">×</button>
-            </div>
-
-            <label class="field">
-                <span>YouTube Data API key</span>
-                <input id="api-key-input" type="password" placeholder="AIza...">
-            </label>
-
-            <p class="helper-text">
-                The key is stored locally in your browser using <code>localStorage</code>. It is not required for the curated catalog.
-            </p>
-
-            <div class="settings-actions">
-                <button id="save-api-key" class="primary-button" type="button">Save Key</button>
-                <button id="clear-api-key" class="ghost-button" type="button">Clear Key</button>
-            </div>
-        </form>
     </dialog>
 
     <script src="app.js"></script>

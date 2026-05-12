@@ -100,6 +100,7 @@ select {
     align-items: center;
     gap: 18px;
     color: var(--muted);
+    flex-wrap: wrap;
 }
 
 .topbar-links a:hover,
@@ -159,6 +160,7 @@ select {
 
 .hero-actions,
 .settings-actions,
+.modal-actions,
 .tag-row,
 .search-row {
     display: flex;
@@ -329,6 +331,42 @@ main {
     margin-top: 18px;
 }
 
+.search-chip-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+
+.search-chip {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+.search-launch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.section-note {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 56ch;
+}
+
 .dunk-card {
     border-radius: 24px;
     overflow: hidden;
@@ -366,6 +404,12 @@ main {
     background: rgba(12, 9, 6, 0.82);
 }
 
+.card-badge-left {
+    right: auto;
+    left: 12px;
+    color: var(--accent-2);
+}
+
 .card-play {
     position: absolute;
     left: 14px;
@@ -377,6 +421,46 @@ main {
     background: rgba(255, 122, 0, 0.92);
     color: #1a1208;
     font-weight: 900;
+}
+
+.card-play-search {
+    background: rgba(255, 246, 236, 0.95);
+}
+
+.fallback-thumb {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    padding: 18px;
+    background:
+        radial-gradient(circle at top right, rgba(255, 209, 102, 0.28), transparent 35%),
+        linear-gradient(140deg, rgba(255, 122, 0, 0.32), rgba(42, 27, 16, 0.88));
+}
+
+.fallback-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 60%;
+}
+
+.fallback-copy p,
+.fallback-copy strong {
+    margin: 0;
+}
+
+.fallback-copy p {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.fallback-copy strong {
+    font-family: "Bebas Neue", sans-serif;
+    font-size: 2rem;
+    line-height: 0.95;
+    letter-spacing: 0.05em;
 }
 
 .card-body {
@@ -481,6 +565,15 @@ main {
     padding: 22px;
 }
 
+.modal-actions {
+    margin-top: 18px;
+}
+
+.modal-status {
+    margin: 14px 0 0;
+    color: var(--accent-2);
+}
+
 .settings-card {
     position: relative;
 }
@@ -502,15 +595,25 @@ code {
     border-radius: 8px;
 }
 
+.video-frame.hidden {
+    display: none;
+}
+
 @media (max-width: 1080px) {
-    .hero-grid,
-    .filter-panel,
-    .catalog-grid {
+    .hero-grid {
         grid-template-columns: 1fr;
     }
 
+    .filter-panel {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .search-field {
-        grid-column: auto;
+        grid-column: 1 / -1;
     }
 
     .topbar {
@@ -536,10 +639,31 @@ code {
 
     .hero-copy h1 {
         max-width: none;
+        font-size: clamp(3.2rem, 18vw, 5rem);
     }
 
     .hero-actions > * {
         width: 100%;
         text-align: center;
+    }
+
+    .filter-panel,
+    .catalog-grid,
+    .search-launch {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .card-badge,
+    .card-badge-left {
+        font-size: 0.65rem;
+    }
+
+    .modal-copy {
+        padding: 18px;
     }
 }

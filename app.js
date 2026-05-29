@@ -350,6 +350,237 @@ const curatedDunks = [
         youtubeId: "Y141jxJUFP8",
         description: "The inaugural 1984 NBA contest in Denver: Nance edges out Dr. J himself with a cradle windmill to become the event's first champion.",
         tags: ["Windmill", "Legendary"]
+    },
+    {
+        id: "drj-aba-1976",
+        title: "Dr. J Wins the First-Ever Slam Dunk Contest",
+        player: "Julius Erving",
+        team: "New York Nets",
+        year: 1976,
+        type: "Dunk Contest",
+        youtubeId: "vRw-mN-fiAk",
+        description: "Denver, 1976 ABA All-Star halftime: the first slam dunk contest ever held. Dr. J wins it with a foul-line dunk that invents the template every contest dunk follows afterward.",
+        tags: ["Free Throw Line", "ABA", "Legendary"]
+    },
+    {
+        id: "drexler-1984",
+        title: "Clyde Drexler at the Inaugural NBA Dunk Contest",
+        player: "Clyde Drexler",
+        team: "Portland Trail Blazers",
+        year: 1984,
+        type: "Dunk Contest",
+        youtubeId: "sYwDKvf9Vx8",
+        description: "The Glide at the inaugural 1984 NBA contest: silky, airborne, and a preview of the decade of aerial artistry Portland fans were about to enjoy.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "griffith-1984",
+        title: "Darrell Griffith at the Inaugural NBA Dunk Contest",
+        player: "Darrell Griffith",
+        team: "Utah Jazz",
+        year: 1984,
+        type: "Dunk Contest",
+        youtubeId: "KGG0FwB5aFg",
+        description: "Dr. Dunkenstein was named that for a reason. Griffith's hang time at the first NBA contest looks physically impossible for a 6'4\" guard from 1984.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "mj-1985-contest",
+        title: "Michael Jordan 1985 Dunk Contest",
+        player: "Michael Jordan",
+        team: "Chicago Bulls",
+        year: 1985,
+        type: "Dunk Contest",
+        youtubeId: "HlI1-C3_lVg",
+        description: "Jordan's rookie-season contest run — runner-up to Wilkins — is so good that losing feels like a miscarriage of justice. The dunks themselves settle the argument.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "malone-ewing-1989",
+        title: "Karl Malone Dunks Over Patrick Ewing",
+        player: "Karl Malone",
+        team: "Utah Jazz",
+        year: 1989,
+        type: "Poster",
+        youtubeId: "CsCXIdaVT1U",
+        description: "The Mailman at the Garden: Malone drives baseline, rises over Ewing's outstretched arm, and delivers with a force that rattles the basket support.",
+        tags: ["In-Game", "Power"]
+    },
+    {
+        id: "nique-robinson-1991",
+        title: "Dominique Wilkins Posters David Robinson",
+        player: "Dominique Wilkins",
+        team: "Atlanta Hawks",
+        year: 1991,
+        type: "Poster",
+        youtubeId: "Z8RPFkuXL30",
+        description: "Nique rises over the Admiral with full extension and throws it down — a poster from an era when posterizing a Hall of Famer carried real weight.",
+        tags: ["In-Game", "Legendary"]
+    },
+    {
+        id: "harold-miner-1993",
+        title: "Harold Miner Wins the 1993 Dunk Contest",
+        player: "Harold Miner",
+        team: "Miami Heat",
+        year: 1993,
+        type: "Dunk Contest",
+        youtubeId: "xolEl3uhEoQ",
+        description: "Baby Jordan wins the 1993 contest with a reverse so clutch the judges need a moment. One of the most underrated contest performances of the decade.",
+        tags: ["Reverse", "Legendary"]
+    },
+    {
+        id: "penny-playoffs-1994",
+        title: "Penny Hardaway 1994 Playoff Dunk",
+        player: "Anfernee Hardaway",
+        team: "Orlando Magic",
+        year: 1994,
+        type: "Poster",
+        youtubeId: "Go574BBXbyw",
+        description: "The 22-year-old Penny rises in transition during the 1994 playoffs and throws down a two-handed flush that tells the league a new generation has arrived.",
+        tags: ["In-Game", "Playoffs", "Explosive"]
+    },
+    {
+        id: "rider-east-bay-1994",
+        title: "Isaiah Rider East Bay Funk Dunk",
+        player: "Isaiah Rider",
+        team: "Minnesota Timberwolves",
+        year: 1994,
+        type: "Dunk Contest",
+        youtubeId: "Y4nai6stST0",
+        description: "Rider catches a self-lob, brings it between his legs on the way down, and finishes with a move nobody had seen in competition before. The contest is never the same.",
+        tags: ["Between Legs", "Legendary"]
+    },
+    {
+        id: "hill-ewing-1995",
+        title: "Grant Hill Dunks Past Patrick Ewing",
+        player: "Grant Hill",
+        team: "Detroit Pistons",
+        year: 1995,
+        type: "Poster",
+        youtubeId: "cUlOBg19sTA",
+        description: "Hill reads the double-team, crosses over, and floats past Ewing for a dunk so complete and inevitable it looks like it was drawn up on a whiteboard.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "josh-smith-2005",
+        title: "Josh Smith 2005 Dunk Contest",
+        player: "Josh Smith",
+        team: "Atlanta Hawks",
+        year: 2005,
+        type: "Dunk Contest",
+        youtubeId: "1EfYwBb2iho",
+        description: "Nineteen years old, J-Smoove wins the 2005 contest with a windmill tribute to Dominique Wilkins that makes the arena erupt and makes Nique smile from his seat.",
+        tags: ["Windmill", "Legendary"]
+    },
+    {
+        id: "baron-kirilenko-2007",
+        title: "Baron Davis Over Andrei Kirilenko",
+        player: "Baron Davis",
+        team: "Golden State Warriors",
+        year: 2007,
+        type: "Poster",
+        youtubeId: "Ei7u-8IRACw",
+        description: "The defining image of the 'We Believe' run: B-Diddy launches from inside the arc and erases the 6'9\" Kirilenko in Game 3 of the West semis with one of the most visceral playoff posters ever.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "nate-robinson-2009",
+        title: "Nate Robinson Jumps Over Dwight Howard",
+        player: "Nate Robinson",
+        team: "New York Knicks",
+        year: 2009,
+        type: "Dunk Contest",
+        youtubeId: "VwXNPbKouzs",
+        description: "5'9\" Nate dresses as Kryptonite, positions a costumed Dwight Howard on the court, and clears the 6'11\" Superman to win his second title — the greatest size-differential stunt in contest history.",
+        tags: ["Legendary", "Upset"]
+    },
+    {
+        id: "serge-ibaka-2011",
+        title: "Serge Ibaka Free Throw Line Dunk",
+        player: "Serge Ibaka",
+        team: "Oklahoma City Thunder",
+        year: 2011,
+        type: "Dunk Contest",
+        youtubeId: "9FJvGqMhU84",
+        description: "Ibaka plants at the free throw line, launches, and clears the stripe by a foot and a half. The most technically sound foul-line dunk since Jordan's silhouette.",
+        tags: ["Free Throw Line", "Legendary"]
+    },
+    {
+        id: "lebron-garnett-2012",
+        title: "LeBron James Monster Dunk on Kevin Garnett",
+        player: "LeBron James",
+        team: "Miami Heat",
+        year: 2012,
+        type: "Poster",
+        youtubeId: "c6N4FeyKkhc",
+        description: "2012 Eastern Conference Finals, Game 1: LeBron rises over the Big Ticket with a thunderous left-handed slam that takes the air out of TD Garden in a single motion.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "lebron-perkins-2012",
+        title: "LeBron James Dunks Over Kendrick Perkins",
+        player: "LeBron James",
+        team: "Miami Heat",
+        year: 2012,
+        type: "Poster",
+        youtubeId: "blAIcFGyca0",
+        description: "Game 1 of the 2012 NBA Finals: LeBron catches in transition, rises over Perkins, and finishes an authoritative one-handed slam that signals the championship is already over.",
+        tags: ["In-Game", "Playoffs", "Fast Break"]
+    },
+    {
+        id: "kd-pacers-2012",
+        title: "Kevin Durant Poster Dunk vs Indiana",
+        player: "Kevin Durant",
+        team: "Oklahoma City Thunder",
+        year: 2012,
+        type: "Poster",
+        youtubeId: "ng3gjKf90iQ",
+        description: "April 6, 2012: KD attacks the paint and rises over the Pacers defender, finishing two-handed and reminding the league that a seven-footer can also be a freak athlete.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "pg-360-windmill-2014",
+        title: "Paul George 360 Windmill Slam",
+        player: "Paul George",
+        team: "Indiana Pacers",
+        year: 2014,
+        type: "Windmill",
+        youtubeId: "1aMs6khRYPM",
+        description: "January 19, 2014 in transition: PG13 completes a full 360 rotation and brings the ball all the way around with a windmill finish that stops Bankers Life Fieldhouse in its tracks.",
+        tags: ["In-Game", "360", "Explosive"]
+    },
+    {
+        id: "gordon-tacko-2020",
+        title: "Aaron Gordon Dunks Over Tacko Fall",
+        player: "Aaron Gordon",
+        team: "Orlando Magic",
+        year: 2020,
+        type: "Dunk Contest",
+        youtubeId: "GIzMy2blDGI",
+        description: "Gordon elevates over the 7'5\" Tacko Fall — arguably the greatest dunk in contest history. Judges gave it a 47. The crowd gave it a standing ovation. Justice was never served.",
+        tags: ["Legendary", "Robbed"]
+    },
+    {
+        id: "kyrie-poster-2021",
+        title: "Kyrie Irving Two-Handed Poster Dunk",
+        player: "Kyrie Irving",
+        team: "Brooklyn Nets",
+        year: 2021,
+        type: "Poster",
+        youtubeId: "_-mrUS6sQSk",
+        description: "All angles confirmed: Kyrie absorbs contact at the rim and throws down a two-handed poster that Brooklyn fans still argue should have been the dunk of the year.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "mac-mcclung-2023",
+        title: "Mac McClung Wins the 2023 Dunk Contest",
+        player: "Mac McClung",
+        team: "Philadelphia 76ers",
+        year: 2023,
+        type: "Dunk Contest",
+        youtubeId: "j2pbAp3UtEI",
+        description: "The first G-League player ever invited to the contest posts three perfect 50s and wins going away — the biggest underdog championship since Spud Webb in 1986.",
+        tags: ["Legendary", "Upset"]
     }
 ];
 

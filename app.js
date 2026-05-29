@@ -196,6 +196,160 @@ const curatedDunks = [
         youtubeId: "7pax4RPQXbY",
         description: "The Greek Freak attacks the rim at full speed, absorbs contact from Vucevic at the rim, and finishes with a dunk so decisive it triggered a post-game incident.",
         tags: ["Power", "In-Game"]
+    },
+    {
+        id: "mj-ewing-1991",
+        title: "Michael Jordan Soars Over Patrick Ewing",
+        player: "Michael Jordan",
+        team: "Chicago Bulls",
+        year: 1991,
+        type: "Poster",
+        youtubeId: "flIh7WHGndM",
+        description: "April 30, 1991 in the playoffs at MSG: Jordan rises from the baseline and hammers a one-handed slam over Ewing — for many the most ferocious in-game dunk of his career.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "starks-the-dunk-1993",
+        title: "John Starks \"The Dunk\"",
+        player: "John Starks",
+        team: "New York Knicks",
+        year: 1993,
+        type: "Poster",
+        youtubeId: "KhkIMpBaCEs",
+        description: "Game 2 of the 1993 Eastern Conference Finals: the lefty Starks drives the baseline and throws down over Horace Grant and Michael Jordan — the defining image in Knicks history.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "pippen-ewing-1994",
+        title: "Scottie Pippen Posters Patrick Ewing",
+        player: "Scottie Pippen",
+        team: "Chicago Bulls",
+        year: 1994,
+        type: "Poster",
+        youtubeId: "xtOUpybXmzo",
+        description: "Game 6 of the 1994 East semis: Pippen rises over Ewing, throws it down, then stands over him and stares down Spike Lee. Pure disrespect, perfectly executed.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "tmac-self-oop-2002",
+        title: "Tracy McGrady Self Alley-Oop",
+        player: "Tracy McGrady",
+        team: "Orlando Magic",
+        year: 2002,
+        type: "Alley-Oop",
+        youtubeId: "QZFBROm2DEU",
+        description: "At the 2002 All-Star Game, T-Mac bounces the ball off the backboard to himself and throws it down — inventing a move that players still try to copy.",
+        tags: ["All-Star", "Self Oop"]
+    },
+    {
+        id: "kobe-yao-2006",
+        title: "Kobe Bryant Posterizes Yao Ming",
+        player: "Kobe Bryant",
+        team: "Los Angeles Lakers",
+        year: 2006,
+        type: "Poster",
+        youtubeId: "y3u83Lk3CYA",
+        description: "Kobe attacks the lane and rises straight over the 7'6\" Yao Ming for an emphatic finish — proof that size meant nothing to him.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "vince-mourning-2005",
+        title: "Vince Carter Over Alonzo Mourning",
+        player: "Vince Carter",
+        team: "New Jersey Nets",
+        year: 2005,
+        type: "Poster",
+        youtubeId: "yu206ZrVcSs",
+        description: "November 7, 2005: Carter elevates over the rim-protecting Mourning for a poster so brutal it reportedly ended their friendship.",
+        tags: ["In-Game", "Legendary"]
+    },
+    {
+        id: "drose-dragic-2011",
+        title: "Derrick Rose Hammers Over Goran Dragic",
+        player: "Derrick Rose",
+        team: "Chicago Bulls",
+        year: 2011,
+        type: "Poster",
+        youtubeId: "t71IqHJOqgE",
+        description: "MVP-season Rose splits the lane and detonates a two-handed slam over Dragic — \"Derrick Rose can go upstairs!\" became the call of the night.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "zion-kessler-2022",
+        title: "Zion Williamson Posters Walker Kessler",
+        player: "Zion Williamson",
+        team: "New Orleans Pelicans",
+        year: 2022,
+        type: "Poster",
+        youtubeId: "Ieh6_A9m8Lo",
+        description: "285 pounds of explosion: Zion rises over the seven-foot Kessler and finishes with a dunk that left the announcers speechless.",
+        tags: ["In-Game", "Power"]
+    },
+    {
+        id: "ant-collins-2024",
+        title: "Anthony Edwards Over John Collins",
+        player: "Anthony Edwards",
+        team: "Minnesota Timberwolves",
+        year: 2024,
+        type: "Poster",
+        youtubeId: "zNhFv6fOdRA",
+        description: "Edwards rises from a standstill and absolutely erases John Collins at the rim. He called it the best dunk of his career, and few argued.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "vince-360-windmill-2000",
+        title: "Vince Carter 360 Windmill",
+        player: "Vince Carter",
+        team: "Toronto Raptors",
+        year: 2000,
+        type: "Dunk Contest",
+        youtubeId: "7QtljAdtwgQ",
+        description: "The dunk that reinvented the contest: a full 360 spin into a windmill finish, the first of a string of perfect-50 slams in 2000.",
+        tags: ["Windmill", "360", "Legendary"]
+    },
+    {
+        id: "jrich-btl-2003",
+        title: "Jason Richardson Between-the-Legs Reverse",
+        player: "Jason Richardson",
+        team: "Golden State Warriors",
+        year: 2003,
+        type: "Dunk Contest",
+        youtubeId: "_n-eVS258-A",
+        description: "The clinching dunk of the 2003 contest: a baseline lob brought between the legs and finished reverse. Back-to-back championship sealed.",
+        tags: ["Between Legs", "Reverse", "Legendary"]
+    },
+    {
+        id: "dee-brown-1991",
+        title: "Dee Brown No-Look Dunk",
+        player: "Dee Brown",
+        team: "Boston Celtics",
+        year: 1991,
+        type: "Dunk Contest",
+        youtubeId: "6uD8ZqkoM5E",
+        description: "Brown pumps up his Reeboks, throws an arm across his eyes, and throws it down blind — the most stylish closing dunk in contest history.",
+        tags: ["No-Look", "Legendary"]
+    },
+    {
+        id: "gerald-green-cake-2008",
+        title: "Gerald Green Birthday Cake Dunk",
+        player: "Gerald Green",
+        team: "Minnesota Timberwolves",
+        year: 2008,
+        type: "Dunk Contest",
+        youtubeId: "Ed_NEFjYUYc",
+        description: "A cupcake with a lit candle sits on the back of the rim — Green takes off, blows out the candle mid-air, and throws it down in one motion.",
+        tags: ["Creative", "Legendary"]
+    },
+    {
+        id: "larry-nance-1984",
+        title: "Larry Nance Wins the First Dunk Contest",
+        player: "Larry Nance",
+        team: "Phoenix Suns",
+        year: 1984,
+        type: "Dunk Contest",
+        youtubeId: "Y141jxJUFP8",
+        description: "The inaugural 1984 NBA contest in Denver: Nance edges out Dr. J himself with a cradle windmill to become the event's first champion.",
+        tags: ["Windmill", "Legendary"]
     }
 ];
 

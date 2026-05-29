@@ -1,503 +1,146 @@
-const curatedDunksRaw = [
+const curatedDunks = [
     {
-        id: "vince-dunk-of-death",
-        title: "Vince Carter's Dunk of Death — 2000 Olympics",
+        id: "vince-2000-olympics",
+        title: "Vince Carter Clears Frederic Weis",
         player: "Vince Carter",
-        team: "Toronto Raptors",
+        team: "Team USA",
         year: 2000,
-        youtubeId: "XMrPjl-927Q",
-        description: "The Olympic vault-over that turned a live defender into a permanent piece of dunk history.",
-        tags: ["Olympics", "Over A Player", "Iconic"]
+        type: "Poster",
+        youtubeId: "k_uZeCymShQ",
+        description: "A full-stride, two-handed jam over a 7'2\" defender that stopped the 2000 Sydney Olympics cold and became the single most replayed image in basketball history.",
+        tags: ["Olympics", "In-Game", "Legendary"]
     },
     {
         id: "mj-free-throw-line",
-        title: "Michael Jordan — Free Throw Line Dunk",
+        title: "Michael Jordan Free Throw Line Slam",
         player: "Michael Jordan",
         team: "Chicago Bulls",
         year: 1988,
-        youtubeId: "CVsoFMQvwto",
-        description: "MJ launched from the free throw line in the 1988 Slam Dunk Contest and made the silhouette immortal.",
-        tags: ["Dunk Contest", "Free Throw Line", "Iconic"]
+        type: "Dunk Contest",
+        youtubeId: "DXFfmWA3xx8",
+        description: "Jordan takes off from the free throw line at Chicago Stadium, glides 15 feet through the air, and delivers a perfect 50 to beat Dominique Wilkins for the title.",
+        tags: ["Free Throw Line", "Legendary"]
     },
     {
-        id: "lebron-celtics-tomahawk",
-        title: "LeBron James — Tomahawk vs. Celtics",
-        player: "LeBron James",
-        team: "Cleveland Cavaliers",
-        year: 2008,
-        youtubeId: "VkvTLOhm-TQ",
-        description: "LeBron threw down a thunderous tomahawk against Boston in a playoff moment that felt built for posters.",
-        tags: ["Playoffs", "Tomahawk", "Powerful"]
-    },
-    {
-        id: "dominique-windmill",
-        title: "Dominique Wilkins — Windmill Dunk",
+        id: "dominique-1985",
+        title: "Dominique Wilkins 1985 Dunk Contest",
         player: "Dominique Wilkins",
         team: "Atlanta Hawks",
         year: 1985,
-        youtubeId: "sw8rPum4jcU",
-        description: "The Human Highlight Film uncorks one of the cleanest contest windmills ever recorded.",
-        tags: ["Dunk Contest", "Windmill", "Iconic"]
-    },
-    {
-        id: "shaq-backboard-break",
-        title: "Shaquille O'Neal — Backboard Breaking Dunk",
-        player: "Shaquille O'Neal",
-        team: "Orlando Magic",
-        year: 1993,
-        youtubeId: "lxElMqPhsfE",
-        description: "Shaq turned a dunk into structural engineering footage and forced everyone to rethink rim durability.",
-        tags: ["Powerful", "Backboard", "Iconic"]
-    },
-    {
-        id: "blake-mozgov",
-        title: "Blake Griffin — Over Timofey Mozgov",
-        player: "Blake Griffin",
-        team: "Los Angeles Clippers",
-        year: 2010,
-        youtubeId: "d8FYUdPPUy4",
-        description: "A violent rookie-era poster that became one of the defining clips of the Lob City prequel.",
-        tags: ["Posterizer", "Over A Player", "Rookie"]
-    },
-    {
-        id: "kobe-reverse-nuggets",
-        title: "Kobe Bryant — Reverse Dunk vs. Nuggets",
-        player: "Kobe Bryant",
-        team: "Los Angeles Lakers",
-        year: 2001,
-        youtubeId: "dic-CL5mLcU",
-        description: "Kobe twists through traffic and finishes with the kind of reverse that only looks reasonable after replay five.",
-        tags: ["Reverse", "In Traffic", "Acrobatic"]
-    },
-    {
-        id: "zach-space-jam",
-        title: "Zach LaVine — Space Jam Dunk",
-        player: "Zach LaVine",
-        team: "Minnesota Timberwolves",
-        year: 2016,
-        youtubeId: "QjG32huIjFw",
-        description: "Between the legs from the free throw line, somehow with enough smoothness to make it look routine.",
-        tags: ["Dunk Contest", "Between The Legs", "Free Throw Line"]
-    },
-    {
-        id: "jrich-backboard-legs",
-        title: "Jason Richardson — Between the Legs Off the Backboard",
-        player: "Jason Richardson",
-        team: "Golden State Warriors",
-        year: 2003,
-        youtubeId: "R6twnJjqoUY",
-        description: "A dunk contest sequence that still looks like someone accidentally left the difficulty slider on impossible.",
-        tags: ["Dunk Contest", "Off The Backboard", "Between The Legs"]
-    },
-    {
-        id: "dwight-superman",
-        title: "Dwight Howard — Superman Dunk",
-        player: "Dwight Howard",
-        team: "Orlando Magic",
-        year: 2008,
-        youtubeId: "d1ila4MBLIg",
-        description: "Cape, theater, and a launch point that pushed the contest fully into comic-book territory.",
-        tags: ["Dunk Contest", "Superman", "Iconic"]
-    },
-    {
-        id: "pippen-ewing",
-        title: "Scottie Pippen — Over Patrick Ewing",
-        player: "Scottie Pippen",
-        team: "Chicago Bulls",
-        year: 1994,
-        youtubeId: "srl2BU9jLFo",
-        description: "Baseline drive, violent finish, then the stare-down. The whole sequence belongs in a museum.",
-        tags: ["Posterizer", "Over A Player", "Iconic"]
-    },
-    {
-        id: "lebron-wade-celtics",
-        title: "LeBron James — Alley-Oop with D-Wade vs. Celtics",
-        player: "LeBron James",
-        team: "Miami Heat",
-        year: 2011,
-        youtubeId: "PxkOG6VaMxQ",
-        description: "Peak Heatles spectacle: Wade sees it early, LeBron finishes with enough force to tilt the whole arena.",
-        tags: ["Alley-Oop", "Playoffs", "Duo"]
-    },
-    {
-        id: "ja-duren",
-        title: "Ja Morant — Poster Over Jalen Duren",
-        player: "Ja Morant",
-        team: "Memphis Grizzlies",
-        year: 2023,
-        youtubeId: "hxQ0qf2Ysc8",
-        description: "Ja launches so abruptly that the clip feels like it skips a frame before the finish lands.",
-        tags: ["Posterizer", "In-Game", "Viral"]
-    },
-    {
-        id: "giannis-hardaway",
-        title: "Giannis Antetokounmpo — Over Tim Hardaway Jr.",
-        player: "Giannis Antetokounmpo",
-        team: "Milwaukee Bucks",
-        year: 2019,
-        youtubeId: "V4-0MMs8x6o",
-        description: "The Greek Freak covers too much ground, too fast, and the result is pure helplessness at the rim.",
-        tags: ["Posterizer", "Powerful", "In-Game"]
-    },
-    {
-        id: "aaron-gordon-mascot",
-        title: "Aaron Gordon — Under Both Legs Over Mascot",
-        player: "Aaron Gordon",
-        team: "Orlando Magic",
-        year: 2016,
-        youtubeId: "gSaBsGKzw7c",
-        description: "One of the most creative contest dunks ever and still the center of an eternal robbery debate.",
-        tags: ["Dunk Contest", "Over Mascot", "Between The Legs"]
-    },
-    {
-        id: "deandre-brandon-knight",
-        title: "DeAndre Jordan — Poster Over Brandon Knight",
-        player: "DeAndre Jordan",
-        team: "Los Angeles Clippers",
-        year: 2013,
-        youtubeId: "NTkN2q6sUUk",
-        description: "This is the dictionary-definition poster: lob, collision, aftermath, disbelief.",
-        tags: ["Posterizer", "Over A Player", "Iconic"]
-    },
-    {
-        id: "dr-j-rock-cradle",
-        title: "Julius Erving — Rock the Cradle Dunk",
-        player: "Julius Erving",
-        team: "Philadelphia 76ers",
-        year: 1983,
-        youtubeId: "1vz3eKkP_d4",
-        description: "Dr. J turns a baseline attack into a piece of basketball choreography that still feels impossibly stylish.",
-        tags: ["Reverse", "Acrobatic", "Classic"]
+        type: "Dunk Contest",
+        youtubeId: "UPcgR9tsGfs",
+        description: "The Human Highlight Film introduces himself to the contest with a windmill that sets the template for the next 40 years of dunk competition.",
+        tags: ["Windmill", "Legendary"]
     },
     {
         id: "spud-webb-1986",
-        title: "Spud Webb — 1986 Slam Dunk Contest",
+        title: "Spud Webb Wins the 1986 Dunk Contest",
         player: "Spud Webb",
         team: "Atlanta Hawks",
         year: 1986,
-        youtubeId: "H5wBI98NFGE",
-        description: "The underdog contest win that permanently broke assumptions about what kind of body can own the air.",
-        tags: ["Dunk Contest", "Underdog", "Iconic"]
+        type: "Dunk Contest",
+        youtubeId: "r1YRJvFvlgg",
+        description: "Standing 5'7\", Webb beats his own teammate Dominique Wilkins to take the title — the greatest upset in dunk contest history.",
+        tags: ["Legendary", "Upset"]
     },
     {
-        id: "kd-haywood",
-        title: "Kevin Durant — Poster Over Brendan Haywood",
-        player: "Kevin Durant",
-        team: "Oklahoma City Thunder",
-        year: 2011,
-        youtubeId: "vT6EzxYgBjQ",
-        description: "KD catches a defender expecting finesse and answers with straight-line violence instead.",
-        tags: ["Posterizer", "In-Game", "Powerful"]
-    },
-    {
-        id: "westbrook-tomahawk",
-        title: "Russell Westbrook — Tomahawk vs. Warriors",
-        player: "Russell Westbrook",
-        team: "Oklahoma City Thunder",
-        year: 2016,
-        youtubeId: "7xPls15yzRo",
-        description: "Pure fury in dunk form, with the kind of landing that tells you the rim barely survived.",
-        tags: ["Tomahawk", "Powerful", "In-Game"]
-    },
-    {
-        id: "tmac-self-oop",
-        title: "Tracy McGrady — Alley-Oop Off the Backboard to Himself",
-        player: "Tracy McGrady",
-        team: "Orlando Magic",
-        year: 2002,
-        youtubeId: "us3Fz5JkfZ8",
-        description: "The self-oop that felt too playful for an NBA game until T-Mac made it look obvious.",
-        tags: ["Self Alley-Oop", "Acrobatic", "Iconic"]
-    },
-    {
-        id: "ant-watanabe",
-        title: "Anthony Edwards — Poster Over Watanabe",
-        player: "Anthony Edwards",
-        team: "Minnesota Timberwolves",
-        year: 2022,
-        youtubeId: "axKUIshBRaw",
-        description: "A modern baptism clip: terrifying takeoff, total contact, instant replay immortality.",
-        tags: ["Posterizer", "Viral", "Powerful"]
-    },
-    {
-        id: "clyde-glide",
-        title: "Clyde Drexler — Glide Dunk",
-        player: "Clyde Drexler",
-        team: "Portland Trail Blazers",
-        year: 1989,
-        youtubeId: "Bx-_KL8-SNE",
-        description: "The nickname becomes a literal scouting report as Clyde floats into an effortless baseline slam.",
-        tags: ["Baseline", "Glide", "Classic"]
-    },
-    {
-        id: "drose-dragic",
-        title: "Derrick Rose — Over Goran Dragic",
-        player: "Derrick Rose",
-        team: "Chicago Bulls",
-        year: 2010,
-        youtubeId: "uRAp00SxP30",
-        description: "MVP-season Rose attacks with no deceleration and turns a crowded lane into a warning label.",
-        tags: ["Posterizer", "In-Game", "MVP Season"]
-    },
-    {
-        id: "nate-over-dwight",
-        title: "Nate Robinson — Over Dwight Howard",
-        player: "Nate Robinson",
-        team: "New York Knicks",
-        year: 2009,
-        youtubeId: "3fQmifTeDlc",
-        description: "A contest dunk built entirely on audacity, timing, and a complete refusal to care about size.",
-        tags: ["Dunk Contest", "Over A Player", "Underdog"]
-    },
-    {
-        id: "kawhi-pacers",
-        title: "Kawhi Leonard — Playoff Poster vs. Pacers",
-        player: "Kawhi Leonard",
-        team: "Toronto Raptors",
-        year: 2019,
-        youtubeId: "8Dv2M67ZXGA",
-        description: "Kawhi usually looks economical; this one looked like he temporarily borrowed someone else's rage.",
-        tags: ["Playoffs", "Powerful", "Two-Handed"]
-    },
-    {
-        id: "iverson-mourning",
-        title: "Allen Iverson — Dunk on Alonzo Mourning",
-        player: "Allen Iverson",
+        id: "dr-j-rock-the-baby",
+        title: "Dr. J Rock-the-Baby Cradle Dunk",
+        player: "Julius Erving",
         team: "Philadelphia 76ers",
-        year: 2001,
-        youtubeId: "y3X274lz3wY",
-        description: "The size mismatch makes the finish feel even louder. AI had zero interest in respecting reputations.",
-        tags: ["Posterizer", "In-Game", "Fearless"]
+        year: 1983,
+        type: "Cradle",
+        youtubeId: "7YwY_tFSrWw",
+        description: "Over Michael Cooper on January 5, 1983: Dr. J cradles the ball, rocks it once, and finishes with a signature move that still looks impossible four decades later.",
+        tags: ["In-Game", "Legendary"]
     },
     {
-        id: "wade-varajao",
-        title: "Dwyane Wade — Poster on Anderson Varejao",
+        id: "shaq-breakaway",
+        title: "Shaq Tears Down the Backboard",
+        player: "Shaquille O'Neal",
+        team: "Orlando Magic",
+        year: 1993,
+        type: "Power",
+        youtubeId: "mvMGuaQBGnc",
+        description: "Less a dunk than an industrial stress test. Shaq's slam against the Nets on April 23, 1993 brings down the entire backboard support and stops the game cold.",
+        tags: ["Rim Wrecker", "Legendary"]
+    },
+    {
+        id: "kemp-carr-1996",
+        title: "Shawn Kemp Destroys Antoine Carr",
+        player: "Shawn Kemp",
+        team: "Seattle SuperSonics",
+        year: 1996,
+        type: "Poster",
+        youtubeId: "a4VynGnht00",
+        description: "The Reign Man catches the ball in transition, aims at Carr's chest, and throws down one of the most violent posters of the decade in Game 2 of the 1996 Western Conference Finals.",
+        tags: ["Power", "In-Game", "Playoffs"]
+    },
+    {
+        id: "dwight-superman-2008",
+        title: "Dwight Howard Superman Dunk",
+        player: "Dwight Howard",
+        team: "Orlando Magic",
+        year: 2008,
+        type: "Dunk Contest",
+        youtubeId: "SQsdNHUILgY",
+        description: "Dwight shows up in a Superman cape, catches a lob from center court, and delivers a perfect 50 that made an entire arena lose its collective mind.",
+        tags: ["Alley-Oop", "Legendary"]
+    },
+    {
+        id: "kobe-hornets-reverse",
+        title: "Kobe Bryant Baseline Reverse",
+        player: "Kobe Bryant",
+        team: "Los Angeles Lakers",
+        year: 2001,
+        type: "Reverse",
+        youtubeId: "j3L5e47lAzk",
+        description: "Young Kobe snakes the baseline and finishes with a one-handed reverse that feels violent and elegant at the same time.",
+        tags: ["Baseline", "In-Game"]
+    },
+    {
+        id: "lavine-2015",
+        title: "Zach LaVine 2015 Dunk Contest",
+        player: "Zach LaVine",
+        team: "Minnesota Timberwolves",
+        year: 2015,
+        type: "Dunk Contest",
+        youtubeId: "Glcnv0MphkI",
+        description: "LaVine arrives as a 20-year-old unknown and scores back-to-back 50s, including a between-the-legs windmill that rewrote what athletic looks like in a dunk contest.",
+        tags: ["Between Legs", "Windmill", "Legendary"]
+    },
+    {
+        id: "blake-mozgov",
+        title: "Blake Griffin Posters Timofey Mozgov",
+        player: "Blake Griffin",
+        team: "Los Angeles Clippers",
+        year: 2010,
+        type: "Poster",
+        youtubeId: "9eRKXGiAAnw",
+        description: "Pure rookie force over a seven-footer. Elevation, contact, and no apology whatsoever.",
+        tags: ["Power", "In-Game"]
+    },
+    {
+        id: "dwade-varajao",
+        title: "Dwyane Wade Over Anderson Varejao",
         player: "Dwyane Wade",
         team: "Miami Heat",
         year: 2009,
+        type: "Poster",
         youtubeId: "5uRN7iJ5CqQ",
-        description: "D-Wade detonates through the paint and leaves Varejao in the exact clip everyone remembers.",
-        tags: ["Posterizer", "In-Game", "Powerful"]
+        description: "A slash into traffic that ends with Wade detonating over a crowded paint on November 12, 2009 — widely considered the best dunk of his career.",
+        tags: ["Drive", "In-Game"]
     },
     {
-        id: "dawkins-shatter",
-        title: "Darryl Dawkins — Backboard Shattering Dunk",
-        player: "Darryl Dawkins",
-        team: "Philadelphia 76ers",
-        year: 1979,
-        youtubeId: "GFMnTM7cXdQ",
-        description: "Chocolate Thunder helped force the league toward breakaway rims by dunking like the glass offended him.",
-        tags: ["Backboard", "Powerful", "Historic"]
-    },
-    {
-        id: "zion-360-windmill",
-        title: "Zion Williamson — 360 Windmill at Duke",
-        player: "Zion Williamson",
-        team: "Duke Blue Devils",
-        year: 2019,
-        youtubeId: "UdSV_5AJjAo",
-        description: "College basketball briefly turned into a dunk lab experiment and Zion passed the test instantly.",
-        tags: ["College", "360", "Windmill"]
-    },
-    {
-        id: "james-white-ft-line",
-        title: "James White — Between the Legs Free Throw Line",
-        player: "James White",
-        team: "Cincinnati Bearcats",
-        year: 2006,
-        youtubeId: "LVpLRnCJAS0",
-        description: "Flight White earned the nickname with a dunk that still sounds exaggerated even when described accurately.",
-        tags: ["Dunk Contest", "Between The Legs", "Free Throw Line"]
-    },
-    {
-        id: "pg-360-windmill",
-        title: "Paul George — 360 Windmill vs. Bobcats",
-        player: "Paul George",
-        team: "Indiana Pacers",
-        year: 2014,
-        youtubeId: "V7_vpXoUxv8",
-        description: "An in-game 360 windmill has no business looking this casual, which is exactly what makes it absurd.",
-        tags: ["360", "Windmill", "In-Game"]
-    },
-    {
-        id: "lebron-jason-terry",
-        title: "LeBron James — Over Jason Terry",
-        player: "LeBron James",
-        team: "Miami Heat",
-        year: 2013,
-        youtubeId: "V-QTiByTKaI",
-        description: "LeBron drives baseline and detonates over Jason Terry for one of the defining posters of the decade.",
-        tags: ["Posterizer", "Tomahawk", "Iconic"]
-    },
-    {
-        id: "wemby-block-to-oop",
-        title: "Victor Wembanyama — Alley-Oop Block to Dunk",
-        player: "Victor Wembanyama",
-        team: "San Antonio Spurs",
-        year: 2024,
-        youtubeId: "CKqXFNIvClg",
-        description: "Block on one end, full-court glide on the other, then the alley-oop finish that sells the unicorn myth.",
-        tags: ["Alley-Oop", "Block", "Rookie"]
-    },
-    {
-        id: "mitchell-rockets",
-        title: "Donovan Mitchell — Playoff Poster vs. Rockets",
-        player: "Donovan Mitchell",
-        team: "Utah Jazz",
-        year: 2019,
-        youtubeId: "8GZz1F7T2mE",
-        description: "Spida elevates into traffic and turns a playoff possession into a personal brand statement.",
-        tags: ["Playoffs", "Posterizer", "Powerful"]
-    },
-    {
-        id: "shawn-kemp-lob",
-        title: "Shawn Kemp — Lob City Before Lob City",
-        player: "Shawn Kemp",
-        team: "Seattle SuperSonics",
-        year: 1992,
-        youtubeId: "l2GaAWdHwsw",
-        description: "The Reign Man catches a lob, unloads on the rim, and adds enough attitude to make the replay mandatory.",
-        tags: ["Alley-Oop", "Posterizer", "Iconic"]
-    },
-    {
-        id: "pippen-allstar-oop",
-        title: "Kenny Smith to Scottie Pippen — 1994 All-Star Alley-Oop",
-        player: "Scottie Pippen",
-        team: "Chicago Bulls",
-        year: 1994,
-        youtubeId: "JO0IMXFN4bA",
-        description: "An All-Star lob that still feels crisp decades later, partly because Scottie finishes it with contempt.",
-        tags: ["All-Star", "Alley-Oop", "Classic"]
-    },
-    {
-        id: "vince-2000-contest",
-        title: "Vince Carter — 2000 Slam Dunk Contest",
-        player: "Vince Carter",
-        team: "Toronto Raptors",
-        year: 2000,
-        youtubeId: "igKn4wEfyKA",
-        description: "The gold-standard dunk contest performance: 360 windmill, between-the-legs, elbow hang, no wasted motion.",
-        tags: ["Dunk Contest", "Iconic", "GOAT Performance"]
-    },
-    {
-        id: "jimmy-giannis",
-        title: "Jimmy Butler — Poster on Giannis",
-        player: "Jimmy Butler",
-        team: "Miami Heat",
-        year: 2020,
-        youtubeId: "GRTtqYXscEw",
-        description: "Jimmy rises through Giannis with exactly the kind of fearless aggression his playoff reputation promises.",
-        tags: ["Posterizer", "Playoffs", "Fearless"]
-    },
-    {
-        id: "terrence-ross-2013",
-        title: "Terrence Ross — 2013 Slam Dunk Contest",
-        player: "Terrence Ross",
-        team: "Toronto Raptors",
-        year: 2013,
-        youtubeId: "y1aMoXIizTk",
-        description: "Ross channels Toronto dunk lineage and wins the contest with a performance built on control and lift.",
-        tags: ["Dunk Contest", "Vince Carter Tribute"]
-    },
-    {
-        id: "steph-rare-poster",
-        title: "Stephen Curry — Rare Poster Dunk",
-        player: "Stephen Curry",
-        team: "Golden State Warriors",
-        year: 2019,
-        youtubeId: "HGBBR9UNs1k",
-        description: "Nobody expects it, which is the whole fun of it: a Curry dunk that lands like a glitch in the matrix.",
-        tags: ["Unexpected", "Posterizer", "Rare"]
-    },
-    {
-        id: "cp3-blake-lakers",
-        title: "Chris Paul — Alley-Oop to Blake Griffin vs. Lakers",
-        player: "Blake Griffin",
+        id: "deandre-brandon-knight",
+        title: "DeAndre Jordan Over Brandon Knight",
+        player: "DeAndre Jordan",
         team: "Los Angeles Clippers",
-        year: 2012,
-        youtubeId: "FCXo40DVXJQ",
-        description: "Peak Lob City. CP3 drops the pass in exactly the right window and Blake handles the rest with cruelty.",
-        tags: ["Alley-Oop", "Lob City", "Rivalry"]
-    },
-    {
-        id: "john-wall-2014",
-        title: "John Wall — 2014 Slam Dunk Contest",
-        player: "John Wall",
-        team: "Washington Wizards",
-        year: 2014,
-        youtubeId: "RqWcY-RAXLQ",
-        description: "Wall finishes a creative contest setup with the kind of reverse snap that makes the whole sequence click.",
-        tags: ["Dunk Contest", "Reverse", "Creative"]
-    },
-    {
-        id: "amare-poster",
-        title: "Amar'e Stoudemire — Poster Over Everyone",
-        player: "Amar'e Stoudemire",
-        team: "Phoenix Suns",
-        year: 2005,
-        youtubeId: "ZCb_8k7KBhI",
-        description: "STAT spent entire seasons turning Nash-era space into runway, then punishing whichever defender was late.",
-        tags: ["Posterizer", "Powerful", "Run And Gun"]
-    },
-    {
-        id: "darius-qrich-backboard",
-        title: "Darius Miles & Quentin Richardson — Off-the-Backboard Alley-Oop",
-        player: "Darius Miles",
-        team: "Los Angeles Clippers",
-        year: 2001,
-        youtubeId: "aBtNTXG_0c0",
-        description: "One of the most joyful duo highlights of that era: flashy, reckless, and absolutely worth it.",
-        tags: ["Alley-Oop", "Off The Backboard", "Duo"]
-    },
-    {
-        id: "mac-mcclung-2023",
-        title: "Mac McClung — 2023 Slam Dunk Contest",
-        player: "Mac McClung",
-        team: "Philadelphia 76ers",
-        year: 2023,
-        youtubeId: "A7Dwb2cUJpc",
-        description: "Mac revived the event with a two-way-player legend run that instantly became weekend-saving folklore.",
-        tags: ["Dunk Contest", "Underdog", "Viral"]
-    },
-    {
-        id: "dirk-rare-poster",
-        title: "Dirk Nowitzki — Rare Poster Slam",
-        player: "Dirk Nowitzki",
-        team: "Dallas Mavericks",
-        year: 2007,
-        youtubeId: "RMCODhFwVWA",
-        description: "The shock value does a lot of the work, but the finish still deserves its place in the archive.",
-        tags: ["Unexpected", "Posterizer", "Rare"]
-    },
-    {
-        id: "cwebb-self-oop",
-        title: "Chris Webber — Off the Backboard Self Alley-Oop",
-        player: "Chris Webber",
-        team: "Sacramento Kings",
-        year: 2002,
-        youtubeId: "LbBMPeMHJ9g",
-        description: "C-Webb turns a transition chance into playground theater without losing any of the NBA-level violence.",
-        tags: ["Self Alley-Oop", "Creative", "Classic"]
-    },
-    {
-        id: "jaylen-windmill-poster",
-        title: "Jaylen Brown — Windmill Poster",
-        player: "Jaylen Brown",
-        team: "Boston Celtics",
-        year: 2021,
-        youtubeId: "kqSUul6ts00",
-        description: "A windmill in traffic is already rude; doing it in rhythm makes it feel even meaner.",
-        tags: ["Windmill", "In-Game", "Powerful"]
-    },
-    {
-        id: "larry-nance-1984",
-        title: "Larry Nance — First NBA Slam Dunk Contest Winner",
-        player: "Larry Nance",
-        team: "Phoenix Suns",
-        year: 1984,
-        youtubeId: "7xPls15yzRo",
-        description: "The first official NBA dunk contest champion, locking in a new part of basketball culture from the jump.",
-        tags: ["Dunk Contest", "Historic", "First Ever"]
+        year: 2013,
+        type: "Alley-Oop",
+        youtubeId: "WFhFI2OYExk",
+        description: "The dictionary-definition poster. Chris Paul lobs it up, Jordan catches it over Knight, and the internet spends three days processing what just happened.",
+        tags: ["Poster", "In-Game", "Legendary"]
     },
     {
         id: "aaron-lavine-duel",
@@ -505,19 +148,21 @@ const curatedDunksRaw = [
         player: "Aaron Gordon",
         team: "Orlando Magic",
         year: 2016,
-        youtubeId: "0oIitsGzFPU",
-        description: "The contest stretch that made everyone forget the score and just stare at the absurdity.",
-        tags: ["Dunk Contest", "Under Legs", "Legendary"]
+        type: "Dunk Contest",
+        youtubeId: "u7VgkfcSYz0",
+        description: "The contest stretch where both competitors kept scoring 50s until nobody could explain why either one lost. Gordon's under-the-legs windmill alone belongs in a museum.",
+        tags: ["Under Legs", "Legendary"]
     },
     {
-        id: "ja-poeltl",
-        title: "Ja Morant Almost Ends Jakob Poeltl",
-        player: "Ja Morant",
-        team: "Memphis Grizzlies",
-        year: 2022,
-        youtubeId: "x0T5qM9T2go",
-        description: "Even as an almost-poster, it belongs in the archive because the attempt itself broke physics.",
-        tags: ["Almost", "Poster Attempt", "Explosive"]
+        id: "lebron-jason-terry",
+        title: "LeBron Over Jason Terry",
+        player: "LeBron James",
+        team: "Miami Heat",
+        year: 2013,
+        type: "Poster",
+        youtubeId: "FkxcY45bP2U",
+        description: "A full-speed transition poster on March 18, 2013 that triggered one of the loudest collective reactions in the arena and sent the internet into immediate chaos.",
+        tags: ["Fast Break", "In-Game"]
     },
     {
         id: "westbrook-putback",
@@ -525,25 +170,419 @@ const curatedDunksRaw = [
         player: "Russell Westbrook",
         team: "Oklahoma City Thunder",
         year: 2015,
-        youtubeId: "iyLHuVwJUkc",
-        description: "Westbrook arrives from nowhere, turns a rebound into a warning, and leaves the rim complaining.",
-        tags: ["Putback", "Explosive", "In-Game"]
+        type: "Putback",
+        youtubeId: "3e6Z3DKcDcw",
+        description: "Westbrook arrives from nowhere, turns a missed shot into a warning, and leaves the rim vibrating. The kind of putback that forces a timeout just to let everyone calm down.",
+        tags: ["Explosive", "In-Game"]
+    },
+    {
+        id: "ja-poeltl",
+        title: "Ja Morant Posterizes Jakob Poeltl",
+        player: "Ja Morant",
+        team: "Memphis Grizzlies",
+        year: 2022,
+        type: "Poster",
+        youtubeId: "IujgoXEWEXQ",
+        description: "Ja goes straight at the seven-footer and detonates over him on March 1, 2022 — capping a career-high 52-point night with the most emphatic punctuation mark of the season.",
+        tags: ["Explosive", "In-Game"]
+    },
+    {
+        id: "giannis-vucevic-2024",
+        title: "Giannis Posterizes Nikola Vucevic",
+        player: "Giannis Antetokounmpo",
+        team: "Milwaukee Bucks",
+        year: 2024,
+        type: "Poster",
+        youtubeId: "7pax4RPQXbY",
+        description: "The Greek Freak attacks the rim at full speed, absorbs contact from Vucevic at the rim, and finishes with a dunk so decisive it triggered a post-game incident.",
+        tags: ["Power", "In-Game"]
+    },
+    {
+        id: "mj-ewing-1991",
+        title: "Michael Jordan Soars Over Patrick Ewing",
+        player: "Michael Jordan",
+        team: "Chicago Bulls",
+        year: 1991,
+        type: "Poster",
+        youtubeId: "flIh7WHGndM",
+        description: "April 30, 1991 in the playoffs at MSG: Jordan rises from the baseline and hammers a one-handed slam over Ewing — for many the most ferocious in-game dunk of his career.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "starks-the-dunk-1993",
+        title: "John Starks \"The Dunk\"",
+        player: "John Starks",
+        team: "New York Knicks",
+        year: 1993,
+        type: "Poster",
+        youtubeId: "KhkIMpBaCEs",
+        description: "Game 2 of the 1993 Eastern Conference Finals: the lefty Starks drives the baseline and throws down over Horace Grant and Michael Jordan — the defining image in Knicks history.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "pippen-ewing-1994",
+        title: "Scottie Pippen Posters Patrick Ewing",
+        player: "Scottie Pippen",
+        team: "Chicago Bulls",
+        year: 1994,
+        type: "Poster",
+        youtubeId: "xtOUpybXmzo",
+        description: "Game 6 of the 1994 East semis: Pippen rises over Ewing, throws it down, then stands over him and stares down Spike Lee. Pure disrespect, perfectly executed.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "tmac-self-oop-2002",
+        title: "Tracy McGrady Self Alley-Oop",
+        player: "Tracy McGrady",
+        team: "Orlando Magic",
+        year: 2002,
+        type: "Alley-Oop",
+        youtubeId: "QZFBROm2DEU",
+        description: "At the 2002 All-Star Game, T-Mac bounces the ball off the backboard to himself and throws it down — inventing a move that players still try to copy.",
+        tags: ["All-Star", "Self Oop"]
+    },
+    {
+        id: "kobe-yao-2006",
+        title: "Kobe Bryant Posterizes Yao Ming",
+        player: "Kobe Bryant",
+        team: "Los Angeles Lakers",
+        year: 2006,
+        type: "Poster",
+        youtubeId: "y3u83Lk3CYA",
+        description: "Kobe attacks the lane and rises straight over the 7'6\" Yao Ming for an emphatic finish — proof that size meant nothing to him.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "vince-mourning-2005",
+        title: "Vince Carter Over Alonzo Mourning",
+        player: "Vince Carter",
+        team: "New Jersey Nets",
+        year: 2005,
+        type: "Poster",
+        youtubeId: "yu206ZrVcSs",
+        description: "November 7, 2005: Carter elevates over the rim-protecting Mourning for a poster so brutal it reportedly ended their friendship.",
+        tags: ["In-Game", "Legendary"]
+    },
+    {
+        id: "drose-dragic-2011",
+        title: "Derrick Rose Hammers Over Goran Dragic",
+        player: "Derrick Rose",
+        team: "Chicago Bulls",
+        year: 2011,
+        type: "Poster",
+        youtubeId: "t71IqHJOqgE",
+        description: "MVP-season Rose splits the lane and detonates a two-handed slam over Dragic — \"Derrick Rose can go upstairs!\" became the call of the night.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "zion-kessler-2022",
+        title: "Zion Williamson Posters Walker Kessler",
+        player: "Zion Williamson",
+        team: "New Orleans Pelicans",
+        year: 2022,
+        type: "Poster",
+        youtubeId: "Ieh6_A9m8Lo",
+        description: "285 pounds of explosion: Zion rises over the seven-foot Kessler and finishes with a dunk that left the announcers speechless.",
+        tags: ["In-Game", "Power"]
+    },
+    {
+        id: "ant-collins-2024",
+        title: "Anthony Edwards Over John Collins",
+        player: "Anthony Edwards",
+        team: "Minnesota Timberwolves",
+        year: 2024,
+        type: "Poster",
+        youtubeId: "zNhFv6fOdRA",
+        description: "Edwards rises from a standstill and absolutely erases John Collins at the rim. He called it the best dunk of his career, and few argued.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "vince-360-windmill-2000",
+        title: "Vince Carter 360 Windmill",
+        player: "Vince Carter",
+        team: "Toronto Raptors",
+        year: 2000,
+        type: "Dunk Contest",
+        youtubeId: "7QtljAdtwgQ",
+        description: "The dunk that reinvented the contest: a full 360 spin into a windmill finish, the first of a string of perfect-50 slams in 2000.",
+        tags: ["Windmill", "360", "Legendary"]
+    },
+    {
+        id: "jrich-btl-2003",
+        title: "Jason Richardson Between-the-Legs Reverse",
+        player: "Jason Richardson",
+        team: "Golden State Warriors",
+        year: 2003,
+        type: "Dunk Contest",
+        youtubeId: "_n-eVS258-A",
+        description: "The clinching dunk of the 2003 contest: a baseline lob brought between the legs and finished reverse. Back-to-back championship sealed.",
+        tags: ["Between Legs", "Reverse", "Legendary"]
+    },
+    {
+        id: "dee-brown-1991",
+        title: "Dee Brown No-Look Dunk",
+        player: "Dee Brown",
+        team: "Boston Celtics",
+        year: 1991,
+        type: "Dunk Contest",
+        youtubeId: "6uD8ZqkoM5E",
+        description: "Brown pumps up his Reeboks, throws an arm across his eyes, and throws it down blind — the most stylish closing dunk in contest history.",
+        tags: ["No-Look", "Legendary"]
+    },
+    {
+        id: "gerald-green-cake-2008",
+        title: "Gerald Green Birthday Cake Dunk",
+        player: "Gerald Green",
+        team: "Minnesota Timberwolves",
+        year: 2008,
+        type: "Dunk Contest",
+        youtubeId: "Ed_NEFjYUYc",
+        description: "A cupcake with a lit candle sits on the back of the rim — Green takes off, blows out the candle mid-air, and throws it down in one motion.",
+        tags: ["Creative", "Legendary"]
+    },
+    {
+        id: "larry-nance-1984",
+        title: "Larry Nance Wins the First Dunk Contest",
+        player: "Larry Nance",
+        team: "Phoenix Suns",
+        year: 1984,
+        type: "Dunk Contest",
+        youtubeId: "Y141jxJUFP8",
+        description: "The inaugural 1984 NBA contest in Denver: Nance edges out Dr. J himself with a cradle windmill to become the event's first champion.",
+        tags: ["Windmill", "Legendary"]
+    },
+    {
+        id: "drj-aba-1976",
+        title: "Dr. J Wins the First-Ever Slam Dunk Contest",
+        player: "Julius Erving",
+        team: "New York Nets",
+        year: 1976,
+        type: "Dunk Contest",
+        youtubeId: "vRw-mN-fiAk",
+        description: "Denver, 1976 ABA All-Star halftime: the first slam dunk contest ever held. Dr. J wins it with a foul-line dunk that invents the template every contest dunk follows afterward.",
+        tags: ["Free Throw Line", "ABA", "Legendary"]
+    },
+    {
+        id: "drexler-1984",
+        title: "Clyde Drexler at the Inaugural NBA Dunk Contest",
+        player: "Clyde Drexler",
+        team: "Portland Trail Blazers",
+        year: 1984,
+        type: "Dunk Contest",
+        youtubeId: "sYwDKvf9Vx8",
+        description: "The Glide at the inaugural 1984 NBA contest: silky, airborne, and a preview of the decade of aerial artistry Portland fans were about to enjoy.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "griffith-1984",
+        title: "Darrell Griffith at the Inaugural NBA Dunk Contest",
+        player: "Darrell Griffith",
+        team: "Utah Jazz",
+        year: 1984,
+        type: "Dunk Contest",
+        youtubeId: "KGG0FwB5aFg",
+        description: "Dr. Dunkenstein was named that for a reason. Griffith's hang time at the first NBA contest looks physically impossible for a 6'4\" guard from 1984.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "mj-1985-contest",
+        title: "Michael Jordan 1985 Dunk Contest",
+        player: "Michael Jordan",
+        team: "Chicago Bulls",
+        year: 1985,
+        type: "Dunk Contest",
+        youtubeId: "HlI1-C3_lVg",
+        description: "Jordan's rookie-season contest run — runner-up to Wilkins — is so good that losing feels like a miscarriage of justice. The dunks themselves settle the argument.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "malone-ewing-1989",
+        title: "Karl Malone Dunks Over Patrick Ewing",
+        player: "Karl Malone",
+        team: "Utah Jazz",
+        year: 1989,
+        type: "Poster",
+        youtubeId: "CsCXIdaVT1U",
+        description: "The Mailman at the Garden: Malone drives baseline, rises over Ewing's outstretched arm, and delivers with a force that rattles the basket support.",
+        tags: ["In-Game", "Power"]
+    },
+    {
+        id: "nique-robinson-1991",
+        title: "Dominique Wilkins Posters David Robinson",
+        player: "Dominique Wilkins",
+        team: "Atlanta Hawks",
+        year: 1991,
+        type: "Poster",
+        youtubeId: "Z8RPFkuXL30",
+        description: "Nique rises over the Admiral with full extension and throws it down — a poster from an era when posterizing a Hall of Famer carried real weight.",
+        tags: ["In-Game", "Legendary"]
+    },
+    {
+        id: "harold-miner-1993",
+        title: "Harold Miner Wins the 1993 Dunk Contest",
+        player: "Harold Miner",
+        team: "Miami Heat",
+        year: 1993,
+        type: "Dunk Contest",
+        youtubeId: "xolEl3uhEoQ",
+        description: "Baby Jordan wins the 1993 contest with a reverse so clutch the judges need a moment. One of the most underrated contest performances of the decade.",
+        tags: ["Reverse", "Legendary"]
+    },
+    {
+        id: "penny-playoffs-1994",
+        title: "Penny Hardaway 1994 Playoff Dunk",
+        player: "Anfernee Hardaway",
+        team: "Orlando Magic",
+        year: 1994,
+        type: "Poster",
+        youtubeId: "Go574BBXbyw",
+        description: "The 22-year-old Penny rises in transition during the 1994 playoffs and throws down a two-handed flush that tells the league a new generation has arrived.",
+        tags: ["In-Game", "Playoffs", "Explosive"]
+    },
+    {
+        id: "rider-east-bay-1994",
+        title: "Isaiah Rider East Bay Funk Dunk",
+        player: "Isaiah Rider",
+        team: "Minnesota Timberwolves",
+        year: 1994,
+        type: "Dunk Contest",
+        youtubeId: "Y4nai6stST0",
+        description: "Rider catches a self-lob, brings it between his legs on the way down, and finishes with a move nobody had seen in competition before. The contest is never the same.",
+        tags: ["Between Legs", "Legendary"]
+    },
+    {
+        id: "hill-ewing-1995",
+        title: "Grant Hill Dunks Past Patrick Ewing",
+        player: "Grant Hill",
+        team: "Detroit Pistons",
+        year: 1995,
+        type: "Poster",
+        youtubeId: "cUlOBg19sTA",
+        description: "Hill reads the double-team, crosses over, and floats past Ewing for a dunk so complete and inevitable it looks like it was drawn up on a whiteboard.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "josh-smith-2005",
+        title: "Josh Smith 2005 Dunk Contest",
+        player: "Josh Smith",
+        team: "Atlanta Hawks",
+        year: 2005,
+        type: "Dunk Contest",
+        youtubeId: "1EfYwBb2iho",
+        description: "Nineteen years old, J-Smoove wins the 2005 contest with a windmill tribute to Dominique Wilkins that makes the arena erupt and makes Nique smile from his seat.",
+        tags: ["Windmill", "Legendary"]
+    },
+    {
+        id: "baron-kirilenko-2007",
+        title: "Baron Davis Over Andrei Kirilenko",
+        player: "Baron Davis",
+        team: "Golden State Warriors",
+        year: 2007,
+        type: "Poster",
+        youtubeId: "Ei7u-8IRACw",
+        description: "The defining image of the 'We Believe' run: B-Diddy launches from inside the arc and erases the 6'9\" Kirilenko in Game 3 of the West semis with one of the most visceral playoff posters ever.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "nate-robinson-2009",
+        title: "Nate Robinson Jumps Over Dwight Howard",
+        player: "Nate Robinson",
+        team: "New York Knicks",
+        year: 2009,
+        type: "Dunk Contest",
+        youtubeId: "VwXNPbKouzs",
+        description: "5'9\" Nate dresses as Kryptonite, positions a costumed Dwight Howard on the court, and clears the 6'11\" Superman to win his second title — the greatest size-differential stunt in contest history.",
+        tags: ["Legendary", "Upset"]
+    },
+    {
+        id: "serge-ibaka-2011",
+        title: "Serge Ibaka Free Throw Line Dunk",
+        player: "Serge Ibaka",
+        team: "Oklahoma City Thunder",
+        year: 2011,
+        type: "Dunk Contest",
+        youtubeId: "9FJvGqMhU84",
+        description: "Ibaka plants at the free throw line, launches, and clears the stripe by a foot and a half. The most technically sound foul-line dunk since Jordan's silhouette.",
+        tags: ["Free Throw Line", "Legendary"]
+    },
+    {
+        id: "lebron-garnett-2012",
+        title: "LeBron James Monster Dunk on Kevin Garnett",
+        player: "LeBron James",
+        team: "Miami Heat",
+        year: 2012,
+        type: "Poster",
+        youtubeId: "c6N4FeyKkhc",
+        description: "2012 Eastern Conference Finals, Game 1: LeBron rises over the Big Ticket with a thunderous left-handed slam that takes the air out of TD Garden in a single motion.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "lebron-perkins-2012",
+        title: "LeBron James Dunks Over Kendrick Perkins",
+        player: "LeBron James",
+        team: "Miami Heat",
+        year: 2012,
+        type: "Poster",
+        youtubeId: "blAIcFGyca0",
+        description: "Game 1 of the 2012 NBA Finals: LeBron catches in transition, rises over Perkins, and finishes an authoritative one-handed slam that signals the championship is already over.",
+        tags: ["In-Game", "Playoffs", "Fast Break"]
+    },
+    {
+        id: "kd-pacers-2012",
+        title: "Kevin Durant Poster Dunk vs Indiana",
+        player: "Kevin Durant",
+        team: "Oklahoma City Thunder",
+        year: 2012,
+        type: "Poster",
+        youtubeId: "ng3gjKf90iQ",
+        description: "April 6, 2012: KD attacks the paint and rises over the Pacers defender, finishing two-handed and reminding the league that a seven-footer can also be a freak athlete.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "pg-360-windmill-2014",
+        title: "Paul George 360 Windmill Slam",
+        player: "Paul George",
+        team: "Indiana Pacers",
+        year: 2014,
+        type: "Windmill",
+        youtubeId: "1aMs6khRYPM",
+        description: "January 19, 2014 in transition: PG13 completes a full 360 rotation and brings the ball all the way around with a windmill finish that stops Bankers Life Fieldhouse in its tracks.",
+        tags: ["In-Game", "360", "Explosive"]
+    },
+    {
+        id: "gordon-tacko-2020",
+        title: "Aaron Gordon Dunks Over Tacko Fall",
+        player: "Aaron Gordon",
+        team: "Orlando Magic",
+        year: 2020,
+        type: "Dunk Contest",
+        youtubeId: "GIzMy2blDGI",
+        description: "Gordon elevates over the 7'5\" Tacko Fall — arguably the greatest dunk in contest history. Judges gave it a 47. The crowd gave it a standing ovation. Justice was never served.",
+        tags: ["Legendary", "Robbed"]
+    },
+    {
+        id: "kyrie-poster-2021",
+        title: "Kyrie Irving Two-Handed Poster Dunk",
+        player: "Kyrie Irving",
+        team: "Brooklyn Nets",
+        year: 2021,
+        type: "Poster",
+        youtubeId: "_-mrUS6sQSk",
+        description: "All angles confirmed: Kyrie absorbs contact at the rim and throws down a two-handed poster that Brooklyn fans still argue should have been the dunk of the year.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "mac-mcclung-2023",
+        title: "Mac McClung Wins the 2023 Dunk Contest",
+        player: "Mac McClung",
+        team: "Philadelphia 76ers",
+        year: 2023,
+        type: "Dunk Contest",
+        youtubeId: "j2pbAp3UtEI",
+        description: "The first G-League player ever invited to the contest posts three perfect 50s and wins going away — the biggest underdog championship since Spud Webb in 1986.",
+        tags: ["Legendary", "Upset"]
     }
 ];
-
-const verifiedVideoIds = new Set([
-    "XMrPjl-927Q",
-    "VkvTLOhm-TQ",
-    "NTkN2q6sUUk",
-    "uRAp00SxP30",
-    "y3X274lz3wY",
-    "5uRN7iJ5CqQ",
-    "V7_vpXoUxv8",
-    "V-QTiByTKaI",
-    "l2GaAWdHwsw",
-    "iyLHuVwJUkc",
-    "d8FYUdPPUy4"
-]);
 
 const elements = {
     statDunks: document.getElementById("stat-dunks"),
@@ -553,12 +592,11 @@ const elements = {
     featuredMeta: document.getElementById("featured-meta"),
     featuredDescription: document.getElementById("featured-description"),
     featuredWatch: document.getElementById("featured-watch"),
-    randomDunk: document.getElementById("random-dunk"),
     catalogSearch: document.getElementById("catalog-search"),
     playerFilter: document.getElementById("player-filter"),
     teamFilter: document.getElementById("team-filter"),
     yearFilter: document.getElementById("year-filter"),
-    tagFilter: document.getElementById("tag-filter"),
+    typeFilter: document.getElementById("type-filter"),
     clearFilters: document.getElementById("clear-filters"),
     resultsCount: document.getElementById("results-count"),
     catalogGrid: document.getElementById("catalog-grid"),
@@ -568,17 +606,15 @@ const elements = {
     youtubeStatus: document.getElementById("youtube-status"),
     youtubeResults: document.getElementById("youtube-results"),
     searchLaunch: document.getElementById("search-launch"),
-    searchChips: Array.from(document.querySelectorAll(".search-chip")),
     videoModal: document.getElementById("video-modal"),
-    videoShell: document.getElementById("video-shell"),
     videoFrame: document.getElementById("video-frame"),
     modalClose: document.getElementById("modal-close"),
     modalKicker: document.getElementById("modal-kicker"),
     modalTitle: document.getElementById("modal-title"),
     modalDescription: document.getElementById("modal-description"),
-    modalStatus: document.getElementById("modal-status"),
     modalTags: document.getElementById("modal-tags"),
-    modalYoutubeLink: document.getElementById("modal-youtube-link")
+    modalYoutubeLink: document.getElementById("modal-youtube-link"),
+    randomDunk: document.getElementById("random-dunk")
 };
 
 const filters = {
@@ -586,40 +622,19 @@ const filters = {
     player: "",
     team: "",
     year: "",
-    tag: ""
+    type: ""
 };
-
-function buildYouTubeSearchUrl(query) {
-    return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-}
-
-function thumbnailFor(videoId) {
-    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-}
-
-function normalizeDunk(dunk) {
-    const hasVerifiedVideo = verifiedVideoIds.has(dunk.youtubeId);
-    const searchQuery = `${dunk.player} ${dunk.title} dunk`;
-    return {
-        ...dunk,
-        hasVerifiedVideo,
-        searchQuery,
-        watchUrl: hasVerifiedVideo
-            ? `https://www.youtube.com/watch?v=${dunk.youtubeId}`
-            : buildYouTubeSearchUrl(searchQuery),
-        thumbnail: hasVerifiedVideo ? thumbnailFor(dunk.youtubeId) : "",
-        availabilityLabel: hasVerifiedVideo ? "Verified Clip" : "Clip Hunt"
-    };
-}
-
-const curatedDunks = curatedDunksRaw.map(normalizeDunk);
 
 function uniqueValues(key) {
     return [...new Set(curatedDunks.map((dunk) => dunk[key]))].sort();
 }
 
-function uniqueTags() {
-    return [...new Set(curatedDunks.flatMap((dunk) => dunk.tags))].sort();
+function uniqueTypes() {
+    return [...new Set(curatedDunks.map((dunk) => dunk.type))].sort();
+}
+
+function thumbnailFor(videoId) {
+    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
 
 function createOption(value, label) {
@@ -627,6 +642,44 @@ function createOption(value, label) {
     option.value = value;
     option.textContent = label;
     return option;
+}
+
+function hydrateFilters() {
+    elements.playerFilter.append(createOption("", "All Players"), ...uniqueValues("player").map((v) => createOption(v, v)));
+    elements.teamFilter.append(createOption("", "All Teams"), ...uniqueValues("team").map((v) => createOption(v, v)));
+    elements.yearFilter.append(createOption("", "All Years"), ...uniqueValues("year").map((v) => createOption(String(v), String(v))));
+    elements.typeFilter.append(createOption("", "All Types"), ...uniqueTypes().map((v) => createOption(v, v)));
+}
+
+function updateStats() {
+    elements.statDunks.textContent = String(curatedDunks.length);
+    elements.statPlayers.textContent = String(uniqueValues("player").length);
+    elements.statYears.textContent = String(uniqueValues("year").length);
+}
+
+function updateFeatured() {
+    const featured = curatedDunks[0];
+    elements.featuredTitle.textContent = featured.title;
+    elements.featuredMeta.textContent = `${featured.player} • ${featured.team} • ${featured.year}`;
+    elements.featuredDescription.textContent = featured.description;
+    elements.featuredWatch.onclick = () => openModal(featured);
+}
+
+function matchesFilter(dunk) {
+    const haystack = [
+        dunk.title,
+        dunk.player,
+        dunk.team,
+        dunk.description,
+        dunk.type,
+        ...dunk.tags
+    ].join(" ").toLowerCase();
+
+    return (!filters.query || haystack.includes(filters.query))
+        && (!filters.player || dunk.player === filters.player)
+        && (!filters.team || dunk.team === filters.team)
+        && (!filters.year || String(dunk.year) === filters.year)
+        && (!filters.type || dunk.type === filters.type);
 }
 
 function renderTags(container, tags) {
@@ -639,105 +692,13 @@ function renderTags(container, tags) {
     });
 }
 
-function hydrateFilters() {
-    elements.playerFilter.append(createOption("", "All Players"), ...uniqueValues("player").map((value) => createOption(value, value)));
-    elements.teamFilter.append(createOption("", "All Teams"), ...uniqueValues("team").map((value) => createOption(value, value)));
-    elements.yearFilter.append(createOption("", "All Years"), ...uniqueValues("year").map((value) => createOption(String(value), String(value))));
-    elements.tagFilter.append(createOption("", "All Tags"), ...uniqueTags().map((value) => createOption(value, value)));
-}
-
-function updateStats() {
-    elements.statDunks.textContent = String(curatedDunks.length);
-    elements.statPlayers.textContent = String(uniqueValues("player").length);
-    elements.statYears.textContent = String(uniqueValues("year").length);
-}
-
-function updateFeatured() {
-    const featured = curatedDunks.find((dunk) => dunk.hasVerifiedVideo) || curatedDunks[0];
-    elements.featuredTitle.textContent = featured.title;
-    elements.featuredMeta.textContent = `${featured.player} • ${featured.team} • ${featured.year}`;
-    elements.featuredDescription.textContent = featured.description;
-    elements.featuredWatch.textContent = featured.hasVerifiedVideo ? "Watch Dunk" : "Find Clip";
-    elements.featuredWatch.onclick = () => openModal(featured);
-}
-
-function matchesFilter(dunk) {
-    const haystack = [
-        dunk.title,
-        dunk.player,
-        dunk.team,
-        dunk.description,
-        ...dunk.tags
-    ].join(" ").toLowerCase();
-
-    return (!filters.query || haystack.includes(filters.query))
-        && (!filters.player || dunk.player === filters.player)
-        && (!filters.team || dunk.team === filters.team)
-        && (!filters.year || String(dunk.year) === filters.year)
-        && (!filters.tag || dunk.tags.includes(filters.tag));
-}
-
-function fallbackThumbMarkup(dunk) {
-    return `
-        <div class="card-thumb fallback-thumb">
-            <span class="card-badge card-badge-left">${dunk.availabilityLabel}</span>
-            <span class="card-badge">${dunk.year}</span>
-            <div class="fallback-copy">
-                <p>${dunk.player}</p>
-                <strong>Find A Fresh Clip</strong>
-            </div>
-            <button class="card-play card-play-search" type="button" aria-label="Find ${dunk.title} on YouTube">↗</button>
-        </div>
-    `;
-}
-
-function verifiedThumbMarkup(dunk) {
-    return `
-        <div class="card-thumb">
-            <img src="${dunk.thumbnail}" alt="${dunk.title}">
-            <span class="card-badge card-badge-left">${dunk.availabilityLabel}</span>
-            <span class="card-badge">${dunk.year}</span>
-            <button class="card-play" type="button" aria-label="Play ${dunk.title}">▶</button>
-        </div>
-    `;
-}
-
-function createDunkCard(dunk) {
-    const article = document.createElement("article");
-    article.className = `dunk-card${dunk.hasVerifiedVideo ? "" : " dunk-card-search"}`;
-    article.innerHTML = `
-        ${dunk.hasVerifiedVideo ? verifiedThumbMarkup(dunk) : fallbackThumbMarkup(dunk)}
-        <div class="card-body">
-            <h3 class="card-title">${dunk.title}</h3>
-            <p class="card-meta">${dunk.player} • ${dunk.team}</p>
-            <p class="card-description">${dunk.description}</p>
-            <div class="tag-row"></div>
-        </div>
-    `;
-
-    renderTags(article.querySelector(".tag-row"), dunk.tags);
-    article.addEventListener("click", () => openModal(dunk));
-    return article;
-}
-
 function openModal(item) {
     elements.modalKicker.textContent = `${item.player} • ${item.team} • ${item.year}`;
     elements.modalTitle.textContent = item.title;
-    elements.modalDescription.textContent = item.description || "Track down the clip on YouTube.";
-    elements.modalYoutubeLink.href = item.watchUrl;
-    elements.modalYoutubeLink.textContent = item.hasVerifiedVideo ? "Open on YouTube" : "Find Clip on YouTube";
-    renderTags(elements.modalTags, item.tags || ["Archive"]);
-
-    if (item.hasVerifiedVideo) {
-        elements.modalStatus.textContent = "Verified embeddable clip.";
-        elements.videoShell.classList.remove("hidden");
-        elements.videoFrame.src = `https://www.youtube.com/embed/${item.youtubeId}?autoplay=1`;
-    } else {
-        elements.modalStatus.textContent = "This archive entry uses a safer YouTube search handoff because a stable embeddable clip was not verified.";
-        elements.videoShell.classList.add("hidden");
-        elements.videoFrame.src = "";
-    }
-
+    elements.modalDescription.textContent = item.description || "Watch the clip on YouTube.";
+    renderTags(elements.modalTags, [item.type, ...item.tags]);
+    elements.videoFrame.src = `https://www.youtube.com/embed/${item.youtubeId}?autoplay=1`;
+    elements.modalYoutubeLink.href = `https://www.youtube.com/watch?v=${item.youtubeId}`;
     elements.videoModal.showModal();
 }
 
@@ -746,65 +707,64 @@ function closeModal() {
     elements.videoModal.close();
 }
 
+function buildCard(dunk) {
+    const article = document.createElement("article");
+    article.className = "dunk-card";
+    article.innerHTML = `
+        <div class="card-thumb">
+            <img src="${thumbnailFor(dunk.youtubeId)}" alt="${dunk.title}">
+            <span class="card-badge">${dunk.year}</span>
+            <button class="card-play" type="button" aria-label="Play ${dunk.title}">▶</button>
+        </div>
+        <div class="card-body">
+            <h3 class="card-title">${dunk.title}</h3>
+            <p class="card-meta">${dunk.player} • ${dunk.team}</p>
+            <p class="card-description">${dunk.description}</p>
+            <div class="tag-row"></div>
+        </div>
+    `;
+    renderTags(article.querySelector(".tag-row"), [dunk.type, ...dunk.tags]);
+    article.addEventListener("click", () => openModal(dunk));
+    return article;
+}
+
 function renderCatalog() {
     const results = curatedDunks.filter(matchesFilter);
-    const verifiedCount = results.filter((dunk) => dunk.hasVerifiedVideo).length;
-    const clipHuntCount = results.length - verifiedCount;
     elements.catalogGrid.innerHTML = "";
-    elements.resultsCount.textContent = `Showing ${results.length} dunk${results.length === 1 ? "" : "s"} • ${verifiedCount} verified clip${verifiedCount === 1 ? "" : "s"} • ${clipHuntCount} clip hunt${clipHuntCount === 1 ? "" : "s"}`;
+    elements.resultsCount.textContent = `Showing ${results.length} dunk${results.length === 1 ? "" : "s"}`;
     elements.emptyState.classList.toggle("hidden", results.length > 0);
-    results.forEach((dunk) => elements.catalogGrid.appendChild(createDunkCard(dunk)));
+    results.forEach((dunk) => elements.catalogGrid.appendChild(buildCard(dunk)));
 }
 
-function scoreMatch(dunk, query) {
-    const lower = query.toLowerCase();
-    let score = 0;
-    if (dunk.title.toLowerCase().includes(lower)) score += 5;
-    if (dunk.player.toLowerCase().includes(lower)) score += 4;
-    if (dunk.team.toLowerCase().includes(lower)) score += 3;
-    if (dunk.tags.some((tag) => tag.toLowerCase().includes(lower))) score += 3;
-    if (dunk.description.toLowerCase().includes(lower)) score += 1;
-    if (dunk.hasVerifiedVideo) score += 1;
-    return score;
-}
-
-function archiveMatchesFor(query) {
-    return curatedDunks
-        .map((dunk) => ({ dunk, score: scoreMatch(dunk, query) }))
-        .filter((item) => item.score > 0)
-        .sort((a, b) => b.score - a.score || b.dunk.year - a.dunk.year)
-        .map((item) => item.dunk);
-}
-
-function resetSearchPanel() {
-    elements.youtubeStatus.textContent = "No API key needed. Search to get archive matches and a direct YouTube results link.";
+function renderYouTubeResults(items) {
     elements.youtubeResults.innerHTML = "";
-    elements.searchLaunch.innerHTML = "";
-    elements.searchLaunch.classList.add("hidden");
+    items.forEach((dunk) => elements.youtubeResults.appendChild(buildCard(dunk)));
 }
 
-function renderSearchResults() {
+function searchYouTube() {
     const query = elements.youtubeQuery.value.trim();
+
     if (!query) {
-        resetSearchPanel();
+        elements.youtubeStatus.textContent = "Enter a search term first.";
         return;
     }
 
-    const matches = archiveMatchesFor(query).slice(0, 6);
-    const searchUrl = buildYouTubeSearchUrl(`${query} dunk`);
+    const lower = query.toLowerCase();
+    const matches = curatedDunks.filter((dunk) => {
+        const haystack = [dunk.title, dunk.player, dunk.team, dunk.description, dunk.type, ...dunk.tags]
+            .join(" ").toLowerCase();
+        return haystack.includes(lower);
+    });
 
+    renderYouTubeResults(matches);
+
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + " NBA dunk")}`;
+    elements.searchLaunch.innerHTML = `<a class="secondary-button" href="${searchUrl}" target="_blank" rel="noopener noreferrer">Search YouTube for "${query}"</a>`;
     elements.searchLaunch.classList.remove("hidden");
-    elements.searchLaunch.innerHTML = `
-        <p class="section-note">Open a fresh YouTube results page for this query, then use the archive matches below as your fast lane.</p>
-        <a class="primary-button" href="${searchUrl}" target="_blank" rel="noopener noreferrer">Search YouTube for "${query}"</a>
-    `;
-
-    elements.youtubeResults.innerHTML = "";
-    matches.forEach((dunk) => elements.youtubeResults.appendChild(createDunkCard(dunk)));
 
     elements.youtubeStatus.textContent = matches.length
         ? `Found ${matches.length} archive match${matches.length === 1 ? "" : "es"} for "${query}".`
-        : `No archive matches for "${query}" yet, but the YouTube search link above is ready.`;
+        : `No archive matches for "${query}". Try the YouTube link above.`;
 }
 
 function syncFiltersFromInputs() {
@@ -812,7 +772,7 @@ function syncFiltersFromInputs() {
     filters.player = elements.playerFilter.value;
     filters.team = elements.teamFilter.value;
     filters.year = elements.yearFilter.value;
-    filters.tag = elements.tagFilter.value;
+    filters.type = elements.typeFilter.value;
     renderCatalog();
 }
 
@@ -821,13 +781,8 @@ function clearFilters() {
     elements.playerFilter.value = "";
     elements.teamFilter.value = "";
     elements.yearFilter.value = "";
-    elements.tagFilter.value = "";
+    elements.typeFilter.value = "";
     syncFiltersFromInputs();
-}
-
-function openRandomDunk() {
-    const choice = curatedDunks[Math.floor(Math.random() * curatedDunks.length)];
-    openModal(choice);
 }
 
 function wireEvents() {
@@ -836,30 +791,31 @@ function wireEvents() {
         elements.playerFilter,
         elements.teamFilter,
         elements.yearFilter,
-        elements.tagFilter
-    ].forEach((element) => element.addEventListener("input", syncFiltersFromInputs));
+        elements.typeFilter
+    ].forEach((el) => el.addEventListener("input", syncFiltersFromInputs));
 
     elements.clearFilters.addEventListener("click", clearFilters);
-    elements.randomDunk.addEventListener("click", openRandomDunk);
     elements.modalClose.addEventListener("click", closeModal);
     elements.videoModal.addEventListener("click", (event) => {
-        if (event.target === elements.videoModal) {
-            closeModal();
-        }
+        if (event.target === elements.videoModal) closeModal();
     });
 
-    elements.youtubeSearchButton.addEventListener("click", renderSearchResults);
+    elements.youtubeSearchButton.addEventListener("click", searchYouTube);
     elements.youtubeQuery.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-            renderSearchResults();
-        }
+        if (event.key === "Enter") searchYouTube();
     });
 
-    elements.searchChips.forEach((button) => {
-        button.addEventListener("click", () => {
-            elements.youtubeQuery.value = button.dataset.query;
-            renderSearchResults();
+    document.querySelectorAll(".search-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+            elements.youtubeQuery.value = chip.dataset.query;
+            searchYouTube();
+            elements.youtubeQuery.scrollIntoView({ behavior: "smooth", block: "nearest" });
         });
+    });
+
+    elements.randomDunk.addEventListener("click", () => {
+        const dunk = curatedDunks[Math.floor(Math.random() * curatedDunks.length)];
+        openModal(dunk);
     });
 }
 
@@ -867,5 +823,4 @@ hydrateFilters();
 updateStats();
 updateFeatured();
 renderCatalog();
-resetSearchPanel();
 wireEvents();

@@ -5,9 +5,10 @@ const curatedDunks = [
         player: "Vince Carter",
         team: "Team USA",
         year: 2000,
+        type: "Poster",
         youtubeId: "k_uZeCymShQ",
-        description: "The Olympic vault-over that stopped time and turned a live defender into a permanent reference point.",
-        tags: ["Olympics", "Poster", "In-Game", "Legendary"]
+        description: "A full-stride, two-handed jam over a 7'2\" defender that stopped the 2000 Sydney Olympics cold and became the single most replayed image in basketball history.",
+        tags: ["Olympics", "In-Game", "Legendary"]
     },
     {
         id: "mj-free-throw-line",
@@ -15,9 +16,76 @@ const curatedDunks = [
         player: "Michael Jordan",
         team: "Chicago Bulls",
         year: 1988,
-        youtubeId: "OO5r5HTR7bA",
-        description: "The dunk contest silhouette that became basketball iconography all by itself.",
-        tags: ["Dunk Contest", "Free Throw Line", "Legendary"]
+        type: "Dunk Contest",
+        youtubeId: "DXFfmWA3xx8",
+        description: "Jordan takes off from the free throw line at Chicago Stadium, glides 15 feet through the air, and delivers a perfect 50 to beat Dominique Wilkins for the title.",
+        tags: ["Free Throw Line", "Legendary"]
+    },
+    {
+        id: "dominique-1985",
+        title: "Dominique Wilkins 1985 Dunk Contest",
+        player: "Dominique Wilkins",
+        team: "Atlanta Hawks",
+        year: 1985,
+        type: "Dunk Contest",
+        youtubeId: "UPcgR9tsGfs",
+        description: "The Human Highlight Film introduces himself to the contest with a windmill that sets the template for the next 40 years of dunk competition.",
+        tags: ["Windmill", "Legendary"]
+    },
+    {
+        id: "spud-webb-1986",
+        title: "Spud Webb Wins the 1986 Dunk Contest",
+        player: "Spud Webb",
+        team: "Atlanta Hawks",
+        year: 1986,
+        type: "Dunk Contest",
+        youtubeId: "r1YRJvFvlgg",
+        description: "Standing 5'7\", Webb beats his own teammate Dominique Wilkins to take the title — the greatest upset in dunk contest history.",
+        tags: ["Legendary", "Upset"]
+    },
+    {
+        id: "dr-j-rock-the-baby",
+        title: "Dr. J Rock-the-Baby Cradle Dunk",
+        player: "Julius Erving",
+        team: "Philadelphia 76ers",
+        year: 1983,
+        type: "Cradle",
+        youtubeId: "7YwY_tFSrWw",
+        description: "Over Michael Cooper on January 5, 1983: Dr. J cradles the ball, rocks it once, and finishes with a signature move that still looks impossible four decades later.",
+        tags: ["In-Game", "Legendary"]
+    },
+    {
+        id: "shaq-breakaway",
+        title: "Shaq Tears Down the Backboard",
+        player: "Shaquille O'Neal",
+        team: "Orlando Magic",
+        year: 1993,
+        type: "Power",
+        youtubeId: "mvMGuaQBGnc",
+        description: "Less a dunk than an industrial stress test. Shaq's slam against the Nets on April 23, 1993 brings down the entire backboard support and stops the game cold.",
+        tags: ["Rim Wrecker", "Legendary"]
+    },
+    {
+        id: "kemp-carr-1996",
+        title: "Shawn Kemp Destroys Antoine Carr",
+        player: "Shawn Kemp",
+        team: "Seattle SuperSonics",
+        year: 1996,
+        type: "Poster",
+        youtubeId: "a4VynGnht00",
+        description: "The Reign Man catches the ball in transition, aims at Carr's chest, and throws down one of the most violent posters of the decade in Game 2 of the 1996 Western Conference Finals.",
+        tags: ["Power", "In-Game", "Playoffs"]
+    },
+    {
+        id: "dwight-superman-2008",
+        title: "Dwight Howard Superman Dunk",
+        player: "Dwight Howard",
+        team: "Orlando Magic",
+        year: 2008,
+        type: "Dunk Contest",
+        youtubeId: "SQsdNHUILgY",
+        description: "Dwight shows up in a Superman cape, catches a lob from center court, and delivers a perfect 50 that made an entire arena lose its collective mind.",
+        tags: ["Alley-Oop", "Legendary"]
     },
     {
         id: "kobe-hornets-reverse",
@@ -25,19 +93,21 @@ const curatedDunks = [
         player: "Kobe Bryant",
         team: "Los Angeles Lakers",
         year: 2001,
-        youtubeId: "WCRjuwWqU7Q",
-        description: "Young Kobe snakes the baseline and finishes with a reverse that feels violent and elegant at the same time.",
-        tags: ["Reverse", "Baseline", "In-Game"]
+        type: "Reverse",
+        youtubeId: "j3L5e47lAzk",
+        description: "Young Kobe snakes the baseline and finishes with a one-handed reverse that feels violent and elegant at the same time.",
+        tags: ["Baseline", "In-Game"]
     },
     {
-        id: "lebron-jason-terry",
-        title: "LeBron Over Jason Terry",
-        player: "LeBron James",
-        team: "Miami Heat",
-        year: 2013,
-        youtubeId: "beCxSqSXGDY",
-        description: "A full-speed transition poster that triggered one of the loudest collective reactions of the era.",
-        tags: ["Poster", "Fast Break", "In-Game", "Playoffs"]
+        id: "lavine-2015",
+        title: "Zach LaVine 2015 Dunk Contest",
+        player: "Zach LaVine",
+        team: "Minnesota Timberwolves",
+        year: 2015,
+        type: "Dunk Contest",
+        youtubeId: "Glcnv0MphkI",
+        description: "LaVine arrives as a 20-year-old unknown and scores back-to-back 50s, including a between-the-legs windmill that rewrote what athletic looks like in a dunk contest.",
+        tags: ["Between Legs", "Windmill", "Legendary"]
     },
     {
         id: "blake-mozgov",
@@ -45,9 +115,10 @@ const curatedDunks = [
         player: "Blake Griffin",
         team: "Los Angeles Clippers",
         year: 2010,
-        youtubeId: "d8FYUdPPUy4",
-        description: "Pure rookie force. Elevation, contact, and no apology whatsoever.",
-        tags: ["Poster", "Power", "In-Game"]
+        type: "Poster",
+        youtubeId: "9eRKXGiAAnw",
+        description: "Pure rookie force over a seven-footer. Elevation, contact, and no apology whatsoever.",
+        tags: ["Power", "In-Game"]
     },
     {
         id: "dwade-varajao",
@@ -55,59 +126,10 @@ const curatedDunks = [
         player: "Dwyane Wade",
         team: "Miami Heat",
         year: 2009,
+        type: "Poster",
         youtubeId: "5uRN7iJ5CqQ",
-        description: "A slash into traffic that ends with Wade detonating through a crowded paint.",
-        tags: ["Poster", "Drive", "In-Game"]
-    },
-    {
-        id: "shaq-breakaway",
-        title: "Shaq Breaks the Backboard Support",
-        player: "Shaquille O'Neal",
-        team: "Orlando Magic",
-        year: 1993,
-        youtubeId: "M7LVyv0mL28",
-        description: "Less a dunk than an industrial stress test that happened to count for two points.",
-        tags: ["Power", "Rim Wrecker", "Legendary"]
-    },
-    {
-        id: "aaron-lavine-duel",
-        title: "Aaron Gordon vs. Zach LaVine Dunk Duel",
-        player: "Aaron Gordon",
-        team: "Orlando Magic",
-        year: 2016,
-        youtubeId: "0oIitsGzFPU",
-        description: "The contest stretch that made everyone forget the score and just stare at the absurdity.",
-        tags: ["Dunk Contest", "Under Legs", "Legendary"]
-    },
-    {
-        id: "ja-poeltl",
-        title: "Ja Morant Almost Ends Jakob Poeltl",
-        player: "Ja Morant",
-        team: "Memphis Grizzlies",
-        year: 2022,
-        youtubeId: "x0T5qM9T2go",
-        description: "Even as an almost-poster, it belongs in the archive because the attempt itself broke physics.",
-        tags: ["Almost", "Poster Attempt", "Explosive"]
-    },
-    {
-        id: "westbrook-putback",
-        title: "Russell Westbrook Putback Hammer",
-        player: "Russell Westbrook",
-        team: "Oklahoma City Thunder",
-        year: 2015,
-        youtubeId: "iyLHuVwJUkc",
-        description: "Westbrook arrives from nowhere, turns a rebound into a warning, and leaves the rim complaining.",
-        tags: ["Putback", "Explosive", "In-Game"]
-    },
-    {
-        id: "dr-j-rock-the-baby",
-        title: "Dr. J Rock-the-Baby Windmill",
-        player: "Julius Erving",
-        team: "Philadelphia 76ers",
-        year: 1976,
-        youtubeId: "TjU8LQf3P2s",
-        description: "One of the template dunks, delivered with the kind of style that still feels modern.",
-        tags: ["Windmill", "ABA", "Legendary"]
+        description: "A slash into traffic that ends with Wade detonating over a crowded paint on November 12, 2009 — widely considered the best dunk of his career.",
+        tags: ["Drive", "In-Game"]
     },
     {
         id: "deandre-brandon-knight",
@@ -115,13 +137,67 @@ const curatedDunks = [
         player: "DeAndre Jordan",
         team: "Los Angeles Clippers",
         year: 2013,
-        youtubeId: "NTkN2q6sUUk",
-        description: "This is the dictionary-definition poster. Lob, collision, aftermath, disbelief.",
-        tags: ["Poster", "Lob", "In-Game", "Legendary"]
+        type: "Alley-Oop",
+        youtubeId: "WFhFI2OYExk",
+        description: "The dictionary-definition poster. Chris Paul lobs it up, Jordan catches it over Knight, and the internet spends three days processing what just happened.",
+        tags: ["Poster", "In-Game", "Legendary"]
+    },
+    {
+        id: "aaron-lavine-duel",
+        title: "Aaron Gordon vs. Zach LaVine Dunk Duel",
+        player: "Aaron Gordon",
+        team: "Orlando Magic",
+        year: 2016,
+        type: "Dunk Contest",
+        youtubeId: "u7VgkfcSYz0",
+        description: "The contest stretch where both competitors kept scoring 50s until nobody could explain why either one lost. Gordon's under-the-legs windmill alone belongs in a museum.",
+        tags: ["Under Legs", "Legendary"]
+    },
+    {
+        id: "lebron-jason-terry",
+        title: "LeBron Over Jason Terry",
+        player: "LeBron James",
+        team: "Miami Heat",
+        year: 2013,
+        type: "Poster",
+        youtubeId: "FkxcY45bP2U",
+        description: "A full-speed transition poster on March 18, 2013 that triggered one of the loudest collective reactions in the arena and sent the internet into immediate chaos.",
+        tags: ["Fast Break", "In-Game"]
+    },
+    {
+        id: "westbrook-putback",
+        title: "Russell Westbrook Putback Hammer",
+        player: "Russell Westbrook",
+        team: "Oklahoma City Thunder",
+        year: 2015,
+        type: "Putback",
+        youtubeId: "3e6Z3DKcDcw",
+        description: "Westbrook arrives from nowhere, turns a missed shot into a warning, and leaves the rim vibrating. The kind of putback that forces a timeout just to let everyone calm down.",
+        tags: ["Explosive", "In-Game"]
+    },
+    {
+        id: "ja-poeltl",
+        title: "Ja Morant Posterizes Jakob Poeltl",
+        player: "Ja Morant",
+        team: "Memphis Grizzlies",
+        year: 2022,
+        type: "Poster",
+        youtubeId: "IujgoXEWEXQ",
+        description: "Ja goes straight at the seven-footer and detonates over him on March 1, 2022 — capping a career-high 52-point night with the most emphatic punctuation mark of the season.",
+        tags: ["Explosive", "In-Game"]
+    },
+    {
+        id: "giannis-vucevic-2024",
+        title: "Giannis Posterizes Nikola Vucevic",
+        player: "Giannis Antetokounmpo",
+        team: "Milwaukee Bucks",
+        year: 2024,
+        type: "Poster",
+        youtubeId: "7pax4RPQXbY",
+        description: "The Greek Freak attacks the rim at full speed, absorbs contact from Vucevic at the rim, and finishes with a dunk so decisive it triggered a post-game incident.",
+        tags: ["Power", "In-Game"]
     }
 ];
-
-const storageKey = "dunkapedia.youtubeApiKey";
 
 const elements = {
     statDunks: document.getElementById("stat-dunks"),
@@ -135,7 +211,7 @@ const elements = {
     playerFilter: document.getElementById("player-filter"),
     teamFilter: document.getElementById("team-filter"),
     yearFilter: document.getElementById("year-filter"),
-    tagFilter: document.getElementById("tag-filter"),
+    typeFilter: document.getElementById("type-filter"),
     clearFilters: document.getElementById("clear-filters"),
     resultsCount: document.getElementById("results-count"),
     catalogGrid: document.getElementById("catalog-grid"),
@@ -144,6 +220,7 @@ const elements = {
     youtubeSearchButton: document.getElementById("youtube-search-button"),
     youtubeStatus: document.getElementById("youtube-status"),
     youtubeResults: document.getElementById("youtube-results"),
+    searchLaunch: document.getElementById("search-launch"),
     videoModal: document.getElementById("video-modal"),
     videoFrame: document.getElementById("video-frame"),
     modalClose: document.getElementById("modal-close"),
@@ -151,11 +228,8 @@ const elements = {
     modalTitle: document.getElementById("modal-title"),
     modalDescription: document.getElementById("modal-description"),
     modalTags: document.getElementById("modal-tags"),
-    apiKeyToggle: document.getElementById("api-key-toggle"),
-    apiKeyModal: document.getElementById("api-key-modal"),
-    apiKeyInput: document.getElementById("api-key-input"),
-    saveApiKey: document.getElementById("save-api-key"),
-    clearApiKey: document.getElementById("clear-api-key")
+    modalYoutubeLink: document.getElementById("modal-youtube-link"),
+    randomDunk: document.getElementById("random-dunk")
 };
 
 const filters = {
@@ -163,15 +237,15 @@ const filters = {
     player: "",
     team: "",
     year: "",
-    tag: ""
+    type: ""
 };
 
 function uniqueValues(key) {
     return [...new Set(curatedDunks.map((dunk) => dunk[key]))].sort();
 }
 
-function uniqueTags() {
-    return [...new Set(curatedDunks.flatMap((dunk) => dunk.tags))].sort();
+function uniqueTypes() {
+    return [...new Set(curatedDunks.map((dunk) => dunk.type))].sort();
 }
 
 function thumbnailFor(videoId) {
@@ -186,10 +260,10 @@ function createOption(value, label) {
 }
 
 function hydrateFilters() {
-    elements.playerFilter.append(createOption("", "All Players"), ...uniqueValues("player").map((value) => createOption(value, value)));
-    elements.teamFilter.append(createOption("", "All Teams"), ...uniqueValues("team").map((value) => createOption(value, value)));
-    elements.yearFilter.append(createOption("", "All Years"), ...uniqueValues("year").map((value) => createOption(String(value), String(value))));
-    elements.tagFilter.append(createOption("", "All Tags"), ...uniqueTags().map((value) => createOption(value, value)));
+    elements.playerFilter.append(createOption("", "All Players"), ...uniqueValues("player").map((v) => createOption(v, v)));
+    elements.teamFilter.append(createOption("", "All Teams"), ...uniqueValues("team").map((v) => createOption(v, v)));
+    elements.yearFilter.append(createOption("", "All Years"), ...uniqueValues("year").map((v) => createOption(String(v), String(v))));
+    elements.typeFilter.append(createOption("", "All Types"), ...uniqueTypes().map((v) => createOption(v, v)));
 }
 
 function updateStats() {
@@ -212,6 +286,7 @@ function matchesFilter(dunk) {
         dunk.player,
         dunk.team,
         dunk.description,
+        dunk.type,
         ...dunk.tags
     ].join(" ").toLowerCase();
 
@@ -219,7 +294,7 @@ function matchesFilter(dunk) {
         && (!filters.player || dunk.player === filters.player)
         && (!filters.team || dunk.team === filters.team)
         && (!filters.year || String(dunk.year) === filters.year)
-        && (!filters.tag || dunk.tags.includes(filters.tag));
+        && (!filters.type || dunk.type === filters.type);
 }
 
 function renderTags(container, tags) {
@@ -235,9 +310,10 @@ function renderTags(container, tags) {
 function openModal(item) {
     elements.modalKicker.textContent = `${item.player} • ${item.team} • ${item.year}`;
     elements.modalTitle.textContent = item.title;
-    elements.modalDescription.textContent = item.description || item.channel || "Watch the clip on YouTube.";
-    renderTags(elements.modalTags, item.tags || ["YouTube"]);
+    elements.modalDescription.textContent = item.description || "Watch the clip on YouTube.";
+    renderTags(elements.modalTags, [item.type, ...item.tags]);
     elements.videoFrame.src = `https://www.youtube.com/embed/${item.youtubeId}?autoplay=1`;
+    elements.modalYoutubeLink.href = `https://www.youtube.com/watch?v=${item.youtubeId}`;
     elements.videoModal.showModal();
 }
 
@@ -246,124 +322,64 @@ function closeModal() {
     elements.videoModal.close();
 }
 
+function buildCard(dunk) {
+    const article = document.createElement("article");
+    article.className = "dunk-card";
+    article.innerHTML = `
+        <div class="card-thumb">
+            <img src="${thumbnailFor(dunk.youtubeId)}" alt="${dunk.title}">
+            <span class="card-badge">${dunk.year}</span>
+            <button class="card-play" type="button" aria-label="Play ${dunk.title}">▶</button>
+        </div>
+        <div class="card-body">
+            <h3 class="card-title">${dunk.title}</h3>
+            <p class="card-meta">${dunk.player} • ${dunk.team}</p>
+            <p class="card-description">${dunk.description}</p>
+            <div class="tag-row"></div>
+        </div>
+    `;
+    renderTags(article.querySelector(".tag-row"), [dunk.type, ...dunk.tags]);
+    article.addEventListener("click", () => openModal(dunk));
+    return article;
+}
+
 function renderCatalog() {
     const results = curatedDunks.filter(matchesFilter);
     elements.catalogGrid.innerHTML = "";
     elements.resultsCount.textContent = `Showing ${results.length} dunk${results.length === 1 ? "" : "s"}`;
     elements.emptyState.classList.toggle("hidden", results.length > 0);
-
-    results.forEach((dunk) => {
-        const article = document.createElement("article");
-        article.className = "dunk-card";
-        article.innerHTML = `
-            <div class="card-thumb">
-                <img src="${thumbnailFor(dunk.youtubeId)}" alt="${dunk.title}">
-                <span class="card-badge">${dunk.year}</span>
-                <button class="card-play" type="button" aria-label="Play ${dunk.title}">▶</button>
-            </div>
-            <div class="card-body">
-                <h3 class="card-title">${dunk.title}</h3>
-                <p class="card-meta">${dunk.player} • ${dunk.team}</p>
-                <p class="card-description">${dunk.description}</p>
-                <div class="tag-row"></div>
-            </div>
-        `;
-
-        renderTags(article.querySelector(".tag-row"), dunk.tags);
-        article.addEventListener("click", () => openModal(dunk));
-        elements.catalogGrid.appendChild(article);
-    });
-}
-
-function getApiKey() {
-    return localStorage.getItem(storageKey) || "";
-}
-
-function setApiStatus() {
-    elements.youtubeStatus.textContent = getApiKey()
-        ? "API key detected. Search YouTube for more dunks."
-        : "No results yet. Add an API key to enable live YouTube search, or keep exploring the curated catalog above.";
+    results.forEach((dunk) => elements.catalogGrid.appendChild(buildCard(dunk)));
 }
 
 function renderYouTubeResults(items) {
     elements.youtubeResults.innerHTML = "";
-
-    items.forEach((item) => {
-        const article = document.createElement("article");
-        article.className = "dunk-card";
-        article.innerHTML = `
-            <div class="card-thumb">
-                <img src="${item.thumbnail}" alt="${item.title}">
-                <button class="card-play" type="button" aria-label="Play ${item.title}">▶</button>
-            </div>
-            <div class="card-body">
-                <h3 class="card-title">${item.title}</h3>
-                <p class="card-meta">${item.channel}</p>
-                <p class="card-description">${item.description || "Open the clip in YouTube or play it here."}</p>
-                <div class="tag-row"></div>
-            </div>
-        `;
-
-        renderTags(article.querySelector(".tag-row"), ["YouTube Search"]);
-        article.addEventListener("click", () => openModal(item));
-        elements.youtubeResults.appendChild(article);
-    });
+    items.forEach((dunk) => elements.youtubeResults.appendChild(buildCard(dunk)));
 }
 
-async function searchYouTube() {
+function searchYouTube() {
     const query = elements.youtubeQuery.value.trim();
-    const apiKey = getApiKey();
 
     if (!query) {
         elements.youtubeStatus.textContent = "Enter a search term first.";
         return;
     }
 
-    if (!apiKey) {
-        elements.youtubeStatus.textContent = "Add a YouTube Data API key first, then try the search again.";
-        return;
-    }
+    const lower = query.toLowerCase();
+    const matches = curatedDunks.filter((dunk) => {
+        const haystack = [dunk.title, dunk.player, dunk.team, dunk.description, dunk.type, ...dunk.tags]
+            .join(" ").toLowerCase();
+        return haystack.includes(lower);
+    });
 
-    elements.youtubeSearchButton.disabled = true;
-    elements.youtubeStatus.textContent = "Searching YouTube...";
+    renderYouTubeResults(matches);
 
-    try {
-        const params = new URLSearchParams({
-            part: "snippet",
-            type: "video",
-            maxResults: "9",
-            q: query,
-            key: apiKey
-        });
-        const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`);
-        const data = await response.json();
+    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + " NBA dunk")}`;
+    elements.searchLaunch.innerHTML = `<a class="secondary-button" href="${searchUrl}" target="_blank" rel="noopener noreferrer">Search YouTube for "${query}"</a>`;
+    elements.searchLaunch.classList.remove("hidden");
 
-        if (!response.ok) {
-            const message = data?.error?.message || "Search failed.";
-            throw new Error(message);
-        }
-
-        const items = (data.items || []).map((item) => ({
-            title: item.snippet.title,
-            player: "YouTube",
-            team: item.snippet.channelTitle,
-            year: new Date(item.snippet.publishedAt).getFullYear(),
-            youtubeId: item.id.videoId,
-            description: item.snippet.description,
-            channel: item.snippet.channelTitle,
-            thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
-            tags: ["YouTube Search"]
-        }));
-
-        renderYouTubeResults(items);
-        elements.youtubeStatus.textContent = items.length
-            ? `Found ${items.length} YouTube result${items.length === 1 ? "" : "s"} for "${query}".`
-            : `No YouTube results found for "${query}".`;
-    } catch (error) {
-        elements.youtubeStatus.textContent = `Search failed: ${error.message}`;
-    } finally {
-        elements.youtubeSearchButton.disabled = false;
-    }
+    elements.youtubeStatus.textContent = matches.length
+        ? `Found ${matches.length} archive match${matches.length === 1 ? "" : "es"} for "${query}".`
+        : `No archive matches for "${query}". Try the YouTube link above.`;
 }
 
 function syncFiltersFromInputs() {
@@ -371,7 +387,7 @@ function syncFiltersFromInputs() {
     filters.player = elements.playerFilter.value;
     filters.team = elements.teamFilter.value;
     filters.year = elements.yearFilter.value;
-    filters.tag = elements.tagFilter.value;
+    filters.type = elements.typeFilter.value;
     renderCatalog();
 }
 
@@ -380,7 +396,7 @@ function clearFilters() {
     elements.playerFilter.value = "";
     elements.teamFilter.value = "";
     elements.yearFilter.value = "";
-    elements.tagFilter.value = "";
+    elements.typeFilter.value = "";
     syncFiltersFromInputs();
 }
 
@@ -390,42 +406,31 @@ function wireEvents() {
         elements.playerFilter,
         elements.teamFilter,
         elements.yearFilter,
-        elements.tagFilter
-    ].forEach((element) => element.addEventListener("input", syncFiltersFromInputs));
+        elements.typeFilter
+    ].forEach((el) => el.addEventListener("input", syncFiltersFromInputs));
 
     elements.clearFilters.addEventListener("click", clearFilters);
     elements.modalClose.addEventListener("click", closeModal);
     elements.videoModal.addEventListener("click", (event) => {
-        if (event.target === elements.videoModal) {
-            closeModal();
-        }
+        if (event.target === elements.videoModal) closeModal();
     });
 
     elements.youtubeSearchButton.addEventListener("click", searchYouTube);
     elements.youtubeQuery.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
+        if (event.key === "Enter") searchYouTube();
+    });
+
+    document.querySelectorAll(".search-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+            elements.youtubeQuery.value = chip.dataset.query;
             searchYouTube();
-        }
+            elements.youtubeQuery.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
     });
 
-    elements.apiKeyToggle.addEventListener("click", () => {
-        elements.apiKeyInput.value = getApiKey();
-        elements.apiKeyModal.showModal();
-    });
-
-    elements.saveApiKey.addEventListener("click", () => {
-        const value = elements.apiKeyInput.value.trim();
-        if (value) {
-            localStorage.setItem(storageKey, value);
-        }
-        setApiStatus();
-        elements.apiKeyModal.close();
-    });
-
-    elements.clearApiKey.addEventListener("click", () => {
-        localStorage.removeItem(storageKey);
-        elements.apiKeyInput.value = "";
-        setApiStatus();
+    elements.randomDunk.addEventListener("click", () => {
+        const dunk = curatedDunks[Math.floor(Math.random() * curatedDunks.length)];
+        openModal(dunk);
     });
 }
 
@@ -433,5 +438,4 @@ hydrateFilters();
 updateStats();
 updateFeatured();
 renderCatalog();
-setApiStatus();
 wireEvents();

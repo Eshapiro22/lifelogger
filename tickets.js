@@ -141,6 +141,35 @@ function render() {
   document.getElementById("generated-at").textContent = fmtAgo(state.data.generatedAt);
 }
 
+// Re-fetch tickets.json this often so an open tab reflects new cron runs.
+const REFRESH_MS = 3 * 60 * 1000;
+// Re-render this often so the "updated X ago" labels keep ticking between fetches.
+const TICK_MS = 30 * 1000;
+
+async function loadData({ silent = false } = {}) {
+  try {
+    const res = await fetch("tickets.json", { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const next = await res.json();
+    const changed = !state.data || next.generatedAt !== state.data.generatedAt;
+    state.data = next;
+    render();
+    if (changed && silent) flashUpdated();
+  } catch (err) {
+    if (!state.data) {
+      document.getElementById("status-banner").textContent =
+        "Could not load tickets.json — run scripts/fetch-tickets.mjs to generate it.";
+    }
+    console.error(err);
+  }
+}
+
+function flashUpdated() {
+  const el = document.getElementById("status-banner");
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 1200);
+}
+
 async function init() {
   document.getElementById("hide-played").addEventListener("change", (e) => {
     state.hidePlayed = e.target.checked; render();
@@ -148,16 +177,16 @@ async function init() {
   document.getElementById("only-priced").addEventListener("change", (e) => {
     state.onlyPriced = e.target.checked; render();
   });
-  try {
-    const res = await fetch("tickets.json", { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    state.data = await res.json();
-    render();
-  } catch (err) {
-    document.getElementById("status-banner").textContent =
-      "Could not load tickets.json — run scripts/fetch-tickets.mjs to generate it.";
-    console.error(err);
-  }
+
+  await loadData();
+
+  // Keep relative timestamps fresh without hammering the network.
+  setInterval(() => { if (state.data && !document.hidden) render(); }, TICK_MS);
+  // Pull the latest snapshot on an interval, and immediately when the tab refocuses.
+  setInterval(() => { if (!document.hidden) loadData({ silent: true }); }, REFRESH_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadData({ silent: true });
+  });
 }
 
 init();

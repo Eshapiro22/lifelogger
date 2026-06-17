@@ -67,3 +67,6 @@ Then open `tickets.html` in a browser (or serve the folder).
 - One API = one marketplace's price. Other resellers (StubHub, Vivid, TickPick, FIFA)
   may differ; the per-match links are there to compare. Prices are dynamic.
 - `data/matches.json` is the source of truth for fixtures, provider IDs, and links.
+- The dashboard auto-refreshes: an open tab re-fetches `tickets.json` every 3 minutes
+  (and on tab refocus), and ticks the "updated X ago" labels every 30s — so it reflects
+  new cron runs without a manual reload. Tracking still happens server-side in the Action.

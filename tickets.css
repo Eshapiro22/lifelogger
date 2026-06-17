@@ -65,6 +65,15 @@ h1 {
 }
 .status-banner.live { border-color: rgba(88, 214, 141, 0.5); color: var(--text); }
 .status-banner.seed { border-color: rgba(255, 209, 102, 0.5); }
+.status-banner.flash { animation: banner-flash 1.2s ease; }
+@keyframes banner-flash {
+    0% { box-shadow: 0 0 0 0 rgba(88, 214, 141, 0.6); }
+    30% { box-shadow: 0 0 0 4px rgba(88, 214, 141, 0.35); }
+    100% { box-shadow: 0 0 0 0 rgba(88, 214, 141, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .status-banner.flash { animation: none; }
+}
 
 .controls {
     display: flex;

@@ -55,9 +55,43 @@ async function priceFromSeatGeek(id) {
 }
 
 /** Ticketmaster Discovery: GET /events/{id} -> priceRanges[].min/max */
-async function priceFromTicketmaster(id) {
+async function ticketmasterById(id) {
   const url = `https://app.ticketmaster.com/discovery/v2/events/${id}.json?apikey=${encodeURIComponent(TM_KEY)}`;
   const data = await fetchJson(url);
+  return tmEventToPrice(data);
+}
+
+/**
+ * Ticketmaster Discovery search — more reliable than hardcoded IDs.
+ * Searches by team keyword within a date window, then matches on venue name.
+ */
+async function ticketmasterBySearch(match) {
+  const k = new Date(match.kickoff).getTime();
+  const start = new Date(k - 36 * 3600 * 1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const end = new Date(k + 36 * 3600 * 1000).toISOString().replace(/\.\d+Z$/, "Z");
+  const keyword =
+    match.teams && match.teams !== "TBD"
+      ? match.teams.replace(/\s+vs\s+/i, " ")
+      : "FIFA World Cup";
+  const url =
+    `https://app.ticketmaster.com/discovery/v2/events.json` +
+    `?keyword=${encodeURIComponent(keyword)}` +
+    `&classificationName=Soccer&countryCode=US&size=30` +
+    `&startDateTime=${start}&endDateTime=${end}` +
+    `&apikey=${encodeURIComponent(TM_KEY)}`;
+  const data = await fetchJson(url);
+  const events = data?._embedded?.events || [];
+  const wantVenue = (match.venueName || "").toLowerCase();
+  // Prefer an event at the right venue; otherwise fall back to the first hit in-window.
+  const hit =
+    events.find((e) => {
+      const v = e?._embedded?.venues?.[0]?.name?.toLowerCase() || "";
+      return wantVenue && v.includes(wantVenue.split(" ")[0]);
+    }) || events[0];
+  return hit ? tmEventToPrice(hit) : null;
+}
+
+function tmEventToPrice(data) {
   const range = Array.isArray(data.priceRanges) ? data.priceRanges[0] : null;
   if (!range) return null;
   return {
@@ -71,11 +105,23 @@ async function priceFromTicketmaster(id) {
   };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function priceForMatch(match) {
   const ids = match.providerIds || {};
   try {
     if (provider === "seatgeek" && ids.seatgeek) return await priceFromSeatGeek(ids.seatgeek);
-    if (provider === "ticketmaster" && ids.ticketmaster) return await priceFromTicketmaster(ids.ticketmaster);
+    if (provider === "ticketmaster") {
+      // Try the hinted ID first, then fall back to a venue+date search.
+      if (ids.ticketmaster) {
+        try {
+          const byId = await ticketmasterById(ids.ticketmaster);
+          if (byId) return byId;
+        } catch { /* fall through to search */ }
+      }
+      await sleep(250); // stay under Discovery's 5 req/sec limit
+      return await ticketmasterBySearch(match);
+    }
   } catch (err) {
     console.warn(`  ! ${match.id}: ${err.message}`);
   }

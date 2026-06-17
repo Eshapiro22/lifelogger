@@ -2,9 +2,10 @@ name: Update World Cup ticket prices
 
 on:
   schedule:
-    # Every 30 minutes. Scheduled workflows only run from the repo's DEFAULT branch,
-    # so this file must exist on the default branch to fire automatically.
-    - cron: "*/30 * * * *"
+    # Every 10 minutes (well under Ticketmaster's 5000 calls/day quota at ~16 matches/run).
+    # Scheduled workflows only run from the repo's DEFAULT branch, so this file must exist
+    # on the default branch to fire automatically.
+    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions:

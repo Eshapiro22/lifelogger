@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Cup 2026 — Northeast Ticket Tracker</title>
+    <meta name="description" content="Live(ish) cheapest get-in prices for FIFA World Cup 2026 matches at MetLife, Lincoln Financial Field, and Gillette Stadium, with one-click links to every ticketing platform.">
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#120d08">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="tickets.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <p class="eyebrow">FIFA World Cup 2026 · Northeast US</p>
+            <h1>Northeast Ticket Tracker</h1>
+            <p class="hero-text">
+                Cheapest current get-in price per match at <strong>MetLife</strong>,
+                <strong>Lincoln Financial Field</strong>, and <strong>Gillette Stadium</strong> —
+                refreshed automatically, with one-click links to every platform to confirm live.
+            </p>
+            <div id="status-banner" class="status-banner">Loading…</div>
+        </header>
+
+        <main>
+            <section class="controls">
+                <div class="filter-row" id="venue-filters" role="group" aria-label="Filter by venue"></div>
+                <label class="toggle">
+                    <input type="checkbox" id="hide-played" checked>
+                    <span>Hide matches already played</span>
+                </label>
+                <label class="toggle">
+                    <input type="checkbox" id="only-priced">
+                    <span>Only matches with a live price</span>
+                </label>
+            </section>
+
+            <p id="results-count" class="results-count"></p>
+            <div id="match-list" class="match-list"></div>
+            <div id="empty-state" class="empty-state hidden">
+                <h3>No matches match those filters.</h3>
+                <p>Try showing played matches or clearing the price filter.</p>
+            </div>
+        </main>
+
+        <footer class="foot">
+            <p id="disclaimer" class="disclaimer"></p>
+            <p class="foot-meta">
+                Data: <span id="source-label">—</span> ·
+                Generated <span id="generated-at">—</span> ·
+                Prices are dynamic; always confirm on the platform before buying.
+            </p>
+        </footer>
+    </div>
+
+    <script src="tickets.js"></script>
+</body>
+</html>

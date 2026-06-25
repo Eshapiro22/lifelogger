@@ -1,0 +1,48 @@
+name: Update World Cup ticket prices
+
+on:
+  schedule:
+    # Every 10 minutes (well under Ticketmaster's 5000 calls/day quota at ~16 matches/run).
+    # Scheduled workflows only run from the repo's DEFAULT branch, so this file must exist
+    # on the default branch to fire automatically.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-tickets
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch live prices
+        env:
+          # Add these as repository secrets to enable live prices.
+          # Settings -> Secrets and variables -> Actions. Either one works.
+          SEATGEEK_CLIENT_ID: ${{ secrets.SEATGEEK_CLIENT_ID }}
+          TICKETMASTER_API_KEY: ${{ secrets.TICKETMASTER_API_KEY }}
+        run: node scripts/fetch-tickets.mjs
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tickets.json
+          if git diff --staged --quiet; then
+            echo "No price changes."
+          else
+            git commit -m "chore: refresh live World Cup ticket prices [skip ci]"
+            git push
+          fi

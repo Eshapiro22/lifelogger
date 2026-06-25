@@ -1,0 +1,256 @@
+{
+  "generatedAt": "2026-06-17T20:40:15.226Z",
+  "source": "seed",
+  "currency": "USD",
+  "matchesWithLivePrice": 0,
+  "disclaimer": "Live prices are off (no API key configured). Use the platform links for current prices, or add a SEATGEEK_CLIENT_ID / TICKETMASTER_API_KEY secret to activate. See README.",
+  "venues": {
+    "metlife": {
+      "name": "MetLife Stadium",
+      "brand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ"
+    },
+    "philadelphia": {
+      "name": "Lincoln Financial Field",
+      "brand": "Philadelphia Stadium",
+      "city": "Philadelphia, PA"
+    },
+    "gillette": {
+      "name": "Gillette Stadium",
+      "brand": "Boston Stadium",
+      "city": "Foxborough, MA"
+    }
+  },
+  "matches": [
+    {
+      "id": "M29",
+      "venue": "philadelphia",
+      "venueName": "Lincoln Financial Field",
+      "venueBrand": "Philadelphia Stadium",
+      "city": "Philadelphia, PA",
+      "kickoff": "2026-06-19T21:00:00-04:00",
+      "stage": "Group C",
+      "teams": "Brazil vs Haiti",
+      "links": {
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-group-c-brazil-vs-haiti-match-29-tickets-lincoln-financial-field-6-19-26-9pm/6259570/"
+      },
+      "price": null
+    },
+    {
+      "id": "M30",
+      "venue": "gillette",
+      "venueName": "Gillette Stadium",
+      "venueBrand": "Boston Stadium",
+      "city": "Foxborough, MA",
+      "kickoff": "2026-06-19T18:00:00-04:00",
+      "stage": "Group C",
+      "teams": "Scotland vs Morocco",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M41",
+      "venue": "metlife",
+      "venueName": "MetLife Stadium",
+      "venueBrand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ",
+      "kickoff": "2026-06-22T20:00:00-04:00",
+      "stage": "Group I",
+      "teams": "Norway vs Senegal",
+      "links": {
+        "stubhub": "https://www.stubhub.com/world-cup-east-rutherford-tickets-6-22-2026/event/153023354/",
+        "seatgeek": "https://seatgeek.com/fifa-world-cup-tickets/international-soccer/2026-06-22-8-pm/17269673",
+        "vivid": "https://www.vividseats.com/world-cup-soccer-tickets-metlife-stadium-6-22-2026--sports-soccer/production/5080500",
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-group-i-norway-vs-senegal-match-41-tickets-metlife-stadium-6-22-26-8pm/6259583/",
+        "ticketmaster": "https://www.ticketmaster.com/world-cup-match-41-group-i-east-rutherford-06-22-2026/event/Z7r9jZ1A743fP"
+      },
+      "price": null
+    },
+    {
+      "id": "M42",
+      "venue": "philadelphia",
+      "venueName": "Lincoln Financial Field",
+      "venueBrand": "Philadelphia Stadium",
+      "city": "Philadelphia, PA",
+      "kickoff": "2026-06-22T15:00:00-04:00",
+      "stage": "Group I",
+      "teams": "France vs Iraq",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M45",
+      "venue": "gillette",
+      "venueName": "Gillette Stadium",
+      "venueBrand": "Boston Stadium",
+      "city": "Foxborough, MA",
+      "kickoff": "2026-06-23T16:00:00-04:00",
+      "stage": "Group L",
+      "teams": "England vs Ghana",
+      "links": {
+        "stubhub": "https://www.stubhub.com/world-cup-foxborough-tickets-6-23-2026/event/153023421/",
+        "seatgeek": "https://seatgeek.com/fifa-world-cup-tickets/international-soccer/2026-06-23-4-pm/17307504",
+        "vivid": "https://www.vividseats.com/world-cup-soccer-tickets-gillette-stadium-6-23-2026--sports-soccer/production/5080521",
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-group-l-england-vs-ghana-match-45-tickets-gillette-stadium-6-23-26-4pm/6259558/",
+        "ticketmaster": "https://www.ticketmaster.com/world-cup-match-45-group-l-foxborough-06-23-2026/event/Z7r9jZ1A743fY"
+      },
+      "price": null
+    },
+    {
+      "id": "M55",
+      "venue": "philadelphia",
+      "venueName": "Lincoln Financial Field",
+      "venueBrand": "Philadelphia Stadium",
+      "city": "Philadelphia, PA",
+      "kickoff": "2026-06-25T16:00:00-04:00",
+      "stage": "Group E",
+      "teams": "Curaçao vs Côte d'Ivoire",
+      "links": {
+        "stubhub": "https://www.stubhub.com/world-cup-philadelphia-tickets-6-25-2026/event/153023579/",
+        "seatgeek": "https://seatgeek.com/fifa-world-cup-tickets/international-soccer/2026-06-25-4-pm/17213262",
+        "vivid": "https://www.vividseats.com/world-cup-soccer-tickets-lincoln-financial-field-6-25-2026--sports-soccer/production/5080643",
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-group-e-curacao-vs-cote-divoire-match-55-tickets-lincoln-financial-field-6-25-26-4pm/6259572/",
+        "ticketmaster": "https://www.ticketmaster.com/world-cup-match-55-group-e-philadelphia-06-25-2026/event/Z7r9jZ1A743fU"
+      },
+      "price": null
+    },
+    {
+      "id": "M56",
+      "venue": "metlife",
+      "venueName": "MetLife Stadium",
+      "venueBrand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ",
+      "kickoff": "2026-06-26T16:00:00-04:00",
+      "stage": "Group E",
+      "teams": "Ecuador vs Germany",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M61",
+      "venue": "gillette",
+      "venueName": "Gillette Stadium",
+      "venueBrand": "Boston Stadium",
+      "city": "Foxborough, MA",
+      "kickoff": "2026-06-26T15:00:00-04:00",
+      "stage": "Group I",
+      "teams": "Norway vs France",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M67",
+      "venue": "metlife",
+      "venueName": "MetLife Stadium",
+      "venueBrand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ",
+      "kickoff": "2026-06-27T17:00:00-04:00",
+      "stage": "Group L",
+      "teams": "Panama vs England",
+      "links": {
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-group-l-panama-vs-england-match-67-tickets-metlife-stadium-6-27-26-5pm/6259585/"
+      },
+      "price": null
+    },
+    {
+      "id": "M68",
+      "venue": "philadelphia",
+      "venueName": "Lincoln Financial Field",
+      "venueBrand": "Philadelphia Stadium",
+      "city": "Philadelphia, PA",
+      "kickoff": "2026-06-27T17:00:00-04:00",
+      "stage": "Group L",
+      "teams": "Croatia vs Ghana",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M74",
+      "venue": "gillette",
+      "venueName": "Gillette Stadium",
+      "venueBrand": "Boston Stadium",
+      "city": "Foxborough, MA",
+      "kickoff": "2026-06-29T16:30:00-04:00",
+      "stage": "Round of 32",
+      "teams": "TBD",
+      "links": {
+        "vivid": "https://www.vividseats.com/world-cup-soccer-tickets-gillette-stadium-6-29-2026--sports-soccer/production/5080727"
+      },
+      "price": null
+    },
+    {
+      "id": "M77",
+      "venue": "metlife",
+      "venueName": "MetLife Stadium",
+      "venueBrand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ",
+      "kickoff": "2026-06-30T17:00:00-04:00",
+      "stage": "Round of 32",
+      "teams": "TBD",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M89",
+      "venue": "philadelphia",
+      "venueName": "Lincoln Financial Field",
+      "venueBrand": "Philadelphia Stadium",
+      "city": "Philadelphia, PA",
+      "kickoff": "2026-07-04T17:00:00-04:00",
+      "stage": "Round of 16",
+      "teams": "TBD",
+      "links": {
+        "stubhub": "https://www.stubhub.com/world-cup-philadelphia-tickets-7-4-2026/event/153023863/",
+        "seatgeek": "https://seatgeek.com/fifa-world-cup-tickets/international-soccer/2026-07-04-5-pm/17213264",
+        "vivid": "https://www.vividseats.com/world-cup-soccer-tickets-lincoln-financial-field-7-4-2026--sports-soccer/production/5080845",
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-round-of-16-w74-vs-w77-match-89-tickets-lincoln-financial-field-7-4-26-5pm/6259574/",
+        "ticketmaster": "https://www.ticketmaster.com/world-cup-round-of-16-w74-philadelphia-07-04-2026/event/Z7r9jZ1A7434I"
+      },
+      "price": null
+    },
+    {
+      "id": "M91",
+      "venue": "metlife",
+      "venueName": "MetLife Stadium",
+      "venueBrand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ",
+      "kickoff": "2026-07-05T16:00:00-04:00",
+      "stage": "Round of 16",
+      "teams": "TBD",
+      "links": {},
+      "price": null
+    },
+    {
+      "id": "M97",
+      "venue": "gillette",
+      "venueName": "Gillette Stadium",
+      "venueBrand": "Boston Stadium",
+      "city": "Foxborough, MA",
+      "kickoff": "2026-07-09T16:00:00-04:00",
+      "stage": "Quarter-final",
+      "teams": "TBD",
+      "links": {
+        "seatgeek": "https://seatgeek.com/fifa-world-cup-tickets/international-soccer/2026-07-09-4-pm/17307570",
+        "vivid": "https://www.vividseats.com/world-cup-soccer-tickets-gillette-stadium-7-9-2026--sports-soccer/production/5080863"
+      },
+      "price": null
+    },
+    {
+      "id": "M104",
+      "venue": "metlife",
+      "venueName": "MetLife Stadium",
+      "venueBrand": "New York New Jersey Stadium",
+      "city": "East Rutherford, NJ",
+      "kickoff": "2026-07-19T15:00:00-04:00",
+      "stage": "FINAL",
+      "teams": "TBD",
+      "links": {
+        "stubhub": "https://www.stubhub.com/world-cup-east-rutherford-tickets-7-19-2026/event/153020449/",
+        "seatgeek": "https://seatgeek.com/fifa-world-cup-tickets/international-soccer/2026-07-19-3-pm/17307574",
+        "tickpick": "https://www.tickpick.com/buy-fifa-world-cup-26-final-match-104-tickets-metlife-stadium-7-19-26-3pm/6250040/",
+        "ticketmaster": "https://www.ticketmaster.com/event/Z7r9jZ1A743j4"
+      },
+      "price": null
+    }
+  ]
+}

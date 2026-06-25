@@ -581,6 +581,171 @@ const curatedDunks = [
         youtubeId: "j2pbAp3UtEI",
         description: "The first G-League player ever invited to the contest posts three perfect 50s and wins going away — the biggest underdog championship since Spud Webb in 1986.",
         tags: ["Legendary", "Upset"]
+    },
+    {
+        id: "vince-btl-2000",
+        title: "Vince Carter Between-the-Legs Dunk",
+        player: "Vince Carter",
+        team: "Toronto Raptors",
+        year: 2000,
+        type: "Dunk Contest",
+        youtubeId: "bmnq2ITh914",
+        description: "The centerpiece of the greatest contest performance ever: Carter catches a lob, threads the ball between his legs mid-air, and finishes — a move so clean it silenced the arena for a full second.",
+        tags: ["Between Legs", "Legendary"]
+    },
+    {
+        id: "kobe-1997-contest",
+        title: "Kobe Bryant Wins the 1997 Dunk Contest",
+        player: "Kobe Bryant",
+        team: "Los Angeles Lakers",
+        year: 1997,
+        type: "Dunk Contest",
+        youtubeId: "pKTLxG0wGfg",
+        description: "Eighteen-year-old Kobe wins the contest as a Lakers rookie, flashing the athleticism and competitive ferocity that would define the next two decades.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "terrence-ross-2013",
+        title: "Terrence Ross Wins the 2013 Dunk Contest",
+        player: "Terrence Ross",
+        team: "Toronto Raptors",
+        year: 2013,
+        type: "Dunk Contest",
+        youtubeId: "n7DrsR9Xodk",
+        description: "Ross beats Ibaka with a throwback Vince Carter tribute dunk — bringing the contest crown back to Toronto and proving the Raptors still own the event.",
+        tags: ["Legendary"]
+    },
+    {
+        id: "donovan-mitchell-2018",
+        title: "Donovan Mitchell Wins the 2018 Dunk Contest",
+        player: "Donovan Mitchell",
+        team: "Utah Jazz",
+        year: 2018,
+        type: "Dunk Contest",
+        youtubeId: "hgtR0o6OjjU",
+        description: "Mitchell wears a Vince Carter jersey and delivers a between-the-legs windmill as his tribute dunk — a perfect note to win on, and a torch-passing moment for the new generation.",
+        tags: ["Between Legs", "Windmill", "Legendary"]
+    },
+    {
+        id: "hamidou-diallo-2019",
+        title: "Hamidou Diallo Dunks Over Shaq",
+        player: "Hamidou Diallo",
+        team: "Oklahoma City Thunder",
+        year: 2019,
+        type: "Dunk Contest",
+        youtubeId: "k3SOL8kA8fg",
+        description: "Diallo puts his elbow on the rim after clearing a seated 7'1\" Shaquille O'Neal — the highest-elevation prop dunk in contest history, good enough for a 50.",
+        tags: ["Legendary", "Power"]
+    },
+    {
+        id: "anfernee-simons-2021",
+        title: "Anfernee Simons Wins the 2021 Dunk Contest",
+        player: "Anfernee Simons",
+        team: "Portland Trail Blazers",
+        year: 2021,
+        type: "Dunk Contest",
+        youtubeId: "9D5YueDuQoM",
+        description: "Simons wins the pandemic-era contest with a between-the-legs reverse that earns back-to-back 50s — the kind of performance that turns a backup guard into a household name overnight.",
+        tags: ["Between Legs", "Reverse", "Legendary"]
+    },
+    {
+        id: "obi-toppin-2022",
+        title: "Obi Toppin Wins the 2022 Dunk Contest",
+        player: "Obi Toppin",
+        team: "New York Knicks",
+        year: 2022,
+        type: "Dunk Contest",
+        youtubeId: "9XwUg0Re1eY",
+        description: "Toppin's father catches a lob off the backboard, and Obi finishes the relay dunk — the best father-son moment in contest history, capping a back-to-back perfect 50 run.",
+        tags: ["Alley-Oop", "Legendary"]
+    },
+    {
+        id: "mac-mcclung-2024",
+        title: "Mac McClung Wins the 2024 Dunk Contest",
+        player: "Mac McClung",
+        team: "Osceola Magic",
+        year: 2024,
+        type: "Dunk Contest",
+        youtubeId: "NKI0SyOc0gs",
+        description: "Back-to-back champion: McClung defends his title with another perfect-50 showing including a dunk over the seated Shaq — the first repeat winner since Jason Richardson in 2003.",
+        tags: ["Legendary", "Upset"]
+    },
+    {
+        id: "daryl-dawkins-1979",
+        title: "Daryl Dawkins Shatters the Backboard",
+        player: "Daryl Dawkins",
+        team: "Philadelphia 76ers",
+        year: 1979,
+        type: "Power",
+        youtubeId: "O1J86HLTyiM",
+        description: "November 13, 1979 against the Kansas City Kings: Chocolate Thunder connects so violently that the entire backboard explodes into pieces — the moment that forced the NBA to install breakaway rims.",
+        tags: ["Rim Wrecker", "Legendary", "Historic"]
+    },
+    {
+        id: "nique-over-bird",
+        title: "Dominique Wilkins Posterizes Larry Bird",
+        player: "Dominique Wilkins",
+        team: "Atlanta Hawks",
+        year: 1985,
+        type: "Poster",
+        youtubeId: "BP3VR-vZT18",
+        description: "The Human Highlight Film rises over the greatest forward of his era and throws it down — the defining image of what it meant to be posterized in the mid-80s NBA.",
+        tags: ["In-Game", "Legendary"]
+    },
+    {
+        id: "kemp-lister-1992",
+        title: "Shawn Kemp Dunks on Alton Lister",
+        player: "Shawn Kemp",
+        team: "Seattle SuperSonics",
+        year: 1992,
+        type: "Poster",
+        youtubeId: "l2GaAWdHwsw",
+        description: "The 1992 playoffs: Kemp rises over Lister and points at his face before he even lands — one of the most disrespectful poster dunks in NBA history and the moment the Reign Man became a legend.",
+        tags: ["In-Game", "Playoffs", "Legendary"]
+    },
+    {
+        id: "amare-over-lebron",
+        title: "Amar'e Stoudemire Dunks Over LeBron James",
+        player: "Amar'e Stoudemire",
+        team: "New York Knicks",
+        year: 2010,
+        type: "Poster",
+        youtubeId: "uoQtHp5oB-I",
+        description: "December 28, 2010: STAT rises over LeBron in transition and throws it down two-handed — posterizing the best player in the world in his prime is a statement nobody forgets.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "wemby-celtics-2024",
+        title: "Victor Wembanyama Poster Dunk on Celtics",
+        player: "Victor Wembanyama",
+        team: "San Antonio Spurs",
+        year: 2024,
+        type: "Poster",
+        youtubeId: "0eIHsiEHrmU",
+        description: "January 18, 2024: the 7'4\" alien attacks the rim and throws down a poster dunk that made the Celtics commentators question what they were watching — the first of many Wemby moments that have no historical comparison.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "ja-spurs-2023",
+        title: "Ja Morant Poster Dunk on the Spurs",
+        player: "Ja Morant",
+        team: "Memphis Grizzlies",
+        year: 2023,
+        type: "Poster",
+        youtubeId: "JtDXi2ayDn0",
+        description: "January 14, 2023: Ja splits the lane and detonates a thunderous one-handed slam on a Spurs defender — the kind of play that had the basketball world debating dunk of the year before halftime.",
+        tags: ["In-Game", "Explosive"]
+    },
+    {
+        id: "giannis-triple-poster-2021",
+        title: "Giannis Antetokounmpo Dunks Over Three Spurs",
+        player: "Giannis Antetokounmpo",
+        team: "Milwaukee Bucks",
+        year: 2021,
+        type: "Poster",
+        youtubeId: "1XOPJDIZ2Y4",
+        description: "May 11, 2021: Giannis absorbs contact from multiple Spurs defenders and still finishes — a three-man poster that confirmed the Greek Freak operates by different physical rules than everyone else.",
+        tags: ["In-Game", "Power", "Legendary"]
     }
 ];
 

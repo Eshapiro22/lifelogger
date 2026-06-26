@@ -1,0 +1,68 @@
+{
+  "_comment": "Template wallet. Copy this file and edit it for the user — do not edit the template in place. earnRate is points/miles/cashback-units per dollar; pointValues is dollars per unit. For a plain cashback card, use currency 'cash' (1 unit = $0.01 → value 0.01) and set rate to the percent (2% = rate 2).",
+  "pointValues": {
+    "cash": 0.01,
+    "chase_ur": 0.0205,
+    "amex_mr": 0.02,
+    "capone_miles": 0.018
+  },
+  "cards": [
+    {
+      "id": "csr",
+      "name": "Chase Sapphire Reserve",
+      "currency": "chase_ur",
+      "annualFee": 550,
+      "foreignTransactionFee": 0,
+      "default": 1,
+      "rewards": [
+        { "categories": ["travel", "airfare", "hotel"], "rate": 3 },
+        { "categories": ["dining"], "rate": 3 }
+      ]
+    },
+    {
+      "id": "amex_gold",
+      "name": "Amex Gold",
+      "currency": "amex_mr",
+      "annualFee": 250,
+      "foreignTransactionFee": 0,
+      "default": 1,
+      "rewards": [
+        { "categories": ["dining"], "rate": 4 },
+        { "categories": ["groceries"], "rate": 4, "cap": 25000 },
+        { "categories": ["airfare"], "rate": 3 }
+      ]
+    },
+    {
+      "id": "freedom_flex",
+      "name": "Chase Freedom Flex",
+      "currency": "chase_ur",
+      "annualFee": 0,
+      "foreignTransactionFee": 0.03,
+      "default": 1,
+      "rewards": [
+        { "categories": ["dining", "drugstore"], "rate": 3 },
+        { "categories": ["gas"], "rate": 5, "cap": 1500, "priorSpend": 0, "activeQuarters": [2] }
+      ]
+    },
+    {
+      "id": "citi_double",
+      "name": "Citi Double Cash",
+      "currency": "cash",
+      "annualFee": 0,
+      "foreignTransactionFee": 0.03,
+      "default": 2,
+      "rewards": []
+    },
+    {
+      "id": "venturex",
+      "name": "Capital One Venture X",
+      "currency": "capone_miles",
+      "annualFee": 395,
+      "foreignTransactionFee": 0,
+      "default": 2,
+      "rewards": [
+        { "categories": ["hotel", "travel"], "rate": 5 }
+      ]
+    }
+  ]
+}

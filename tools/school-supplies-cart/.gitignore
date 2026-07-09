@@ -1,0 +1,5 @@
+# local-only artifacts — never commit login sessions or scraped output
+.browser-profile/
+node_modules/
+items.json
+screenshots/

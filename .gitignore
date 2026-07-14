@@ -1,0 +1,3 @@
+
+# Read-only reference clone (has its own .git) — do not commit into this repo
+/cre-ref/

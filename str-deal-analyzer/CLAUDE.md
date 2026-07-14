@@ -6,6 +6,23 @@ primitives: subagents (`.claude/agents/*.md`), skills (`.claude/skills/*/SKILL.m
 and this file. There is **no application code** — the pipeline runs by launching
 subagents with the Task tool and passing state through files on disk.
 
+## Non-negotiable orchestration rule
+
+**When given a property address, you MUST invoke the `orchestrator` subagent via the
+Task tool.** You never perform deal analysis yourself in the main context. You never
+call specialist subagents (`market-intel`, `public-record`, `underwriting`,
+`physical-condition`, `legal-risk`, `str-revenue`) directly from the main session.
+
+If you are about to research a property in the main context — a web search, a comp
+lookup, a permit check, anything — **stop and launch the `orchestrator` instead.**
+
+The `orchestrator` is a real subagent (invoked via Task), not a main-session persona.
+It in turn launches the 6 specialists in parallel via the Task tool (nested subagents
+are supported), waits for all workpaper files to appear on disk, then runs
+`underwriting` on the collected data and writes `decision.md`. The main session's only
+job for a deal is: read/confirm `config/deal.json`, launch the orchestrator, and relay
+its final verdict.
+
 ## What this analyzes
 
 Single-family and small-multi (1–4 unit) properties acquired to operate as
@@ -46,9 +63,11 @@ HEADLINE: <one sentence>
 
 ## Pipeline (orchestrator runs this)
 
-The orchestrator is the **main session persona** (see `.claude/agents/orchestrator.md`
-for its full playbook). It launches the 6 specialists via the Task tool. Specialists
-**cannot launch other specialists** — only the orchestrator fans out.
+The orchestrator is a **subagent invoked via the Task tool** (see
+`.claude/agents/orchestrator.md` for its full playbook). It launches the 6 specialists
+via the Task tool — nested subagents are supported (depth stays well under the 5-level
+limit: main → orchestrator → specialists). Specialists **do not launch other
+specialists** — only the orchestrator fans out.
 
 Dependency order (STR-specific — regulation gates everything, revenue drives underwriting):
 

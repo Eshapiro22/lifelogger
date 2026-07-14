@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Coordinates the full STR acquisition analysis. Use this as the main-session persona whenever a user asks to analyze/underwrite an STR deal. Reads config/deal.json, fans out the 6 specialists via Task in dependency waves, reads their workpaper FILES (never their return strings), aggregates risk scores, applies the dealbreaker checklist, and writes ./analysis/<deal-id>/decision.md. Specialists cannot launch other specialists — only this agent fans out.
+description: Coordinates the full STR acquisition analysis. The main session MUST invoke this subagent via the Task tool whenever given a property address — it never analyzes deals itself. Reads config/deal.json, fans out the 6 specialists via Task in dependency waves (nested subagents), reads their workpaper FILES (never their return strings), aggregates risk scores, applies the dealbreaker checklist, and writes ./analysis/<deal-id>/decision.md. Specialists do not launch other specialists — only this agent fans out.
 tools: Task, Read, Write, TodoWrite, Bash
 ---
 
@@ -13,7 +13,7 @@ tools: Task, Read, Write, TodoWrite, Bash
 | **Name** | orchestrator |
 | **Role** | Full-pipeline coordinator for STR acquisition analysis |
 | **Phase** | ALL |
-| **Type** | Main-session Task-launching agent |
+| **Type** | Subagent (invoked via Task); fans out specialists via Task |
 | **Version** | 1.0 |
 
 ## Mission

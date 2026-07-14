@@ -33,6 +33,7 @@ metrics the orchestrator uses for the verdict. Every formula comes from the
 | Source | Data Points |
 |--------|-------------|
 | Deal Config | Purchase price, loan terms (LTV, APR, amort), closing cost %, strategy, owner-use nights |
+| Buy box | `config/thresholds.json` + `str-underwriting` skill — cash-on-cash/DSCR floors, flood gate, break-even cushion, after-tax (cost-seg/bonus) policy |
 | str-revenue workpaper | `str.annualRevenueStabilized/Year1`, `str.adr`, `str.occupancy`, `str.availableNights`, `str.seasonalityIndex` |
 | physical-condition workpaper | `physical.furnishingCapEx`, `physical.deferredMaintenance`, `physical.capExReserveAnnual` |
 | public-record workpaper | `record.reassessedAnnualTax`, HOA dues |
@@ -59,7 +60,13 @@ Base / Downside (−15% occ, +10% opex, +50 bps rate) / Upside (+10% occ). Repor
 DSCR, CoC for each.
 ### Step 8 — Valuation cross-check
 GRM + implied cap vs comp-based value from public-record. Note SFR is comp-valued.
-### Step 9 — Score Category 3 + detect financial dealbreakers.
+### Step 9 — Apply the buy box (`config/thresholds.json` + `str-underwriting`)
+Mark each gate PASS / CONDITIONAL / FAIL: cash-on-cash ≥ 10% (Year-1, ramped, pre-tax);
+DSCR ≥ 1.10x (**< 0.90x = hard dealbreaker**); break-even ≤ underwriting occupancy − 10
+pts; OpEx ratio in band. Compute the **after-tax cost-seg/bonus-depreciation upside as a
+separate, non-gating line** — never use it to clear a pre-tax floor. Confirm
+`tax.bonusDepreciationPct` is set before quoting a depreciation dollar figure.
+### Step 10 — Score Category 3 + detect financial dealbreakers.
 
 ## 6. Output Format (`## Machine Summary` JSON)
 ```json
@@ -73,6 +80,14 @@ GRM + implied cap vs comp-based value from public-record. Note SFR is comp-value
                "breakEvenOccupancy": 0, "occupancyCushion": 0 },
   "furnishingCapEx": 0,
   "scenarios": { "base": {"noi":0,"dscr":0,"coc":0}, "downside": {}, "upside": {} },
+  "buyBox": {
+    "cashOnCashYear1": "PASS|CONDITIONAL|FAIL",
+    "dscr": "PASS|CONDITIONAL|FAIL|HARD_DEALBREAKER",
+    "breakEvenCushion": "PASS|CONDITIONAL|FAIL",
+    "opexRatio": "PASS|FAIL"
+  },
+  "afterTaxUpside": { "costSegReclass": 0, "bonusDepreciationPct": null,
+    "firstYearDeduction": 0, "note": "after-tax, not go/no-go" },
   "categoryScores": { "financial": 0 },
   "dealbreakers": [], "uncertaintyFlags": [],
   "dataForDownstream": {
@@ -127,9 +142,11 @@ reassessed tax → estimate from price × local rate + flag. Reduce confidence p
 `./analysis/<deal-id>/underwriting-workpaper.md`
 
 ## 15. Dealbreaker Detection
-Hard: DSCR < 0.85 with no restructure and no appreciation thesis. Soft: break-even
-occupancy ≥ comp occupancy; furnishing CapEx not funded; Year-1 cash-on-cash < 0 with no
-Year-2 recovery. Apply str-risk-scoring Financial escalations (DSCR<1.0 → CRITICAL 85).
+Buy box (`config/thresholds.json`): **DSCR < 0.90x → hard dealbreaker**; DSCR < 1.10x or
+Year-1 cash-on-cash < 10% → buy-box FAIL (NO-GO absent a stated mitigation); break-even
+occupancy ≥ comp market occupancy → FAIL. Soft: break-even cushion < 10 pts; furnishing
+CapEx not funded. Apply str-risk-scoring Financial escalations (DSCR<1.0 → CRITICAL 85).
+Report every gate's PASS/CONDITIONAL/FAIL result in the workpaper.
 
 ## 16. Confidence Scoring
 HIGH = all upstream values present, revenue confidence HIGH. MEDIUM = 1–2 benchmarked

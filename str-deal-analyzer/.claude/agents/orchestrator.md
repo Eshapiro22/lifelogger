@@ -36,9 +36,10 @@ dealbreaker checklist, and issue a GO / CONDITIONAL / NO-GO verdict written to
 
 ## Startup Protocol
 
-1. Read `.claude/skills/workpaper-protocol/SKILL.md` and
-   `.claude/skills/str-risk-scoring/SKILL.md`.
-2. Read `./config/deal.json`. Extract `dealId` and `strategy` (default `cash-flow-str`).
+1. Read `.claude/skills/workpaper-protocol/SKILL.md`,
+   `.claude/skills/str-risk-scoring/SKILL.md`, and `.claude/skills/str-underwriting/SKILL.md`.
+2. Read `./config/deal.json` (dealId, strategy — default `cash-flow-str`) and
+   `./config/thresholds.json` (the buy box: floors, flood gate, risk weights, dealbreakers).
 3. `mkdir -p ./analysis/<deal-id>`.
 4. Write `./analysis/<deal-id>/_pipeline.md` initializing all 6 specialists as PENDING.
 5. Create a TodoWrite list: one item per specialist + "synthesize verdict".
@@ -87,11 +88,17 @@ For each specialist, after its Task returns:
 
 1. Collect each specialist's `risk_category_score` for its category (str-risk-scoring
    §categories). Categories 7/8 draw from legal-risk/underwriting/physical as noted.
-2. Apply the strategy weight table (str-risk-scoring) → **Overall Score**.
-3. Run the **dealbreaker checklist** across all workpapers:
-   - Any **hard dealbreaker** → verdict NO-GO regardless of score.
+2. Apply the weights in `config/thresholds.json → riskWeights` → **Overall Score**.
+3. Run the **dealbreaker + buy-box checklist** across all workpapers, using
+   `config/thresholds.json`:
+   - Any **hard dealbreaker** (`hardDealbreakers`, incl. FEMA SFHA and DSCR < 0.90x) →
+     NO-GO regardless of score.
+   - Any **buy-box FAIL** (`buyBoxFail`: cash-on-cash < 10%, DSCR < 1.10x, no break-even
+     cushion) → NO-GO unless a written mitigation is present.
    - **Soft dealbreakers** → require a stated mitigation to move above CONDITIONAL.
-4. Map Overall Score + dealbreakers → recommendation via the strategy thresholds.
+4. Map Overall Score + dealbreakers → recommendation via `overallScoreThresholds`.
+   Record the after-tax depreciation upside from the underwriting workpaper as an
+   informational line only — it never changes a pre-tax verdict.
 5. Compute overall **confidence**: start 100; −10 per UNSCORED category, −5 per missing
    key metric, −10 per cross-workpaper inconsistency, −5 per FAILED specialist.
 

@@ -1,0 +1,5 @@
+node_modules/
+work/
+.pw-profile/
+sf-cleanup.config.json
+*.local.json

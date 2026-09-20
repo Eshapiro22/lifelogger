@@ -1,0 +1,44 @@
+{
+  "portal": {
+    "createUrl": "https://YOURCOMPANY.atlassian.net/servicedesk/customer/portal/<PORTAL_ID>/group/<GROUP_ID>/create/<REQUEST_TYPE_ID>",
+    "userDataDir": ".pw-profile"
+  },
+  "form": {
+    "requestTypes": {
+      "Merge": {
+        "label": "Merge",
+        "fields": { "Master Account ID": "Master Account ID", "Disappearing Account ID": "Disappearing Account ID", "Reason": "Reason" }
+      },
+      "Delete": {
+        "label": "Delete",
+        "_note": "Field labels below are guesses (not visible in screenshots). Run `sf-cleanup form-check` and correct them.",
+        "fields": { "Account ID": "Account ID", "Reason": "Reason" }
+      },
+      "Legal Entity Name Change": {
+        "label": "Legal Entity Name Change",
+        "_note": "Field labels below are guesses. Run `sf-cleanup form-check` and correct them.",
+        "fields": { "Account ID": "Account ID", "New Legal Entity Name": "New Legal Entity Name", "Reason": "Reason" }
+      }
+    }
+  },
+  "jsm": {
+    "baseUrl": "https://YOURCOMPANY.atlassian.net",
+    "serviceDeskId": "",
+    "requestTypeId": "",
+    "fieldIds": {}
+  },
+  "rules": {
+    "requiredFields": ["website", "industry", "country"],
+    "staleDays": 540,
+    "checkWebsites": true,
+    "websiteConcurrency": 8
+  },
+  "research": {
+    "model": "claude-opus-5",
+    "effort": "medium",
+    "maxWebSearches": 5,
+    "concurrency": 3,
+    "minConfidence": 0.5,
+    "onlyFlagged": false
+  }
+}

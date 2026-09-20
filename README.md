@@ -70,3 +70,11 @@ Then open `tickets.html` in a browser (or serve the folder).
 - The dashboard auto-refreshes: an open tab re-fetches `tickets.json` every 3 minutes
   (and on tab refocus), and ticks the "updated X ago" labels every 30s — so it reflects
   new cron runs without a manual reload. Tracking still happens server-side in the Action.
+
+## Salesforce Account Cleanup Agent
+
+`sf-cleanup/` is a standalone CLI that crawls a Salesforce account list, flags duplicates,
+acquired / merged / renamed / defunct companies (via Claude + web search) and bad or missing
+data, and then drafts the matching "Sales Technologies → Data quality issue" portal requests.
+Every finding is reviewed and approved by you before anything is submitted. See
+[`sf-cleanup/README.md`](sf-cleanup/README.md).

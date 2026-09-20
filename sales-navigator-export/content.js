@@ -355,7 +355,10 @@
   function scrapeRow(row, pageNum) {
     const S = CONFIG.selectors;
     const leadLinks = qa(row, S.leadLink);
-    const link = leadLinks.slice().sort((a, b) => txt(b).length - txt(a).length)[0] || null;
+    // The name link is the profile link with real text; skip CTA links like "View profile".
+    const CTA = /^(view profile|save|saved|message|connect|follow|view|open)\b/i;
+    const named = leadLinks.filter((a) => txt(a) && !CTA.test(txt(a)));
+    const link = (named.length ? named : leadLinks).slice().sort((a, b) => txt(b).length - txt(a).length)[0] || null;
     const nameEl = q(row, S.name) || (link && txt(link) ? link : null);
     const imgAlt = (() => { const img = row.querySelector('img[alt]'); return img ? img.getAttribute('alt').trim() : ''; })();
     const companyEl = q(row, S.company);

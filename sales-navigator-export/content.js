@@ -449,11 +449,65 @@
   // ─── DOM: pagination ─────────────────────────────────────────────────────
   function findNextButton() {
     const S = CONFIG.selectors;
-    let btn = q(document, S.nextButton);
-    if (btn) return btn;
-    // Text-based fallback.
+    const isVisible = (el) => !!el && el.getClientRects().length > 0;
+    let cands = [];
+    for (const sel of S.nextButton) {
+      try { cands.push(...document.querySelectorAll(sel)); } catch (_) { /* skip */ }
+    }
     for (const b of document.querySelectorAll('button')) {
-      if (/^\s*next\s*$/i.test(b.textContent || '')) return b;
+      if (/^\s*next\s*$/i.test(b.textContent || '')) cands.push(b);
+    }
+    cands = Array.from(new Set(cands));
+    if (!cands.length) return null;
+    const rank = (b) => (isVisible(b) ? 4 : 0) + (!nextIsDisabled(b) ? 2 : 0) + (b.closest('.artdeco-pagination, [class*="pagination"], nav') ? 1 : 0);
+    // Highest rank wins; ties go to the later one in document order (pagination sits at the bottom).
+    let best = null;
+    for (const b of cands) if (!best || rank(b) >= rank(best)) best = b;
+    return best;
+  }
+  function findPageNumberButton(n) {
+    const S = CONFIG.selectors;
+    const items = qa(document, S.pageIndicator);
+    for (const li of items) {
+      if (parseInt(txt(li), 10) !== n) continue;
+      return li.querySelector('button, a') || li;
+    }
+    for (const b of document.querySelectorAll('.artdeco-pagination button, [class*="pagination"] button')) {
+      if (txt(b) === String(n)) return b;
+    }
+    return null;
+  }
+  // Move to the next page: Next button → numbered page button → URL page param.
+  // Returns 'clicked' / 'numbered' when the page changed in place, 'reload'
+  // when a full navigation was issued (the loop resumes on load), or null.
+  async function advancePage(pageNum, prevFirstKey) {
+    const prevUrl = location.href;
+    const nextBtn = findNextButton();
+    if (nextBtn && !nextIsDisabled(nextBtn)) {
+      nextBtn.scrollIntoView({ block: 'center' });
+      await sleep(300);
+      nextBtn.click();
+      if (await waitForPageChange(prevFirstKey, prevUrl, 10000)) return 'clicked';
+      // Ember sometimes wants a real pointer sequence.
+      for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+        nextBtn.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+      }
+      if (await waitForPageChange(prevFirstKey, prevUrl, 8000)) return 'clicked';
+    }
+    const numBtn = pageNum ? findPageNumberButton(pageNum + 1) : null;
+    if (numBtn) {
+      numBtn.scrollIntoView({ block: 'center' });
+      await sleep(300);
+      numBtn.click();
+      if (await waitForPageChange(prevFirstKey, prevUrl, 10000)) return 'numbered';
+    }
+    if (pageNum) {
+      const u = new URL(location.href);
+      u.searchParams.set('page', String(pageNum + 1));
+      if (u.toString() !== location.href) {
+        location.href = u.toString();
+        return 'reload';
+      }
     }
     return null;
   }
@@ -521,14 +575,16 @@
 
   function findSelectAll() {
     const S = CONFIG.selectors;
-    const cb = qa(document, S.selectAllCheckbox).find(visible);
+    const rows = findRows();
+    const inRow = (el) => rows.some((r) => r.contains(el));
+    const cb = qa(document, S.selectAllCheckbox).find((el) => visible(el) && !inRow(el));
     if (cb) return cb;
-    // Fallback: the last visible checkbox that appears before the first lead
-    // card in document order (the header "select all" box).
-    const firstLead = q(document, S.leadLink);
-    if (!firstLead) return null;
-    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"]')).filter(visible);
-    const before = boxes.filter((b) => b.compareDocumentPosition(firstLead) & Node.DOCUMENT_POSITION_FOLLOWING);
+    // Fallback: a visible checkbox outside every lead card, positioned before
+    // the first card in document order (the header "select all" box).
+    const firstRow = rows[0];
+    if (!firstRow) return null;
+    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"]')).filter((b) => visible(b) && !inRow(b));
+    const before = boxes.filter((b) => b.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING);
     return before.length ? before[before.length - 1] : null;
   }
   function rowCheckboxes() {
@@ -901,14 +957,12 @@
         await saveSaveState(s);
 
         const nextBtn = findNextButton();
-        if (nextIsDisabled(nextBtn)) { pushSaveLog(s, 'Reached last page. Done.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
-        const prevUrl = location.href;
+        const lastPage = s.totalPages && pageNum >= s.totalPages;
+        if (lastPage || nextIsDisabled(nextBtn)) { pushSaveLog(s, 'Reached last page. Done.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
         const prevFirstKey = scrapeRow(rows[0], pageNum).key;
-        nextBtn.scrollIntoView({ block: 'center' });
-        await sleep(300);
-        nextBtn.click();
-        const changed = await waitForPageChange(prevFirstKey, prevUrl);
-        if (!changed) { pushSaveLog(s, 'Clicked Next but the page did not change; stopping.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+        const how = await advancePage(pageNum, prevFirstKey);
+        if (how === 'reload') return; // resumes on load
+        if (!how) { pushSaveLog(s, 'Could not move to the next page (Next button, page number and URL all failed); stopping.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
         await randDelay();
       }
     } catch (err) {
@@ -1034,7 +1088,7 @@
         await saveState(s);
 
         const nextBtn = findNextButton();
-        if (nextIsDisabled(nextBtn)) {
+        if ((s.totalPages && pageNum >= s.totalPages) || nextIsDisabled(nextBtn)) {
           pushLog(s, nextBtn ? 'Reached last page. Done.' : 'No "Next" button found; assuming single page. Done.');
           s.running = false;
           s.finishedAt = Date.now();
@@ -1042,15 +1096,11 @@
           return;
         }
 
-        const prevUrl = location.href;
         const prevFirstKey = scrapeRow(rows[0], pageNum).key;
-        nextBtn.scrollIntoView({ block: 'center' });
-        await sleep(300);
-        nextBtn.click();
-
-        const changed = await waitForPageChange(prevFirstKey, prevUrl);
-        if (!changed) {
-          pushLog(s, 'Clicked Next but the page did not change; stopping to avoid a loop.');
+        const how = await advancePage(pageNum, prevFirstKey);
+        if (how === 'reload') return; // full navigation; the loop resumes on load
+        if (!how) {
+          pushLog(s, 'Could not move to the next page (Next button, page number and URL all failed); stopping.');
           s.running = false;
           s.finishedAt = Date.now();
           await saveState(s);

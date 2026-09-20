@@ -606,16 +606,21 @@
   }
   async function selectAllOnPage() {
     const master = findSelectAll();
+    const total = rowCheckboxes().length;
+    let method = master ? 'select-all' : 'per-row (no select-all found)';
     if (master) {
       await toggleCheckbox(master, true);
       await sleep(400);
-      const n = selectedCount();
-      if (n > 0) return { method: 'select-all', selected: n };
     }
-    // Fallback: tick every row checkbox individually.
-    let n = 0;
-    for (const cb of rowCheckboxes()) if (await toggleCheckbox(cb, true)) n++;
-    return { method: master ? 'per-row (select-all did nothing)' : 'per-row (no select-all found)', selected: n };
+    let n = selectedCount();
+    if (n < total) {
+      // Top up whatever the header box missed (or everything, if none).
+      for (const cb of rowCheckboxes()) if (!cb.checked) await toggleCheckbox(cb, true);
+      const n2 = selectedCount();
+      if (n2 > n) method = master ? `select-all + ${n2 - n} per-row` : method;
+      n = n2;
+    }
+    return { method, selected: n, total };
   }
   async function deselectAllOnPage() {
     const master = findSelectAll();
@@ -681,7 +686,7 @@
     setInputValue(box, name);
     await sleep(900);
     const scope = currentMenu(menu) || menu;
-    await waitFor(() => findListItem(scope, name) || findCreateControl(scope), 3000);
+    await waitFor(() => findListItem(scope, name) || findCreateControl(scope), 5000);
     return { item: findListItem(scope, name), menu: scope };
   }
   // Pick a list in the menu. If the item wraps a checkbox/radio, toggle that
@@ -793,9 +798,10 @@
       return findOpenMenu(btn);
     }, 6000);
     if (!menu) throw new Error('"Save to list" menu did not open');
-    // Let the rows render before reading them.
-    await waitFor(() => menuItems(menu).length > 0 || findMenuInput(menu), 5000);
-    await sleep(300);
+    // Let the list rows render before reading them; a search box alone
+    // doesn't count, the lists load after it right after a page change.
+    await waitFor(() => menuItems(menu).length > 0 || findCreateControl(menu), 8000);
+    await sleep(400);
     return { btn, menu };
   }
   async function closeMenus() {
@@ -864,6 +870,7 @@
         report.menuItems = menuItems(menu).map(txt).slice(0, 40);
         const found = listName ? await findListItemWithSearch(menu, listName) : { item: null, menu };
         report.listFound = found.item ? describe(found.item) : false;
+        report.selectedOfTotal = `${sel.selected} of ${sel.total}`;
         const create = findCreateControl(menu);
         report.createFound = create ? describe(create) + ` "${labelOf(create).slice(0, 40)}"` : false;
         const box = findMenuInput(menu);
@@ -877,6 +884,23 @@
       await deselectAllOnPage();
     }
     return report;
+  }
+
+  // Open the menu and look for the list, retrying a couple of times because
+  // the list rows load lazily (slowest right after a page change).
+  async function locateList(listName, attempts = 3) {
+    let last = null;
+    for (let i = 0; i < attempts; i++) {
+      const opened = await openListMenu();
+      const found = await findListItemWithSearch(opened.menu, listName);
+      if (found.item) return { ...found, attempts: i + 1 };
+      last = found;
+      if (i < attempts - 1) {
+        await closeMenus();
+        await sleep(1500 + i * 1500);
+      }
+    }
+    return { item: null, menu: last ? last.menu : null, attempts };
   }
 
   async function loadSaveState() {
@@ -911,11 +935,11 @@
         const sel = await selectAllOnPage();
         if (!sel.selected) { s.error = 'Could not select any leads on this page.'; pushSaveLog(s, s.error); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
 
-        const opened = await openListMenu();
-        const found = await findListItemWithSearch(opened.menu, s.listName);
+        const found = await locateList(s.listName, s.pagesDone === 0 && !s.listCreated ? 1 : 3);
         const menu = found.menu;
         let item = found.item;
         let outcome = 'picked';
+        if (item && found.attempts > 1) pushSaveLog(s, `List found on attempt ${found.attempts} (menu loaded slowly).`);
         if (!item && !s.listCreated && s.pagesDone === 0) {
           // First page of the run and the list doesn't exist yet: create it in
           // LinkedIn via the menu's "Create new list" control. Sales Navigator
@@ -937,8 +961,13 @@
           outcome = 'created';
         } else if (!item) {
           // After page 1 the list must exist; never create a second one.
-          s.error = `List "${s.listName}" was not in the "Save to list" menu on page ${pageNum}` +
-            (s.listCreated ? ' even though it was created on the first page. Stopped to avoid creating a duplicate; check the list in LinkedIn and resume.' : '. Stopped.');
+          const snapMenu = currentMenu(menu) || menu;
+          s.snapshot = snapMenu ? menuSnapshot(snapMenu) : null;
+          s.snapshotVersion = chrome.runtime.getManifest().version;
+          const seen = snapMenu ? menuItems(snapMenu).map(txt).slice(0, 15).join(' | ') : '(no menu)';
+          s.error = `List "${s.listName}" was not in the "Save to list" menu on page ${pageNum} after ${found.attempts} attempts` +
+            (s.listCreated ? ' even though it was created on the first page. Stopped to avoid creating a duplicate; check the list in LinkedIn and resume.' : '. Stopped.') +
+            ` Menu showed: ${seen || '(no rows)'}`;
           pushSaveLog(s, s.error);
           await closeMenus();
           await deselectAllOnPage();
@@ -953,7 +982,7 @@
         s.saved += sel.selected;
         s.pagesDone += 1;
         const verb = outcome === 'created' ? `created list "${s.listName}" and saved` : outcome === 'already-in-list' ? 'already in list:' : 'saved';
-        pushSaveLog(s, `Page ${pageNum}${s.totalPages ? ` of ${s.totalPages}` : ''}: ${verb} ${sel.selected} leads (${sel.method}). Total ${s.saved}.`);
+        pushSaveLog(s, `Page ${pageNum}${s.totalPages ? ` of ${s.totalPages}` : ''}: ${verb} ${sel.selected} of ${sel.total} leads (${sel.method}). Total ${s.saved}.`);
         await saveSaveState(s);
 
         const nextBtn = findNextButton();

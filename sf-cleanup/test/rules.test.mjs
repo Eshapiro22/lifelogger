@@ -108,3 +108,34 @@ test("findingsFromResearch maps acquisitions to Merge when the acquirer is in th
   assert.equal(gone[0].proposal.requestType, "Delete");
   assert.equal(gone[0].proposal.verifyFields, true);
 });
+
+test("registrableDomain treats provincial/country second-level labels as public suffixes", () => {
+  assert.equal(registrableDomain("corem.qc.ca"), "corem.qc.ca");
+  assert.equal(registrableDomain("www.gouv.qc.ca"), "gouv.qc.ca");
+  assert.equal(registrableDomain("city.on.ca"), "city.on.ca");
+  assert.equal(registrableDomain("foo.bar.io"), "bar.io");
+});
+
+test("domain-only matches with unrelated names are low-confidence same_domain, hierarchies are skipped, shared domains ignored", () => {
+  const parent = { id: "P", name: "Iron Mountain Inc", website: "ironmountain.com", parentName: "" };
+  const child = { id: "C", name: "Iron Mountain France", website: "ironmountain.com", parentName: "Iron Mountain Inc" };
+  const cousin = { id: "X", name: "Iron Mountain Polska", website: "ironmountain.com", parentName: "" };
+  const other = { id: "O", name: "Twenty-four seven Inc", website: "ironmountain.com", parentName: "" };
+  const f = checkDuplicates([parent, child, cousin, other]);
+  assert.ok(!f.some((x) => x.accountId === "C"), "parent/child pair must be skipped");
+  const cousinF = f.find((x) => x.accountId === "X");
+  assert.equal(cousinF.kind, "duplicate");
+  assert.equal(cousinF.confidence, 0.6);
+  const otherF = f.find((x) => x.accountId === "O");
+  assert.equal(otherF.kind, "same_domain");
+  assert.equal(otherF.severity, "low");
+  const shared = Array.from({ length: 8 }, (_, i) => ({ id: String(i), name: `Org ${i}`, website: "shared.qc.ca" }));
+  assert.equal(checkDuplicates(shared).length, 0);
+});
+
+test("checkNames flags mojibake with a decoded fix and ignores ALL CAPS", () => {
+  const f = checkNames([{ name: "CHU de QuÃ©bec" }, { name: "COREM" }, { name: "Old Colony Y" }, { name: "Aerorepair duplicate to be deleted" }]);
+  assert.equal(f.length, 2);
+  assert.equal(f[0].proposal.fields["Account Name"], "CHU de Québec");
+  assert.ok(f[1].accountName.startsWith("Aerorepair"));
+});

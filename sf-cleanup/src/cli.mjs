@@ -73,13 +73,17 @@ async function cmdScan(config) {
   const noId = accounts.filter((a) => !a.id).length;
   if (noId) console.warn(`WARNING: ${noId} accounts have no Account ID column; Merge/Delete requests need the 18-char ID. Add "Account ID" to your report.`);
   await writeJson(ACCOUNTS_PATH, accounts);
+  if (accounts.columns) {
+    const absent = ["industry", "country", "lastActivity"].filter((k) => !accounts.columns.includes(k));
+    if (absent.length) log(`Note: export has no ${absent.join(", ")} column(s); related checks are skipped.`);
+  }
 
   const rules = config.rules || {};
   log("Checking duplicates, names, required fields, staleness...");
   let fresh = [
     ...checkDuplicates(accounts),
     ...checkNames(accounts),
-    ...checkRequiredFields(accounts, rules.requiredFields),
+    ...checkRequiredFields(accounts, (rules.requiredFields || ["website", "industry", "country"]).filter((k) => !accounts.columns || accounts.columns.includes(k))),
     ...checkStale(accounts, rules.staleDays),
   ];
   if (rules.checkWebsites !== false && !args["no-web"]) {

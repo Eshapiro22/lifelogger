@@ -74,6 +74,8 @@ export async function loadAccountsFromCsv(path) {
       raw,
     });
   }
+  // Remember which normalized columns the export actually contains so checks can skip absent ones.
+  out.columns = Object.keys(index);
   return out;
 }
 

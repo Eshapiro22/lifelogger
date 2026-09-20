@@ -31,7 +31,7 @@
     "requiredFields": ["website", "industry", "country"],
     "staleDays": 540,
     "checkWebsites": true,
-    "websiteConcurrency": 8
+    "websiteConcurrency": 16
   },
   "research": {
     "model": "claude-opus-5",

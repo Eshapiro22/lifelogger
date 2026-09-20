@@ -70,7 +70,7 @@ export function registrableDomain(urlOrHost) {
   const twoLevel = new Set(["co", "com", "org", "net", "gov", "ac", "edu", "ne", "or", "go"]);
   const last = parts[parts.length - 1];
   const second = parts[parts.length - 2];
-  if (last.length === 2 && twoLevel.has(second) && parts.length >= 3) return parts.slice(-3).join(".");
+  if (last.length === 2 && (twoLevel.has(second) || second.length === 2) && parts.length >= 3) return parts.slice(-3).join(".");
   return parts.slice(-2).join(".");
 }
 

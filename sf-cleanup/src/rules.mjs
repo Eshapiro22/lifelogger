@@ -6,9 +6,11 @@
 import { normalizeName, registrableDomain, looksLikeUrl, pool, daysSince } from "./util.mjs";
 import { makeFinding } from "./findings.mjs";
 
-const SUSPICIOUS_NAME = /\b(test|dummy|do not use|donotuse|duplicate|dup|delete|old|zz+|xx+|sample|unknown|tbd|n\/a)\b/i;
+const SUSPICIOUS_NAME = /\b(test|dummy|do not use|donotuse|duplicate|dup|delete|deleted|to be deleted|wind[- ]?down|defunct|closed|dissolved|zz+|xx+|sample|unknown|tbd|n\/a|placeholder)\b/i;
+// Names that were UTF-8 but stored as Latin-1 ("QuÃ©bec", "MontrÃ©al").
+const MOJIBAKE = /Ã[\u0080-\u00bf]|Â[\u00a0-\u00bf]|â€/;
 
-export function checkDuplicates(accounts) {
+export function checkDuplicates(accounts, { maxDomainGroup = 6 } = {}) {
   const findings = [];
   const byName = new Map();
   const byDomain = new Map();
@@ -19,36 +21,49 @@ export function checkDuplicates(accounts) {
     if (d && !GENERIC_DOMAINS.has(d)) byDomain.set(d, [...(byDomain.get(d) || []), a]);
   }
   const seenPairs = new Set();
+  const isHierarchy = (x, y) => {
+    const px = normalizeName(x.parentName), py = normalizeName(y.parentName);
+    return (px && px === normalizeName(y.name)) || (py && py === normalizeName(x.name)) || (x.parentId && x.parentId === y.id) || (y.parentId && y.parentId === x.id);
+  };
   const emit = (group, why) => {
     if (group.length < 2) return;
+    if (why === "domain" && group.length > maxDomainGroup) return; // shared/generic domain, not duplicates
     const master = pickMaster(group);
     for (const dup of group) {
       if (dup === master) continue;
       const key = [master.id || master.name, dup.id || dup.name].sort().join("|");
       if (seenPairs.has(key)) continue;
       seenPairs.add(key);
-      findings.push(
-        makeFinding({
-          kind: "duplicate",
-          severity: "high",
-          confidence: why === "domain" ? 0.75 : 0.65,
-          account: dup,
-          related: master,
-          evidence: [
-            why === "name"
-              ? `Same normalized name as "${master.name}" (${master.id || "no id"}): "${normalizeName(dup.name)}"`
-              : `Same website domain as "${master.name}" (${master.id || "no id"}): ${registrableDomain(dup.website)}`,
-            `Proposed master: "${master.name}" (${describeRichness(master)}); disappearing: "${dup.name}" (${describeRichness(dup)})`,
-          ],
-          proposal: mergeProposal(master, dup, `Duplicate account (same ${why}). Keeping ${master.id || master.name} as master.`),
-        }),
-      );
+      if (isHierarchy(master, dup)) continue; // already modelled as parent/child in Salesforce
+      let kind = "duplicate", severity = "high", confidence = 0.65;
+      if (why === "domain") {
+        const overlap = nameTokenOverlap(master.name, dup.name);
+        if (overlap) { confidence = 0.6; }
+        else { kind = "same_domain"; severity = "low"; confidence = 0.3; }
+      }
+      const evidence = [
+        why === "name"
+          ? `Same normalized name as "${master.name}" (${master.id || "no id"}): "${normalizeName(dup.name)}"`
+          : `Same website domain as "${master.name}" (${master.id || "no id"}): ${registrableDomain(dup.website)}${kind === "same_domain" ? " — names differ; may be a subsidiary/affiliate rather than a duplicate" : ""}`,
+        `Proposed master: "${master.name}" (${describeRichness(master)}); disappearing: "${dup.name}" (${describeRichness(dup)})`,
+      ];
+      findings.push(makeFinding({ kind, severity, confidence, account: dup, related: master, evidence,
+        proposal: mergeProposal(master, dup, `Duplicate account (same ${why}). Keeping ${master.id || master.name} as master.`) }));
     }
   };
   for (const g of byName.values()) emit(g, "name");
   for (const g of byDomain.values()) emit(g, "domain");
   return findings;
 }
+
+/** True when the two names share at least one significant word (after stripping legal suffixes). */
+export function nameTokenOverlap(a, b) {
+  const tok = (n) => new Set(normalizeName(n).split(" ").filter((t) => t.length > 2 && !STOP.has(t)));
+  const ta = tok(a), tb = tok(b);
+  for (const t of ta) if (tb.has(t)) return true;
+  return false;
+}
+const STOP = new Set(["and", "the", "of", "de", "du", "des", "les", "la", "le", "for", "canada", "usa", "us", "international", "services", "solutions", "systems", "technologies", "industries", "products"]);
 
 const GENERIC_DOMAINS = new Set([
   "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "linkedin.com", "facebook.com", "google.com",
@@ -93,7 +108,11 @@ export function checkNames(accounts) {
     const problems = [];
     if (SUSPICIOUS_NAME.test(a.name)) problems.push(`name contains a placeholder word: "${a.name}"`);
     if (/\s{2,}|^\s|\s$/.test(a.name)) problems.push("leading/trailing/double spaces in name");
-    if (a.name.length > 4 && a.name === a.name.toUpperCase() && /[A-Z]{4,}/.test(a.name)) problems.push("name is ALL CAPS");
+    let fixed = a.name.replace(/\s+/g, " ").trim();
+    if (MOJIBAKE.test(a.name)) {
+      const decoded = Buffer.from(a.name, "latin1").toString("utf8");
+      if (!decoded.includes("\uFFFD")) { fixed = decoded; problems.push(`name has broken accents (mojibake); should be "${decoded}"`); }
+    }
     if (problems.length) {
       out.push(
         makeFinding({
@@ -102,7 +121,7 @@ export function checkNames(accounts) {
           confidence: 0.6,
           account: a,
           evidence: problems,
-          proposal: massUpdateProposal(a, { "Account Name": a.name.replace(/\s+/g, " ").trim() }, "Name cleanup"),
+          proposal: massUpdateProposal(a, { "Account Name": fixed }, "Name cleanup"),
         }),
       );
     }

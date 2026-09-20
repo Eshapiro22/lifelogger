@@ -104,6 +104,36 @@ admin help. Any of these produce a usable file:
 3. **Salesforce CLI** (`sf data query --query "…" --result-format csv`). I have not verified the
    current CLI flags; check `sf data query --help`.
 
+### Org too big to export? Generate lookup queries from the leads
+
+Exporting every account is impractical in a large org (hundreds of thousands of accounts). Flip
+it around: fetch only the accounts whose names resemble the companies in your lead list. On the
+reconcile page, open **"Org too big to export?"** under step 2 and click **Generate**. It turns
+the distinct company names from your leads into batched Salesforce queries plus a paste-ready
+prompt:
+
+- **SOSL** (default, recommended): `FIND {"Canadian General Tower" OR "Swing Design" …} IN NAME
+  FIELDS RETURNING Account(Id, Name, Owner.Name, Website, Parent.Name, Type)`. Uses the search
+  index, so "The", legal suffixes and extra words in the Salesforce name don't matter.
+- **SOQL**: `SELECT … FROM Account WHERE Name LIKE 'Acme%' OR …`. Prefix match; misses accounts
+  whose Salesforce name starts differently from the LinkedIn name.
+
+Paste the prompt into a Claude that has your Salesforce connector (or run the queries in
+Developer Console / Workbench), save the combined result as a CSV, and load it as the Accounts
+file with **"only my accounts" unticked**. The result contains every owner, so you get the full
+three-way answer (mine / a colleague's, with their name / not in Salesforce) from a file of a
+few hundred rows. Names too generic to search ("Global Solutions", two-letter names) are
+listed for you to check by hand.
+
+I have not verified the current SOSL/SOQL length limits; the generator batches conservatively
+(30 names per SOSL query, 50 per SOQL). If Salesforce rejects a query as too long, lower the
+batch size (`--batch` on the CLI) and regenerate. Command line:
+
+```bash
+node reconcile/queries.mjs --leads leads.csv --prompt            # SOSL + paste-ready prompt
+node reconcile/queries.mjs --leads leads.csv --format soql       # raw SOQL only
+```
+
 ### Two ways to answer "is this lead mine?"
 
 - **Only my accounts** (simplest). Export just the accounts you own (a "My accounts" report, or
@@ -166,7 +196,7 @@ node reconcile/test.mjs   # runs the matcher's self-test
 - `background.js` — mirrors the lead count onto the toolbar badge
 - `reconcile.html` / `reconcile.css` / `reconcile.js` — Salesforce reconciliation page
 - `reconcile/match.js` — CSV parsing, name normalisation and matching (shared by page and CLI)
-- `reconcile/cli.mjs`, `reconcile/test.mjs` — command-line runner and self-test
+- `reconcile/cli.mjs`, `reconcile/queries.mjs`, `reconcile/test.mjs` — command-line runner, lookup-query generator, self-test
 - `icons/` — generated PNG icons
 
 ## Limits and known gaps

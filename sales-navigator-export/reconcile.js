@@ -67,6 +67,7 @@ function updateRunState() {
   const leads = currentLeads();
   const ok = !!(leads && leads.rows.length && state.accounts && state.accountCols && state.accountCols.name);
   $('runBtn').disabled = !ok;
+  $('genQueriesBtn').disabled = !(leads && leads.rows.length);
 }
 
 function populateOwners(owners) {
@@ -261,3 +262,31 @@ $('downloadBtn').addEventListener('click', () => {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 });
+
+// ─── lookup query generation (for orgs too big to export) ──────────────────
+let lookup = null; // { queries, terms, skipped, format }
+$('genQueriesBtn').addEventListener('click', () => {
+  const leads = currentLeads();
+  if (!leads) return;
+  const format = $('lookupFormat').value;
+  const names = leads.rows.map((r) => r[leads.cols.company] || '');
+  const r = M.buildLookupQueries(names, { format });
+  lookup = { ...r, format };
+  $('lookupOut').value = M.lookupPromptFor(r.queries, format);
+  $('lookupOut').classList.remove('hidden');
+  $('copyPromptBtn').classList.remove('hidden');
+  $('copyQueriesBtn').classList.remove('hidden');
+  $('lookupInfo').textContent =
+    `${r.terms.length} distinct company names from ${leads.rows.length} leads → ${r.queries.length} ${format.toUpperCase()} quer${r.queries.length === 1 ? 'y' : 'ies'}.` +
+    (r.skipped.length ? ` Skipped ${r.skipped.length} too-generic name${r.skipped.length === 1 ? '' : 's'} (look these up by hand): ${r.skipped.slice(0, 8).join(', ')}${r.skipped.length > 8 ? '…' : ''}.` : '');
+});
+async function copyText(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const old = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = old; }, 1500);
+  } catch (_) {
+    $('lookupOut').select(); document.execCommand('copy');
+  }
+}
+$('copyPromptBtn').addEventListener('click', () => lookup && copyText(M.lookupPromptFor(lookup.queries, lookup.format), $('copyPromptBtn')));
+$('copyQueriesBtn').addEventListener('click', () => lookup && copyText(lookup.queries.join('\n\n'), $('copyQueriesBtn')));

@@ -38,6 +38,28 @@
       <input type="file" id="accountsFile" accept=".csv,text/csv" />
       <div id="accountCols" class="colmap hidden"></div>
       <div id="accountInfo" class="muted"></div>
+
+      <details id="lookupBox" class="sub-box">
+        <summary><b>Org too big to export?</b> Generate lookup queries from your leads instead</summary>
+        <p class="muted">
+          Builds Salesforce queries that fetch only the accounts whose names resemble the companies in
+          your lead list, so the result is a few hundred rows instead of the whole org. Paste the prompt
+          into a Claude that has your Salesforce connector (or run the queries yourself), save the result
+          as a CSV, and load it above with the "only my accounts" box <b>unticked</b>.
+        </p>
+        <div class="row">
+          <label for="lookupFormat">Query language</label>
+          <select id="lookupFormat">
+            <option value="sosl" selected>SOSL (recommended: tolerant of "The", suffixes, word order)</option>
+            <option value="soql">SOQL (prefix match on Name)</option>
+          </select>
+          <button id="genQueriesBtn" class="secondary" disabled>Generate</button>
+          <button id="copyPromptBtn" class="secondary hidden">Copy prompt for Claude</button>
+          <button id="copyQueriesBtn" class="secondary hidden">Copy queries only</button>
+        </div>
+        <div id="lookupInfo" class="muted"></div>
+        <textarea id="lookupOut" class="hidden" rows="10" readonly spellcheck="false"></textarea>
+      </details>
     </section>
 
     <!-- Step 3: contacts (optional) -->

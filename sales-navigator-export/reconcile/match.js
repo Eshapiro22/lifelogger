@@ -445,8 +445,88 @@
     return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([owner, count]) => ({ owner, count }));
   }
 
+  // ─── lookup query generation ─────────────────────────────────────────────
+  // For orgs too big to export whole: build Salesforce queries that fetch only
+  // the accounts whose names resemble the companies in the lead list.
+  const ACCOUNT_FIELDS = 'Id, Name, Owner.Name, Website, Parent.Name, Type';
+
+  /**
+   * Company name as Salesforce would store it (original characters, accents and
+   * apostrophes kept) with legal suffixes removed. Returns { term, hadThe } so
+   * SOQL can try both "The Acme…" and "Acme…".
+   */
+  function searchTermFor(name) {
+    const str = String(name || '').replace(/[\u2018\u2019`]/g, "'").replace(/\u201c|\u201d/g, '"').trim();
+    let toks = str.split(/\s+/).filter(Boolean);
+    let hadThe = false;
+    if (toks.length > 1 && /^the$/i.test(toks[0])) { toks = toks.slice(1); hadThe = true; }
+    while (toks.length > 1 && LEGAL_SUFFIXES.has(toks[toks.length - 1].toLowerCase().replace(/[.,;:]+$/g, ''))) toks.pop();
+    const term = toks.join(' ').replace(/[,.;:()"]+$/g, '').trim();
+    return { term, hadThe };
+  }
+
+  /**
+   * @param {string[]} companyNames  raw company names from the leads
+   * @param {object}   [opts]
+   * @param {'soql'|'sosl'} [opts.format='soql']
+   * @param {number}   [opts.batchSize]  names per query (default 50 SOQL / 30 SOSL)
+   * @returns {{ queries: string[], terms: string[], skipped: string[] }}
+   */
+  function buildLookupQueries(companyNames, opts = {}) {
+    const format = opts.format === 'sosl' ? 'sosl' : 'soql';
+    const batchSize = opts.batchSize || (format === 'sosl' ? 30 : 50);
+    const seen = new Set();
+    const terms = [];
+    const skipped = [];
+    const entries = [];
+    for (const raw of companyNames) {
+      const { term, hadThe } = searchTermFor(raw);
+      const key = normalizeCompany(term);
+      if (!term || seen.has(key)) continue;
+      seen.add(key);
+      // Too short / too generic to search for without flooding the result.
+      const normToks = key.split(' ').filter(Boolean);
+      if (term.length < 3 || !normToks.length || normToks.every((t) => BLOCKING_STOPWORDS.has(t))) { skipped.push(raw); continue; }
+      entries.push({ term, hadThe });
+      terms.push(term);
+    }
+    const queries = [];
+    for (let i = 0; i < entries.length; i += batchSize) {
+      const batch = entries.slice(i, i + batchSize);
+      if (format === 'sosl') {
+        // SOSL: reserved characters are escaped with a backslash; a quoted
+        // phrase matches the tokens in order anywhere in the name, so "The"
+        // and suffixes don't matter.
+        const esc = (t) => t.replace(/([?&|!{}\[\]()^~*:\\"'+-])/g, '\\$1');
+        queries.push(`FIND {${batch.map((e) => `"${esc(e.term)}"`).join(' OR ')}} IN NAME FIELDS RETURNING Account(${ACCOUNT_FIELDS})`);
+      } else {
+        // SOQL: prefix match. If the lead's name began with "The", try both.
+        const esc = (t) => t.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/%/g, '\\%').replace(/_/g, '\\_');
+        const clauses = [];
+        for (const e of batch) {
+          clauses.push(`Name LIKE '${esc(e.term)}%'`);
+          if (e.hadThe) clauses.push(`Name LIKE 'The ${esc(e.term)}%'`);
+        }
+        queries.push(`SELECT ${ACCOUNT_FIELDS} FROM Account WHERE ${clauses.join(' OR ')}`);
+      }
+    }
+    return { queries, terms, skipped };
+  }
+
+  /** A paste-ready instruction for a Claude instance that has a Salesforce connector. */
+  function lookupPromptFor(queries, format) {
+    const n = queries.length;
+    return [
+      `Please run the following ${n} Salesforce ${format.toUpperCase()} quer${n === 1 ? 'y' : 'ies'} against our org and combine all the Account rows into ONE CSV file with exactly these columns, in this order: Id, Name, Owner.Name, Website, Parent.Name, Type.`,
+      `De-duplicate by Id, keep every matching account (do not filter by owner), and tell me the total number of rows and how many distinct Owner.Name values there are. Then give me the CSV as a downloadable file named accounts-lookup.csv.`,
+      '',
+      ...queries.map((q, i) => `-- query ${i + 1} of ${n}\n${q}`),
+    ].join('\n');
+  }
+
   return {
     parseCsv, toCsv, csvEscape,
+    searchTermFor, buildLookupQueries, lookupPromptFor, ACCOUNT_FIELDS,
     normalizeCompany, normalizePerson, companySimilarity, tierForScore,
     detectAccountColumns, detectContactColumns, detectLeadColumns,
     buildAccountIndex, buildContactIndex, matchCompany, matchContact,

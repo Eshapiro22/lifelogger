@@ -70,3 +70,7 @@ td a:hover { text-decoration: underline; }
 .pill.low { background: var(--review); }
 .sub { display: block; color: var(--muted); font-size: 12px; }
 .hidden { display: none !important; }
+
+.sub-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.sub-box summary { cursor: pointer; }
+textarea { width: 100%; margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }

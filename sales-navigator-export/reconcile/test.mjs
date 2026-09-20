@@ -117,4 +117,17 @@ assert.equal(mineOnly.summary.mine, 2);
 assert.equal(mineOnly.summary.unmatched, 4);
 assert.equal(mineOnly.summary.notMine, 0);
 
+// lookup query generation keeps real characters, drops suffixes, dedupes, skips generic names
+const lq = M.buildLookupQueries(["O'Reilly Media, LLC", 'Müller & Söhne GmbH', 'The Acme Corporation', 'Acme Corp', 'Global Solutions', 'AB', '', 'Swing Design Inc.']);
+assert.deepEqual(lq.terms, ["O'Reilly Media", 'Müller & Söhne', 'Acme', 'Swing Design']);
+assert.deepEqual(lq.skipped, ['Global Solutions', 'AB']);
+assert.equal(lq.queries.length, 1);
+assert.match(lq.queries[0], /Name LIKE 'O\\'Reilly Media%'/);
+assert.match(lq.queries[0], /Name LIKE 'Müller & Söhne%'/);
+assert.match(lq.queries[0], /Name LIKE 'Acme%' OR Name LIKE 'The Acme%'/);
+const sosl = M.buildLookupQueries(["O'Reilly Media", 'Acme'], { format: 'sosl' }).queries[0];
+assert.equal(sosl, `FIND {"O\\'Reilly Media" OR "Acme"} IN NAME FIELDS RETURNING Account(Id, Name, Owner.Name, Website, Parent.Name, Type)`);
+assert.equal(M.buildLookupQueries(Array.from({ length: 120 }, (_, i) => `Company ${i} Widgets`)).queries.length, 3, 'batched at 50');
+assert.match(M.lookupPromptFor(['Q1'], 'sosl'), /1 Salesforce SOSL query/);
+
 console.log('all reconcile tests passed');

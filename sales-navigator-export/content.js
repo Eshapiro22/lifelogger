@@ -88,6 +88,10 @@
         'a[href*="/sales/company/"]',
         'a[href*="/sales/account/"]',
       ],
+      // "Title · Company" line; used to derive the company when there is no company link.
+      subtitle: [
+        '.artdeco-entity-lockup__subtitle',
+      ],
       location: [
         '[data-anonymize="location"]',
         '.artdeco-entity-lockup__caption',
@@ -320,13 +324,13 @@
   }
 
   // ─── DOM: text-based field parsing (used when field selectors miss) ──────
-  const JUNK_LINE = /^(1st|2nd|3rd|•|·|save|saved|unsave|message|add to list|save to list|view profile|connect|follow|more|see more|…|premium|linkedin member|open link|in your network|in crm|not in crm|\d+\s+(mutual|shared)\s+connections?|\d+\s+(new|recent)\s+.*|list of .*|remove from list)$/i;
+  const JUNK_LINE = /^(add .* to selection|\d+(st|nd|rd|th) degree connection.*|crm|update crm|about:?|shared groups|\d+|\d+ lists?|\d+ (mutual|shared|teamlink) connections?|\d+ recent posts? on linkedin|account has .* buyer intent|1st|2nd|3rd|•|·|save|saved|unsave|message|add to list|save to list|view profile|connect|follow|more|see more|…|premium|linkedin member|open link|in your network|in crm|not in crm|\d+\s+(mutual|shared)\s+connections?|\d+\s+(new|recent)\s+.*|list of .*|remove from list)$/i;
   const DEGREE = /(^|\s)[•·]?\s*(1st|2nd|3rd|3rd\+)(\s|$)/gi;
   const LEGAL_TAIL = /\b(inc|llc|llp|lp|ltd|limited|plc|corp|corporation|co|company|gmbh|ag|sa|bv|pty|pte|s\.?e\.?n\.?c\.?r\.?l|pc|p\.c)\.?$/i;
   function parseFieldsFromText(row, name, known = {}) {
     const lines = (row.innerText || '')
       .split('\n')
-      .map((l) => l.replace(DEGREE, ' ').replace(/\s+/g, ' ').trim())
+      .map((l) => l.replace(DEGREE, ' ').replace(/[ \t]{3,}/g, '  ').trim())
       .filter(Boolean)
       .filter((l) => !JUNK_LINE.test(l))
       .filter((l) => !name || (l !== name && !l.startsWith(name + ' ') && !l.startsWith(name + "'")))
@@ -338,6 +342,9 @@
       if (!out.tenure && /\b\d+\s*(years?|months?|yrs?|mos?)\b/i.test(l)) { out.tenure = l; continue; }
       const at = l.match(/^(.+?)\s+at\s+(.+)$/);
       if (at && !out.title && !out.company && !known.company) { out.title = at[1]; out.company = at[2]; continue; }
+      const dbl = l.match(/^(.+?)\s{2,}(.+)$/);
+      if (dbl && !out.title && !out.company && !known.title && !known.company) { out.title = dbl[1]; out.company = dbl[2]; continue; }
+      if (dbl && known.title && dbl[1] === known.title && !known.company && !out.company) { out.company = dbl[2]; continue; }
       rest.push(l);
     }
     // Location: prefer "… Area/Region", then "City, Region[, Country]" that
@@ -369,6 +376,21 @@
     let company = txt(companyEl);
     let locationStr = txt(q(row, S.location));
     let tenure = txt(q(row, S.tenure));
+    if (!company) {
+      // Cards without a company link still show "Title  Company" in the subtitle
+      // (the separator is a hidden span, so it renders as extra spaces).
+      const sub = txt(q(row, S.subtitle));
+      if (sub) {
+        let rest = sub;
+        if (title && sub.startsWith(title)) rest = sub.slice(title.length);
+        else if (!title && /\s{2,}|\s·\s/.test((q(row, S.subtitle).innerText || ''))) {
+          const parts = (q(row, S.subtitle).innerText || '').split(/\s{2,}|\s·\s/).map((x) => x.trim()).filter(Boolean);
+          title = title || parts[0] || '';
+          rest = parts.slice(1).join(' ');
+        }
+        company = rest.replace(/^[\s·•|,-]+/, '').trim();
+      }
+    }
     if (!title || !company || !locationStr) {
       const t = parseFieldsFromText(row, name, { company, title });
       title = title || t.title;

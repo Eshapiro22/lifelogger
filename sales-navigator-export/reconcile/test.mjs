@@ -130,4 +130,8 @@ assert.equal(sosl, `FIND {"O\\'Reilly Media" OR "Acme"} IN NAME FIELDS RETURNING
 assert.equal(M.buildLookupQueries(Array.from({ length: 120 }, (_, i) => `Company ${i} Widgets`)).queries.length, 3, 'batched at 50');
 assert.match(M.lookupPromptFor(['Q1'], 'sosl'), /1 Salesforce SOSL query/);
 
+assert.ok(M.companySimilarity('nttdata', 'ntt data international services') >= 0.85, 'space-insensitive prefix');
+assert.ok(M.companySimilarity('pcconnection', 'connection') < 0.85, 'no false prefix the other way');
+assert.equal(M.searchTermFor('NTT DATA Switzerland (vormals Cirquent / Softlab)').term, 'NTT DATA Switzerland');
+assert.deepEqual(M.buildLookupQueries(['Retired', 'Self-employed', 'Acme']).skipped, ['Retired', 'Self-employed']);
 console.log('all reconcile tests passed');

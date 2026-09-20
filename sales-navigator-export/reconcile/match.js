@@ -161,6 +161,11 @@
     let score = 0.5 * tokenScore + 0.5 * charScore;
     const [s, l] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
     if (isTokenPrefix(s, l) && s.join('').length >= 4) score = Math.max(score, 0.85);
+    // Space-insensitive prefix: "nttdata" vs "ntt data international services",
+    // "pcconnection" vs "pc connection".
+    const ca = a.replace(/ /g, ''), cb = b.replace(/ /g, '');
+    const [cs, cl] = ca.length <= cb.length ? [ca, cb] : [cb, ca];
+    if (cs.length >= 5 && cl.startsWith(cs)) score = Math.max(score, ca === cb ? 0.95 : 0.85);
     return Math.round(score * 1000) / 1000;
   }
 
@@ -456,8 +461,11 @@
    * apostrophes kept) with legal suffixes removed. Returns { term, hadThe } so
    * SOQL can try both "The Acme…" and "Acme…".
    */
+  const NOT_A_COMPANY = /^(retired|semi.?retired|self.?employed|freelance(r)?|independent|consultant|unemployed|n\/a|none|student|various)$/i;
   function searchTermFor(name) {
-    const str = String(name || '').replace(/[\u2018\u2019`]/g, "'").replace(/\u201c|\u201d/g, '"').trim();
+    const str = String(name || '').replace(/[\u2018\u2019`]/g, "'").replace(/\u201c|\u201d/g, '"')
+      .replace(/\s*\(.*$/, '')  // drop "(formerly …)" style tails
+      .trim();
     let toks = str.split(/\s+/).filter(Boolean);
     let hadThe = false;
     if (toks.length > 1 && /^the$/i.test(toks[0])) { toks = toks.slice(1); hadThe = true; }
@@ -487,7 +495,7 @@
       seen.add(key);
       // Too short / too generic to search for without flooding the result.
       const normToks = key.split(' ').filter(Boolean);
-      if (term.length < 3 || !normToks.length || normToks.every((t) => BLOCKING_STOPWORDS.has(t))) { skipped.push(raw); continue; }
+      if (term.length < 3 || !normToks.length || normToks.every((t) => BLOCKING_STOPWORDS.has(t)) || NOT_A_COMPANY.test(term)) { skipped.push(raw); continue; }
       entries.push({ term, hadThe });
       terms.push(term);
     }

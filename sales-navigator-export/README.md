@@ -72,9 +72,16 @@ Each entry is a list of CSS selectors tried in order; the first match wins.
 5. Reload the extension on `chrome://extensions`, reload the LinkedIn tab, and run
    **Preview this page** again.
 
-If `resultRow` matches nothing, the scraper falls back to "find every link to
-`/sales/lead/` and use its nearest `<li>` ancestor", which is usually enough to keep
-`name` (link text), `profile_url` and `raw_text` working even when everything else breaks.
+Row detection no longer depends on selectors: for each link to `/sales/lead/…` the scraper
+climbs to the largest ancestor that still contains exactly one lead, and treats that as the
+card. Fields are read with the selectors above first, then parsed from the card's text
+(name, degree badge stripped, "Title at Company", "City, Region", "N years in role") so the
+export keeps working when class names change. `raw_text` always has the whole card.
+
+**If fields still come back blank**, click **Copy diagnostics** in the popup while on a list
+page. It copies a JSON report of the page structure (selector hit counts, the ancestor chain
+of the first lead, and the card's HTML with all text and record ids redacted) that is safe to
+share and enough to pin the selectors down.
 
 ## Reconciling leads with Salesforce
 

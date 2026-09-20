@@ -180,6 +180,20 @@ $('stopBtn').addEventListener('click', async () => {
 
 $('downloadBtn').addEventListener('click', download);
 
+$('diagBtn').addEventListener('click', async () => {
+  try {
+    const r = await sendToTab({ type: 'snx:diagnose' });
+    const text = JSON.stringify(r.report, null, 2);
+    $('diagBox').classList.remove('hidden');
+    $('diagOut').value = text;
+    try { await navigator.clipboard.writeText(text); $('diagBtn').textContent = 'Copied ✓'; }
+    catch (_) { $('diagOut').select(); $('diagBtn').textContent = 'Select & copy above'; }
+    setTimeout(() => { $('diagBtn').textContent = 'Copy diagnostics'; }, 2000);
+  } catch (err) {
+    showNotice(`Could not reach the page: ${err.message}. Reload the LinkedIn tab and try again.`, 'error');
+  }
+});
+
 $('reconcileBtn').addEventListener('click', () => {
   chrome.tabs.create({ url: chrome.runtime.getURL('reconcile.html') });
 });

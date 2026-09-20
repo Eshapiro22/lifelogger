@@ -232,41 +232,95 @@
   }
 
   // ─── DOM: rows ───────────────────────────────────────────────────────────
+  const leadKeyOf = (a) => normalizeProfileUrl(a.getAttribute('href'));
+
+  // Climb from a lead link to the largest ancestor that still contains exactly
+  // one distinct lead. That ancestor is the lead's card, whatever LinkedIn
+  // calls it this month. Stops at the list container (many leads) or at a
+  // text-length ceiling so a single-lead page can't swallow the whole document.
+  function rowForLink(a) {
+    const S = CONFIG.selectors;
+    let node = a;
+    let best = a;
+    for (let depth = 0; depth < 20 && node.parentElement; depth++) {
+      node = node.parentElement;
+      if (node === document.body || node === document.documentElement) break;
+      const keys = new Set(qa(node, S.leadLink).map(leadKeyOf));
+      if (keys.size !== 1) break;
+      if ((node.innerText || '').length > 2500) break;
+      best = node;
+    }
+    return best;
+  }
+
   function findRows() {
     const S = CONFIG.selectors;
-    let rows = qa(document, S.resultRow).filter((r) => q(r, S.leadLink));
-    if (rows.length) return rows;
-
-    // Fallback: every lead link → nearest list item / card ancestor.
-    const links = qa(document, S.leadLink);
+    // Primary: DOM-agnostic climb from every lead link.
     const seen = new Set();
-    rows = [];
-    for (const a of links) {
-      const row =
-        a.closest('li') ||
-        a.closest('[class*="result"]') ||
-        a.closest('article') ||
-        a.parentElement;
-      if (row && !seen.has(row)) {
-        seen.add(row);
-        rows.push(row);
-      }
+    let rows = [];
+    for (const a of qa(document, S.leadLink)) {
+      const row = rowForLink(a);
+      if (!seen.has(row)) { seen.add(row); rows.push(row); }
     }
-    return rows;
+    if (rows.length) return rows;
+    // Secondary: configured row selectors.
+    return qa(document, S.resultRow).filter((r) => q(r, S.leadLink));
+  }
+
+  // ─── DOM: text-based field parsing (used when field selectors miss) ──────
+  const JUNK_LINE = /^(1st|2nd|3rd|•|·|save|saved|unsave|message|add to list|view profile|connect|follow|more|see more|…|premium|linkedin member|open link|in your network|\d+\s+(mutual|shared)\s+connections?|\d+\s+(new|recent)\s+.*|list of .*|remove from list)$/i;
+  const DEGREE = /(^|\s)[•·]?\s*(1st|2nd|3rd|3rd\+)(\s|$)/gi;
+  const LEGAL_TAIL = /\b(inc|llc|llp|lp|ltd|limited|plc|corp|corporation|co|company|gmbh|ag|sa|bv|pty|pte|s\.?e\.?n\.?c\.?r\.?l|pc|p\.c)\.?$/i;
+  function parseFieldsFromText(row, name, known = {}) {
+    const lines = (row.innerText || '')
+      .split('\n')
+      .map((l) => l.replace(DEGREE, ' ').replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .filter((l) => !JUNK_LINE.test(l))
+      .filter((l) => !name || (l !== name && !l.startsWith(name + ' ') && !l.startsWith(name + "'")))
+      .filter((l) => !known.company || l !== known.company)
+      .filter((l) => !known.title || l !== known.title);
+    const out = { title: '', company: '', location: '', tenure: '' };
+    const rest = [];
+    for (const l of lines) {
+      if (!out.tenure && /\b\d+\s*(years?|months?|yrs?|mos?)\b/i.test(l)) { out.tenure = l; continue; }
+      const at = l.match(/^(.+?)\s+at\s+(.+)$/);
+      if (at && !out.title && !out.company && !known.company) { out.title = at[1]; out.company = at[2]; continue; }
+      rest.push(l);
+    }
+    // Location: prefer "… Area/Region", then "City, Region[, Country]" that
+    // doesn't look like a company name (no legal suffix, short).
+    const isLoc = (l) => l.length < 70 && !LEGAL_TAIL.test(l) && !/[&]/.test(l) &&
+      (/\b(area|region|metropolitan|greater)\b/i.test(l) || /^[^,]{2,},\s*[^,]{2,}(,\s*[^,]{2,})?$/.test(l));
+    let locIdx = rest.findIndex((l) => /\b(area|region|metropolitan|greater)\b/i.test(l) && l.length < 70);
+    if (locIdx < 0) locIdx = rest.findIndex(isLoc);
+    if (locIdx >= 0) { out.location = rest[locIdx]; rest.splice(locIdx, 1); }
+    if (!out.title && rest.length) out.title = rest.shift();
+    if (!out.company && !known.company && rest.length) out.company = rest.shift();
+    return out;
   }
 
   function scrapeRow(row, pageNum) {
     const S = CONFIG.selectors;
-    const link = q(row, S.leadLink);
-    const nameEl = q(row, S.name) || link;
+    const leadLinks = qa(row, S.leadLink);
+    const link = leadLinks.slice().sort((a, b) => txt(b).length - txt(a).length)[0] || null;
+    const nameEl = q(row, S.name) || (link && txt(link) ? link : null);
+    const imgAlt = (() => { const img = row.querySelector('img[alt]'); return img ? img.getAttribute('alt').trim() : ''; })();
     const companyEl = q(row, S.company);
     const companyLinkEl = q(row, S.companyLink);
 
-    const name = txt(nameEl);
-    const title = txt(q(row, S.title));
-    const company = txt(companyEl);
-    const locationStr = txt(q(row, S.location));
-    const tenure = txt(q(row, S.tenure));
+    const name = txt(nameEl) || imgAlt;
+    let title = txt(q(row, S.title));
+    let company = txt(companyEl);
+    let locationStr = txt(q(row, S.location));
+    let tenure = txt(q(row, S.tenure));
+    if (!title || !company || !locationStr) {
+      const t = parseFieldsFromText(row, name, { company, title });
+      title = title || t.title;
+      company = company || t.company;
+      locationStr = locationStr || t.location;
+      tenure = tenure || t.tenure;
+    }
     const profileUrl = normalizeProfileUrl(link && link.getAttribute('href'));
     const companyUrl = normalizeProfileUrl(companyLinkEl && companyLinkEl.getAttribute('href'));
 
@@ -392,6 +446,65 @@
     return false;
   }
 
+  // ─── diagnostics ─────────────────────────────────────────────────────────
+  // Structure only: text nodes become "…", record ids in hrefs become "ID",
+  // so the report can be shared without leaking lead data.
+  function describe(el) {
+    const cls = el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).slice(0, 6).join('.') : '';
+    const data = Array.from(el.attributes || []).filter((a) => a.name.startsWith('data-') || a.name.startsWith('aria-')).map((a) => `[${a.name}]`).join('');
+    return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${cls}${data}`;
+  }
+  function redactedHtml(el, limit = 7000) {
+    const clone = el.cloneNode(true);
+    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    while (walker.nextNode()) texts.push(walker.currentNode);
+    for (const t of texts) if (t.nodeValue.trim()) t.nodeValue = '…';
+    for (const n of clone.querySelectorAll('*')) {
+      for (const a of Array.from(n.attributes)) {
+        if (a.name === 'href' || a.name === 'src') n.setAttribute(a.name, a.value.replace(/[A-Za-z0-9_%-]*\d[A-Za-z0-9_%-]*|[A-Za-z0-9_%-]{14,}/g, 'ID').slice(0, 80));
+        else if (/^(alt|title|aria-label)$/.test(a.name) && a.value) n.setAttribute(a.name, '…');
+        else if (a.value.length > 60) n.setAttribute(a.name, a.value.slice(0, 60) + '…');
+      }
+      if (n.tagName === 'svg' || n.tagName === 'SVG' || n.tagName === 'IMG') n.replaceWith(document.createComment(n.tagName.toLowerCase()));
+    }
+    const html = clone.outerHTML.replace(/>\s+</g, '><');
+    return html.length > limit ? html.slice(0, limit) + `\n<!-- truncated, ${html.length} chars total -->` : html;
+  }
+  function buildDiagnostics() {
+    const S = CONFIG.selectors;
+    const links = qa(document, S.leadLink);
+    const rep = {
+      extensionVersion: chrome.runtime.getManifest().version,
+      path: location.pathname.replace(/\d{5,}/g, 'ID'),
+      leadLinks: links.length,
+      distinctLeads: new Set(links.map(leadKeyOf)).size,
+      rowSelectorHits: Object.fromEntries(S.resultRow.map((sel) => { try { return [sel, document.querySelectorAll(sel).length]; } catch (_) { return [sel, 'invalid']; } })),
+      fieldSelectorHits: {},
+      nextButton: (() => { const b = findNextButton(); return b ? { found: true, desc: describe(b), disabled: nextIsDisabled(b) } : { found: false }; })(),
+      pageIndicators: readTotalPages(),
+      ancestors: [],
+      rowHtml: '',
+    };
+    for (const key of ['name', 'title', 'company', 'companyLink', 'location', 'tenure']) {
+      rep.fieldSelectorHits[key] = S[key].map((sel) => { try { return `${sel} → ${document.querySelectorAll(sel).length}`; } catch (_) { return `${sel} → invalid`; } });
+    }
+    if (links.length) {
+      let node = links[0];
+      for (let i = 0; i < 20 && node && node !== document.body; i++) {
+        rep.ancestors.push({
+          depth: i, el: describe(node),
+          distinctLeads: new Set(qa(node, S.leadLink).map(leadKeyOf)).size,
+          textLen: (node.innerText || '').length,
+          textLines: (node.innerText || '').split('\n').filter((l) => l.trim()).length,
+        });
+        node = node.parentElement;
+      }
+      rep.rowHtml = redactedHtml(rowForLink(links[0]));
+    }
+    return rep;
+  }
+
   // ─── main loop ───────────────────────────────────────────────────────────
   let loopActive = false;
 
@@ -496,6 +609,10 @@
             listName: readListName(),
             state: summarize(s),
           });
+          break;
+        }
+        case 'snx:diagnose': {
+          sendResponse({ ok: true, report: buildDiagnostics() });
           break;
         }
         case 'snx:preview': {

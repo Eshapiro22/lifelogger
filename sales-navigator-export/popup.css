@@ -79,3 +79,4 @@ pre {
 .muted { color: var(--muted); font-size: 11px; }
 footer { margin-top: 4px; }
 .hidden { display: none !important; }
+textarea { width: 100%; padding: 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: 10px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }

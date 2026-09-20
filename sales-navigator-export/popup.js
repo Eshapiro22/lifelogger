@@ -102,6 +102,7 @@ function renderSave(ss) {
   $('saveStopBtn').classList.toggle('hidden', !running);
   $('savePreviewBtn').disabled = running;
   if (ss && ss.listName && !$('saveListName').value) $('saveListName').value = ss.listName;
+  if (ss && ss.listName && !$('labelInput').value && !$('labelInput').dataset.touched) $('labelInput').value = ss.listName;
   if (ss && (ss.pagesDone || ss.error || running)) {
     $('saveStatus').textContent =
       `${running ? 'Running' : ss.error ? 'Stopped with error' : 'Done'}: ${ss.saved} leads saved across ${ss.pagesDone} page${ss.pagesDone === 1 ? '' : 's'}` +
@@ -196,6 +197,7 @@ $('stopBtn').addEventListener('click', async () => {
   refresh();
 });
 
+$('labelInput').addEventListener('input', () => { $('labelInput').dataset.touched = '1'; });
 $('labelInput').addEventListener('change', async () => {
   try { await sendToTab({ type: 'snx:set-label', label: $('labelInput').value }); } catch (_) {}
   refresh();
@@ -233,9 +235,14 @@ $('savePreviewBtn').addEventListener('click', async () => {
 $('saveStartBtn').addEventListener('click', async () => {
   const name = $('saveListName').value.trim();
   if (!name) { $('saveStatus').textContent = 'Type a lead list name first.'; return; }
-  if (!confirm(`Save every lead in this search to the list "${name}"?\n\nThis clicks through all pages and saves for real. Keep the tab in the foreground.`)) return;
+  const ss = pageInfo && pageInfo.saveState;
+  const resumable = ss && ss.pagesDone > 0 && ss.listName === name && ss.searchKey === pageInfo.listKey && !ss.running;
+  let reset = true;
+  if (resumable) {
+    reset = !confirm(`A previous run saved ${ss.saved} leads from this search to "${name}" (${ss.pagesDone} pages).\n\nOK = continue from the current page (list already exists)\nCancel = start over from page 1`);
+  } else if (!confirm(`Save every lead in this search to the list "${name}"?\n\nThe list is created in LinkedIn on the first page if it doesn't exist, then every page is saved into it. Keep the tab in the foreground.`)) return;
   try {
-    await sendToTab({ type: 'snx:save-start', listName: name, reset: true });
+    await sendToTab({ type: 'snx:save-start', listName: name, reset });
   } catch (err) {
     $('saveStatus').textContent = `Could not start: ${err.message}`;
   }

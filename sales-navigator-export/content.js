@@ -682,7 +682,7 @@
 
   async function loadSaveState() {
     const { [SAVE_KEY]: s } = await chrome.storage.local.get(SAVE_KEY);
-    return s || { running: false, searchKey: null, listName: '', page: 0, totalPages: null, pagesDone: 0, saved: 0, log: [], error: null, finishedAt: null };
+    return s || { running: false, searchKey: null, listName: '', listCreated: false, page: 0, totalPages: null, pagesDone: 0, saved: 0, log: [], error: null, finishedAt: null };
   }
   async function saveSaveState(s) {
     await chrome.storage.local.set({ [SAVE_KEY]: s });
@@ -714,27 +714,45 @@
 
         const { menu } = await openListMenu();
         let item = findListItem(menu, s.listName);
-        if (!item) {
-          pushSaveLog(s, `List "${s.listName}" not found in menu; creating it.`);
+        let outcome = 'picked';
+        if (!item && !s.listCreated && s.pagesDone === 0) {
+          // First page of the run and the list doesn't exist yet: create it in
+          // LinkedIn via the menu's "Create new list" control. Sales Navigator
+          // saves the current selection into the new list as part of creation.
+          pushSaveLog(s, `List "${s.listName}" does not exist yet; creating it in LinkedIn.`);
           await createListNamed(menu, s.listName);
-          // Some UIs save the selection to the new list immediately; others
-          // need the list picked afterwards. Re-open and pick if it's there.
+          s.listCreated = true;
+          await saveSaveState(s);
           await sleep(800);
+          // If the menu is still open (or can be re-opened with the selection
+          // intact), tick the new list in case creation didn't save it.
           const stillOpen = findOpenMenu();
           const menu2 = stillOpen || (findSaveToList() ? (await openListMenu()).menu : null);
           item = menu2 ? findListItem(menu2, s.listName) : null;
-        }
-        let outcome = 'picked';
-        if (item) {
+          if (item) {
+            await pickListItem(item, menu2);
+            await sleep(1200);
+          }
+          outcome = 'created';
+        } else if (!item) {
+          // After page 1 the list must exist; never create a second one.
+          s.error = `List "${s.listName}" was not in the "Save to list" menu on page ${pageNum}` +
+            (s.listCreated ? ' even though it was created on the first page. Stopped to avoid creating a duplicate; check the list in LinkedIn and resume.' : '. Stopped.');
+          pushSaveLog(s, s.error);
+          await closeMenus();
+          await deselectAllOnPage();
+          s.running = false; s.finishedAt = Date.now();
+          await saveSaveState(s);
+          return;
+        } else {
           outcome = await pickListItem(item, menu);
           await sleep(1500);
-        } else {
-          pushSaveLog(s, 'Could not find the list in the menu after creating it; assuming the create step saved the selection.');
         }
         await closeMenus();
         s.saved += sel.selected;
         s.pagesDone += 1;
-        pushSaveLog(s, `Page ${pageNum}${s.totalPages ? ` of ${s.totalPages}` : ''}: ${outcome === 'already-in-list' ? 'already in list' : 'saved'} ${sel.selected} leads (${sel.method}). Total ${s.saved}.`);
+        const verb = outcome === 'created' ? `created list "${s.listName}" and saved` : outcome === 'already-in-list' ? 'already in list:' : 'saved';
+        pushSaveLog(s, `Page ${pageNum}${s.totalPages ? ` of ${s.totalPages}` : ''}: ${verb} ${sel.selected} leads (${sel.method}). Total ${s.saved}.`);
         await saveSaveState(s);
 
         const nextBtn = findNextButton();
@@ -934,8 +952,11 @@
         case 'snx:save-start': {
           const s = await loadSaveState();
           const key = listKeyFromLocation();
-          if (s.searchKey !== key || msg.reset) { s.log = []; s.page = 0; s.totalPages = null; s.pagesDone = 0; s.saved = 0; }
+          if (s.searchKey !== key || msg.reset || s.listName !== msg.listName) { s.log = []; s.page = 0; s.totalPages = null; s.pagesDone = 0; s.saved = 0; s.listCreated = false; }
           s.searchKey = key; s.listName = msg.listName; s.running = true; s.error = null; s.finishedAt = null;
+          // The same name doubles as the export label for the list later.
+          const es = await loadState();
+          if (!es.running) { es.listName = msg.listName; await saveState(es); }
           pushSaveLog(s, `Saving all results of ${key} to list "${msg.listName}"`);
           await saveSaveState(s);
           runSaveToList();

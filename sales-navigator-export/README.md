@@ -50,7 +50,11 @@ Sales Navigator only lets you select the 25 leads on the current page, so buildi
 a big search means clicking through every page by hand. On a people-search page the popup shows
 **Save all search results to a lead list**:
 
-1. Type the list name. If the list doesn't exist yet it will be created on the first page.
+1. Type the list name. If the list doesn't exist yet it is created in LinkedIn on the first
+   page (through the menu's own "Create new list" control, which saves that page's leads into
+   it); every later page ticks the existing list. Creation happens at most once per run: if the
+   list is missing from the menu on a later page the run stops rather than creating a second
+   one. The same name is pre-filled as the export label.
 2. Click **Preview controls**. This selects the leads on the current page, opens the
    "Save to list" menu, and reports what it found (select-all checkbox, the button, the menu
    items, whether your list or a "Create new list" control is there), then deselects and closes
@@ -58,7 +62,8 @@ a big search means clicking through every page by hand. On a people-search page 
    controls were found.
 3. Click **Save all pages**. It walks every page: select all → Save to list → tick your list →
    Next, with the same random pacing as the exporter. Progress and a log show in the popup;
-   **Stop** halts after the current page. If a page reloads mid-run it resumes on its own.
+   **Stop** halts after the current page. If a page reloads mid-run it resumes on its own, and
+   clicking **Save all pages** again with the same name offers to continue from the current page.
 4. Open the list and run **Export all pages** on it.
 
 Notes and caveats:

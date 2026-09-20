@@ -228,6 +228,7 @@
   function buildAccountIndex(accounts, cols) {
     const byNorm = new Map();     // normalised name → [account]
     const byToken = new Map();    // token → Set(account idx)
+    const byCompact = new Map();  // first 5 chars of the space-less name → Set(account idx)
     const items = accounts.map((row, i) => ({
       i,
       row,
@@ -248,8 +249,13 @@
         if (!byToken.has(t)) byToken.set(t, new Set());
         byToken.get(t).add(it.i);
       }
+      const c5 = it.norm.replace(/ /g, '').slice(0, 5);
+      if (c5.length === 5) {
+        if (!byCompact.has(c5)) byCompact.set(c5, new Set());
+        byCompact.get(c5).add(it.i);
+      }
     }
-    return { items, byNorm, byToken };
+    return { items, byNorm, byToken, byCompact };
   }
 
   function buildContactIndex(contacts, cols) {
@@ -304,6 +310,10 @@
       const s = index.byToken.get(t);
       if (s) for (const i of s) candIdx.add(i);
     }
+    // Space-less prefix block: "nttdata" ↔ "ntt data …", "pcconnection" ↔ "pc connection".
+    const c5 = norm.replace(/ /g, '').slice(0, 5);
+    const cs = c5.length === 5 && index.byCompact ? index.byCompact.get(c5) : null;
+    if (cs) for (const i of cs) candIdx.add(i);
     if (!candIdx.size) return { best: null, candidates: [], score: 0, tier: 'none', note: '' };
 
     // 3. Score and rank.

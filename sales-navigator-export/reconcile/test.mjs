@@ -134,4 +134,9 @@ assert.ok(M.companySimilarity('nttdata', 'ntt data international services') >= 0
 assert.ok(M.companySimilarity('pcconnection', 'connection') < 0.85, 'no false prefix the other way');
 assert.equal(M.searchTermFor('NTT DATA Switzerland (vormals Cirquent / Softlab)').term, 'NTT DATA Switzerland');
 assert.deepEqual(M.buildLookupQueries(['Retired', 'Self-employed', 'Acme']).skipped, ['Retired', 'Self-employed']);
+{
+  const idx = M.buildAccountIndex([{ N: 'Ntt Data International Services, Inc.' }, { N: 'PC Connection Inc' }], { name: 'N' });
+  assert.equal(M.matchCompany('NTTData', idx).best.name, 'Ntt Data International Services, Inc.', 'one-word variant blocks via compact prefix');
+  assert.equal(M.matchCompany('PCConnection Inc', idx).best.name, 'PC Connection Inc');
+}
 console.log('all reconcile tests passed');

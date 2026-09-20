@@ -142,6 +142,8 @@
       ],
       saveToListButton: [
         'button[aria-label*="save to list" i]',
+        'button[aria-label*="add to list" i]',
+        '[data-x--hue-list-dropdown--trigger]',
         'button[class*="save-to-list"]',
         '[data-control-name*="save_to_list"]',
       ],
@@ -557,7 +559,14 @@
 
   // ─── Save all search results to a lead list ──────────────────────────────
   const SAVE_KEY = 'snx_save_state';
-  const visible = (el) => !!el && el.getClientRects().length > 0;
+  const visible = (el) => {
+    if (!el || !el.getClientRects().length) return false;
+    if (el.closest('[aria-hidden="true"]')) return false;
+    const cs = getComputedStyle(el);
+    return cs.visibility !== 'hidden' && cs.opacity !== '0';
+  };
+  // An open popover has content; LinkedIn keeps the empty container around.
+  const isOpenMenu = (el) => visible(el) && el.childElementCount > 0;
   function findByText(root, tags, re) {
     for (const el of root.querySelectorAll(tags)) {
       if (visible(el) && re.test(txt(el))) return el;
@@ -632,13 +641,14 @@
     const S = CONFIG.selectors;
     return (
       qa(document, S.saveToListButton).find(visible) ||
-      findByText(document, 'button, a, [role="button"]', /^\s*save to list\s*$/i) ||
-      findByText(document, 'button, a, [role="button"]', /save to list/i)
+      findByText(document, 'button, a, [role="button"]', /^\s*(save|add) to list\s*$/i) ||
+      findByText(document, 'button, a, [role="button"]', /(save|add) to list/i) ||
+      Array.from(document.querySelectorAll('button[aria-label], [role="button"][aria-label]')).find((b) => visible(b) && /(save|add) to list/i.test(b.getAttribute('aria-label')))
     );
   }
   function findOpenMenu(anchor) {
     const S = CONFIG.selectors;
-    const menus = qa(document, S.listMenu).filter(visible);
+    const menus = qa(document, S.listMenu).filter(isOpenMenu);
     // Prefer a menu that is not an ancestor of the trigger (i.e. a popover).
     return menus.find((m) => !anchor || !m.contains(anchor)) || menus[0] || null;
   }
@@ -720,8 +730,9 @@
   }
   const CREATE_RE = /create|new\s+list|add\s+(a\s+)?(new\s+)?list|\+\s*list|^\s*new\s*$/i;
   const CLICKABLE = 'button, a, [role="button"], [role="menuitem"], [role="option"], li, label';
-  function findCreateControl(menu) {
-    const scopes = [menu, document];
+  function findCreateControl(menu, menuOnly = false) {
+    const dialog = Array.from(document.querySelectorAll('[role="dialog"], [class*="modal"]')).find(isOpenMenu);
+    const scopes = menuOnly ? [menu] : [menu, dialog];
     for (const scope of scopes) {
       if (!scope) continue;
       const hits = Array.from(scope.querySelectorAll('button, a, [role="button"], [role="menuitem"], [role="option"], li, label, span, div, p'))
@@ -782,25 +793,39 @@
     const btn = findSaveToList();
     if (!btn) throw new Error('"Save to list" button not found (select leads first, or update selectors)');
     const before = new Set(visibleContainers());
-    btn.click();
-    const menu = await waitFor(() => {
+    const locate = () => {
       // a. aria-controls / aria-owns points straight at the popover
       for (const attr of ['aria-controls', 'aria-owns']) {
         const id = btn.getAttribute(attr);
         const el = id && document.getElementById(id);
-        if (el && visible(el)) return el;
+        if (el && isOpenMenu(el)) return el;
       }
       // b. whatever became visible after the click (outermost new containers)
-      const fresh = visibleContainers().filter((el) => !before.has(el) && !el.contains(btn));
+      const fresh = visibleContainers().filter((el) => !before.has(el) && !el.contains(btn) && isOpenMenu(el));
       const outer = fresh.filter((el) => !fresh.some((o) => o !== el && o.contains(el)));
       if (outer.length) return outer.sort((a, b) => menuScore(b) - menuScore(a))[0];
       // c. configured selectors
       return findOpenMenu(btn);
-    }, 6000);
-    if (!menu) throw new Error('"Save to list" menu did not open');
+    };
+    let menu = null;
+    for (let attempt = 0; attempt < 3 && !menu; attempt++) {
+      if (attempt === 0) btn.click();
+      else {
+        // The first click can be swallowed right after a page change, or it
+        // toggled a menu LinkedIn still thought was open. Try a real pointer
+        // sequence, then keyboard activation.
+        btn.focus();
+        for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+          btn.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+        }
+        if (attempt === 2) btn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+      }
+      menu = await waitFor(locate, attempt === 0 ? 3000 : 2500);
+    }
+    if (!menu) throw new Error('"Save to list" menu did not open (popover stayed empty/hidden after 3 clicks)');
     // Let the list rows render before reading them; a search box alone
     // doesn't count, the lists load after it right after a page change.
-    await waitFor(() => menuItems(menu).length > 0 || findCreateControl(menu), 8000);
+    await waitFor(() => menuItems(menu).length > 0 || findCreateControl(menu, true), 8000);
     await sleep(400);
     return { btn, menu };
   }

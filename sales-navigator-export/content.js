@@ -94,8 +94,21 @@
       ],
       // Time in role / time at company usually sits in a "metadata" block.
       tenure: [
-        '[data-anonymize="job-title"] ~ *',
+        '[data-anonymize="job-title"]',
         '.artdeco-entity-lockup__metadata',
+      ],
+      degree: [
+        '.artdeco-entity-lockup__degree',
+        '[class*="degree"]',
+      ],
+      // Sales Navigator's CRM-sync badge ("In CRM" / "Not in CRM")
+      crmBadge: [
+        '[data-x--crm-badge-in-crm]',
+        '[data-x-crm-badge] .artdeco-button__text',
+        '[class*="crm-badge"]',
+      ],
+      blurb: [
+        '[data-anonymize="person-blurb"]',
       ],
 
       // Pagination
@@ -117,11 +130,14 @@
       // "Save search results to a list" flow. All have text-based fallbacks.
       selectAllCheckbox: [
         'input[type="checkbox"][aria-label*="select all" i]',
+        'input[type="checkbox"][id*="select-all" i]',
+        'input[type="checkbox"][id*="multi-selector"][id*="all" i]',
         '.search-results__select-all input[type="checkbox"]',
         '[data-x--select-all] input[type="checkbox"]',
         'thead input[type="checkbox"]',
       ],
       rowCheckbox: [
+        'input[type="checkbox"][id^="multi-selector-checkbox"]',
         'input[type="checkbox"]',
       ],
       saveToListButton: [
@@ -130,6 +146,8 @@
         '[data-control-name*="save_to_list"]',
       ],
       listMenu: [
+        '[id^="hue-menu-"]',
+        '[class*="hue-menu"]',
         '.artdeco-dropdown__content--is-open',
         '[class*="save-to-list"][class*="content"]',
         '[role="menu"]',
@@ -287,7 +305,9 @@
     // Primary: DOM-agnostic climb from every lead link.
     const seen = new Set();
     let rows = [];
+    const container = getScrollContainer();
     for (const a of qa(document, S.leadLink)) {
+      if (container && !container.contains(a)) continue;
       const row = rowForLink(a);
       if (!seen.has(row)) { seen.add(row); rows.push(row); }
     }
@@ -352,6 +372,9 @@
     }
     const profileUrl = normalizeProfileUrl(link && link.getAttribute('href'));
     const companyUrl = normalizeProfileUrl(companyLinkEl && companyLinkEl.getAttribute('href'));
+    const degree = txt(q(row, S.degree)).replace(/[^0-9a-z+]/gi, '');
+    const inCrm = txt(q(row, S.crmBadge));
+    const blurb = txt(q(row, S.blurb));
 
     // Keep the row's full text so nothing is lost if a field selector breaks.
     const rawText = (row.innerText || row.textContent || '')
@@ -369,6 +392,9 @@
       company_url: companyUrl,
       location: locationStr,
       tenure,
+      degree,
+      in_crm: inCrm,
+      blurb,
       profile_url: profileUrl,
       page: pageNum,
       scraped_at: new Date().toISOString(),
@@ -555,27 +581,60 @@
     // Prefer a menu that is not an ancestor of the trigger (i.e. a popover).
     return menus.find((m) => !anchor || !m.contains(anchor)) || menus[0] || null;
   }
+  const ROW_SEL = 'label, li, [role="menuitem"], [role="option"], [role="menuitemcheckbox"], [role="menuitemradio"], button, a, [role="button"]';
+  function rowOf(el) {
+    return el.closest(ROW_SEL) || el;
+  }
   function menuItems(menu) {
     const S = CONFIG.selectors;
     const els = Array.from(menu.querySelectorAll(S.listMenuItem.join(','))).filter((el) => visible(el) && txt(el));
+    // Rows that own a checkbox/radio count even if they're plain <div>s.
+    for (const box of menu.querySelectorAll('input[type="checkbox"], input[type="radio"]')) {
+      if (!visible(box)) continue;
+      const row = box.closest('label, li, [role], div') || box.parentElement;
+      if (row && txt(row)) els.push(row);
+    }
     return innermost(els);
   }
+  const normName = (t) => t.toLowerCase().replace(/\s+/g, ' ').replace(/\s*\(\d[\d,]*\)\s*$/, '').replace(/\s*·?\s*\d[\d,]*\s*(leads?|members?|people)\s*$/, '').trim();
   function findListItem(menu, name) {
-    const n = name.trim().toLowerCase();
+    const n = normName(name);
+    if (!n) return null;
     const items = menuItems(menu);
-    return (
-      items.find((el) => txt(el).toLowerCase() === n) ||
-      items.find((el) => txt(el).toLowerCase().replace(/\s*\(\d+\)$/, '') === n) ||
-      items.find((el) => txt(el).toLowerCase().startsWith(n)) ||
-      null
-    );
+    const hit =
+      items.find((el) => normName(txt(el)) === n) ||
+      items.find((el) => normName(txt(el)).startsWith(n)) ||
+      null;
+    if (hit) return hit;
+    // Text scan: any visible descendant whose own text is the name, then its row.
+    const all = Array.from(menu.querySelectorAll('*')).filter((el) => visible(el) && el.children.length <= 2 && normName(txt(el)) === n);
+    const inner = innermost(all);
+    return inner.length ? rowOf(inner[0]) : null;
+  }
+  // The popover we opened, as long as it's still visible; otherwise whatever is open now.
+  function currentMenu(menu) {
+    return menu && visible(menu) ? menu : findOpenMenu();
+  }
+  // If the menu has a search box, filter by the name and look again.
+  async function findListItemWithSearch(menu, name) {
+    let item = findListItem(menu, name);
+    if (item) return { item, menu };
+    const box = findMenuInput(menu);
+    if (!box) return { item: null, menu };
+    box.focus();
+    setInputValue(box, name);
+    await sleep(900);
+    const scope = currentMenu(menu) || menu;
+    await waitFor(() => findListItem(scope, name) || findCreateControl(scope), 3000);
+    return { item: findListItem(scope, name), menu: scope };
   }
   // Pick a list in the menu. If the item wraps a checkbox/radio, toggle that
   // input directly (clicking the label can fire twice and un-tick it) and
   // verify; then press a Save/Done/Apply button if the menu has one.
   async function pickListItem(item, menu) {
     const input = item.querySelector('input[type="checkbox"], input[type="radio"]') ||
-      (item.tagName === 'INPUT' ? item : null);
+      (item.tagName === 'INPUT' ? item : null) ||
+      (item.id && document.querySelector(`input[aria-labelledby="${item.id}"]`)) || null;
     if (input) {
       if (input.checked) {
         // Already ticked for this selection = these leads are already in the
@@ -588,16 +647,48 @@
       item.click();
       await sleep(250);
     }
-    const scope = findOpenMenu() || menu;
+    const scope = currentMenu(menu) || menu;
     const confirmBtn = scope && findByText(scope, 'button, [role="button"]', /^\s*(save|done|apply)\s*$/i);
     if (confirmBtn && !confirmBtn.disabled) { confirmBtn.click(); await sleep(400); }
     return 'picked';
   }
+  // Text of an element for matching purposes: visible text, aria-label, title, placeholder.
+  function labelOf(el) {
+    return [txt(el), el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('placeholder')]
+      .filter(Boolean).join(' | ');
+  }
+  const CREATE_RE = /create|new\s+list|add\s+(a\s+)?(new\s+)?list|\+\s*list|^\s*new\s*$/i;
+  const CLICKABLE = 'button, a, [role="button"], [role="menuitem"], [role="option"], li, label';
   function findCreateControl(menu) {
-    return (
-      findByText(menu, 'button, a, [role="button"], [role="menuitem"], li', /create\s+(a\s+)?(new\s+)?list|new\s+list|\+\s*create/i) ||
-      findByText(document, 'button, a, [role="button"], [role="menuitem"]', /create\s+(a\s+)?(new\s+)?list|new\s+list/i)
-    );
+    const scopes = [menu, document];
+    for (const scope of scopes) {
+      if (!scope) continue;
+      const hits = Array.from(scope.querySelectorAll('button, a, [role="button"], [role="menuitem"], [role="option"], li, label, span, div, p'))
+        .filter((el) => visible(el) && CREATE_RE.test(labelOf(el)) && labelOf(el).length < 80);
+      const inner = innermost(hits);
+      for (const el of inner) {
+        const clickable = el.closest(CLICKABLE) || el;
+        if (visible(clickable)) return clickable;
+      }
+    }
+    return null;
+  }
+  // A text box inside the menu (search lists / new list name).
+  function findMenuInput(menu) {
+    return Array.from(menu.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea')).find(visible) || null;
+  }
+  // What's in the open menu, for the preview report and error snapshots.
+  function menuSnapshot(menu) {
+    const controls = Array.from(menu.querySelectorAll('button, a, [role="button"], [role="menuitem"], [role="option"], input, textarea, label'))
+      .filter(visible)
+      .map((el) => ({
+        el: describe(el),
+        text: txt(el).slice(0, 60),
+        aria: el.getAttribute('aria-label') || '',
+        placeholder: el.getAttribute('placeholder') || '',
+        type: el.getAttribute('type') || '',
+      }));
+    return { controls: controls.slice(0, 60), html: redactedHtml(menu, 5000) };
   }
   async function waitFor(fn, timeoutMs = 6000, step = 200) {
     const start = Date.now();
@@ -615,12 +706,40 @@
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
+  const CONTAINER_SEL = 'div, ul, ol, section, form, nav, aside, [role="menu"], [role="listbox"], [role="dialog"]';
+  function visibleContainers() {
+    return Array.from(document.querySelectorAll(CONTAINER_SEL)).filter(visible);
+  }
+  // Rank a candidate menu: rows with checkboxes and text beat bare boxes.
+  function menuScore(el) {
+    const boxes = el.querySelectorAll('input[type="checkbox"], input[type="radio"]').length;
+    const inputs = el.querySelectorAll('input:not([type="checkbox"]):not([type="radio"]), textarea').length;
+    const textLen = (el.innerText || '').length;
+    return boxes * 10 + inputs * 5 + Math.min(textLen, 400) / 40;
+  }
   async function openListMenu() {
     const btn = findSaveToList();
     if (!btn) throw new Error('"Save to list" button not found (select leads first, or update selectors)');
+    const before = new Set(visibleContainers());
     btn.click();
-    const menu = await waitFor(() => findOpenMenu(btn));
+    const menu = await waitFor(() => {
+      // a. aria-controls / aria-owns points straight at the popover
+      for (const attr of ['aria-controls', 'aria-owns']) {
+        const id = btn.getAttribute(attr);
+        const el = id && document.getElementById(id);
+        if (el && visible(el)) return el;
+      }
+      // b. whatever became visible after the click (outermost new containers)
+      const fresh = visibleContainers().filter((el) => !before.has(el) && !el.contains(btn));
+      const outer = fresh.filter((el) => !fresh.some((o) => o !== el && o.contains(el)));
+      if (outer.length) return outer.sort((a, b) => menuScore(b) - menuScore(a))[0];
+      // c. configured selectors
+      return findOpenMenu(btn);
+    }, 6000);
     if (!menu) throw new Error('"Save to list" menu did not open');
+    // Let the rows render before reading them.
+    await waitFor(() => menuItems(menu).length > 0 || findMenuInput(menu), 5000);
+    await sleep(300);
     return { btn, menu };
   }
   async function closeMenus() {
@@ -630,11 +749,30 @@
   }
   async function createListNamed(menu, name) {
     const S = CONFIG.selectors;
-    const ctl = findCreateControl(menu);
-    if (!ctl) throw new Error(`List "${name}" not in the menu and no "Create new list" control found`);
+    let ctl = findCreateControl(menu);
+    if (!ctl) {
+      // Some menus have a "search or create" box: typing a new name reveals a
+      // "Create <name>" option.
+      const box = findMenuInput(menu);
+      if (box) {
+        box.focus();
+        setInputValue(box, name);
+        await sleep(800);
+        const scope = currentMenu(menu) || menu;
+        const item = findListItem(scope, name);
+        if (item) { await pickListItem(item, scope); await sleep(800); return; }
+        ctl = findCreateControl(scope);
+      }
+    }
+    if (!ctl) {
+      const snap = menuSnapshot(currentMenu(menu) || menu);
+      const err = new Error(`List "${name}" not in the menu and no "Create new list" control found. Menu controls: ${snap.controls.map((c) => c.text || c.aria || c.placeholder || c.el).filter(Boolean).join(' | ') || '(none)'}`);
+      err.snapshot = snap;
+      throw err;
+    }
     ctl.click();
     const input = await waitFor(() => {
-      const scope = findOpenMenu(ctl) || document;
+      const scope = currentMenu(menu) || findOpenMenu(ctl) || document;
       return qa(scope, S.createListInput).find(visible) || qa(document, S.createListInput).find(visible);
     });
     if (!input) throw new Error('Clicked "Create new list" but no name input appeared');
@@ -668,8 +806,13 @@
         const { menu } = await openListMenu();
         report.menuOpened = describe(menu);
         report.menuItems = menuItems(menu).map(txt).slice(0, 40);
-        report.listFound = !!(listName && findListItem(menu, listName));
-        report.createFound = !!findCreateControl(menu);
+        const found = listName ? await findListItemWithSearch(menu, listName) : { item: null, menu };
+        report.listFound = found.item ? describe(found.item) : false;
+        const create = findCreateControl(menu);
+        report.createFound = create ? describe(create) + ` "${labelOf(create).slice(0, 40)}"` : false;
+        const box = findMenuInput(menu);
+        report.menuInput = box ? describe(box) + (box.placeholder ? ` placeholder="${box.placeholder}"` : '') : false;
+        report.menu = menuSnapshot(menu);
       }
     } catch (e) {
       report.error = String(e && e.message ? e.message : e);
@@ -712,8 +855,10 @@
         const sel = await selectAllOnPage();
         if (!sel.selected) { s.error = 'Could not select any leads on this page.'; pushSaveLog(s, s.error); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
 
-        const { menu } = await openListMenu();
-        let item = findListItem(menu, s.listName);
+        const opened = await openListMenu();
+        const found = await findListItemWithSearch(opened.menu, s.listName);
+        const menu = found.menu;
+        let item = found.item;
         let outcome = 'picked';
         if (!item && !s.listCreated && s.pagesDone === 0) {
           // First page of the run and the list doesn't exist yet: create it in
@@ -726,7 +871,7 @@
           await sleep(800);
           // If the menu is still open (or can be re-opened with the selection
           // intact), tick the new list in case creation didn't save it.
-          const stillOpen = findOpenMenu();
+          const stillOpen = currentMenu(menu);
           const menu2 = stillOpen || (findSaveToList() ? (await openListMenu()).menu : null);
           item = menu2 ? findListItem(menu2, s.listName) : null;
           if (item) {
@@ -769,10 +914,13 @@
     } catch (err) {
       const s = await loadSaveState();
       s.error = String(err && err.message ? err.message : err);
+      s.snapshot = err && err.snapshot ? err.snapshot : (findOpenMenu() ? menuSnapshot(findOpenMenu()) : null);
+      s.snapshotVersion = chrome.runtime.getManifest().version;
       pushSaveLog(s, `Error: ${s.error}`);
       s.running = false; s.finishedAt = Date.now();
       await saveSaveState(s);
       await closeMenus();
+      await deselectAllOnPage();
     } finally {
       saveLoopActive = false;
     }

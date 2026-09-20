@@ -346,7 +346,7 @@
   }
 
   const OUTPUT_COLUMNS = [
-    'name', 'title', 'company', 'location', 'profile_url',
+    'name', 'title', 'company', 'location', 'profile_url', 'in_crm',
     'sf_account_name', 'sf_account_id', 'sf_account_owner', 'sf_account_type', 'sf_account_website', 'sf_parent_account',
     'account_is_mine', 'match_tier', 'match_score', 'match_note', 'sf_account_url',
     'sf_contact_exists', 'sf_contact_name', 'sf_contact_owner', 'sf_contact_account', 'sf_contact_id', 'contact_is_mine', 'sf_contact_url',
@@ -397,6 +397,7 @@
         company,
         location: lead.location || '',
         profile_url: lead[p.leadCols.profileUrl] || lead.profile_url || '',
+        in_crm: lead.in_crm || '',
         sf_account_name: acct ? acct.name : '',
         sf_account_id: acct ? acct.id : '',
         sf_account_owner: acct ? acct.owner : '',

@@ -96,6 +96,7 @@ async function refresh() {
   render(s ? { ...s, count: Object.keys(s.leads || {}).length } : null);
 }
 
+let lastSnapshotText = '';
 function renderSave(ss) {
   const running = !!(ss && ss.running);
   $('saveStartBtn').classList.toggle('hidden', running);
@@ -108,13 +109,25 @@ function renderSave(ss) {
       `${running ? 'Running' : ss.error ? 'Stopped with error' : 'Done'}: ${ss.saved} leads saved across ${ss.pagesDone} page${ss.pagesDone === 1 ? '' : 's'}` +
       (ss.totalPages ? ` (page ${ss.page} of ${ss.totalPages})` : '') + (ss.error ? ` — ${ss.error}` : '');
     $('saveOut').textContent = (ss.log || []).slice(-12).join('\n');
+    if (ss.snapshot) {
+      lastSnapshotText = `${ss.error}\n\nMenu controls:\n` +
+        ss.snapshot.controls.map((c) => `  ${c.el} ${c.type ? `[${c.type}] ` : ''}${JSON.stringify(c.text || c.aria || c.placeholder)}`).join('\n') +
+        `\n\nMenu HTML (redacted):\n${ss.snapshot.html}`;
+      $('saveOut').textContent += '\n\n' + lastSnapshotText;
+      $('copySnapshotBtn').classList.remove('hidden');
+    }
     $('saveOut').classList.remove('hidden');
   }
 }
+$('copySnapshotBtn').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(lastSnapshotText); $('copySnapshotBtn').textContent = 'Copied ✓'; }
+  catch (_) { $('copySnapshotBtn').textContent = 'Select & copy the text above'; }
+  setTimeout(() => { $('copySnapshotBtn').textContent = 'Copy menu snapshot'; }, 2000);
+});
 
 // ─── CSV ───────────────────────────────────────────────────────────────────
 const COLUMNS = [
-  'name', 'title', 'company', 'location', 'tenure',
+  'name', 'title', 'company', 'location', 'tenure', 'degree', 'in_crm', 'blurb',
   'profile_url', 'company_url', 'list_name', 'page', 'scraped_at', 'raw_text',
 ];
 function csvEscape(v) {
@@ -218,12 +231,18 @@ $('savePreviewBtn').addEventListener('click', async () => {
       `"Save to list" button: ${r.saveButton || 'NOT found'}`,
       `Menu opened: ${r.menuOpened || 'no'}`,
       `Menu items: ${r.menuItems.length ? r.menuItems.join(' | ') : '(none)'}`,
-      name ? `List "${name}": ${r.listFound ? 'found' : 'not found' + (r.createFound ? ' (Create control found, will create it)' : ' (no Create control found!)')}` : 'Type a list name to check for it.',
+      `Text box in menu: ${r.menuInput || 'none'}`,
+      `Create control: ${r.createFound || 'NOT found'}`,
+      name ? `List "${name}": ${r.listFound ? 'found' : 'not found' + (r.createFound || r.menuInput ? ' (will be created)' : ' (nothing to create it with!)')}` : 'Type a list name to check for it.',
       r.error ? `Error: ${r.error}` : '',
+      r.menu ? `\nMenu controls:\n` + r.menu.controls.map((c) => `  ${c.el} ${c.type ? `[${c.type}] ` : ''}${JSON.stringify(c.text || c.aria || c.placeholder)}`).join('\n') : '',
+      r.menu ? `\nMenu HTML (redacted):\n${r.menu.html}` : '',
     ].filter(Boolean);
+    lastSnapshotText = lines.join('\n');
+    $('copySnapshotBtn').classList.remove('hidden');
     $('saveOut').textContent = lines.join('\n');
     $('saveOut').classList.remove('hidden');
-    const ready = r.selected > 0 && r.saveButton && r.menuOpened && (r.listFound || r.createFound);
+    const ready = r.selected > 0 && r.saveButton && r.menuOpened && (r.listFound || r.createFound || r.menuInput);
     $('saveStatus').textContent = ready ? 'Looks good: all controls found.' : 'Some controls were not found; see below and the README before running.';
   } catch (err) {
     $('saveStatus').textContent = `Preview failed: ${err.message}`;

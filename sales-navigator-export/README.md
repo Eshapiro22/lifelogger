@@ -83,6 +83,9 @@ Notes and caveats:
 | column | notes |
 | --- | --- |
 | `name`, `title`, `company`, `location`, `tenure` | parsed from the row |
+| `degree` | connection degree (1st/2nd/3rd) |
+| `in_crm` | Sales Navigator's CRM-sync badge text, when your org has CRM sync ("In CRM") |
+| `blurb` | the short "about" line under the card, if shown |
 | `profile_url` | Sales Navigator lead URL (tracking params stripped). Used to de-duplicate. |
 | `company_url` | Sales Navigator company/account URL if present |
 | `list_name` | the list's `<h1>` (or the tab title) |

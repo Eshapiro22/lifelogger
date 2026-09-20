@@ -20,10 +20,30 @@
     <div class="bar"><div id="barFill" class="bar-fill"></div></div>
   </section>
 
+  <section class="field">
+    <label for="labelInput">Label for this export <span class="muted">(optional, used as list_name and file name)</span></label>
+    <input type="text" id="labelInput" placeholder="e.g. WB Legal Event" />
+  </section>
+
   <section class="actions">
     <button id="previewBtn" class="secondary">Preview this page</button>
     <button id="startBtn" class="primary">Export all pages</button>
     <button id="stopBtn" class="danger hidden">Stop</button>
+  </section>
+
+  <section id="saveSection" class="card hidden">
+    <div class="card-title">Save all search results to a lead list</div>
+    <p class="muted">Walks every page of this search, selects all leads, and saves them to the list below (created if it doesn't exist). Preview first: it opens the menu and reports what it finds without saving.</p>
+    <div class="field">
+      <input type="text" id="saveListName" placeholder="Lead list name" />
+    </div>
+    <div class="actions">
+      <button id="savePreviewBtn" class="secondary">Preview controls</button>
+      <button id="saveStartBtn" class="primary">Save all pages</button>
+      <button id="saveStopBtn" class="danger hidden">Stop</button>
+    </div>
+    <div id="saveStatus" class="muted"></div>
+    <pre id="saveOut" class="log hidden"></pre>
   </section>
 
   <section class="actions">

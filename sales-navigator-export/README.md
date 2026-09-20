@@ -32,15 +32,46 @@ in `chrome.storage.local` and downloaded as a CSV file.
    on the page, whether it found the **Next** button, and show five sample leads with
    name / title / company / location / profile URL. If names or URLs are blank, fix the
    selectors before exporting (below).
-3. Click **Export all pages**. Keep the tab open and in the foreground. The extension
+3. Optionally type a **label** for the export; it becomes the `list_name` column and the file
+   name (otherwise the page's `<h1>` is used).
+4. Click **Export all pages**. Keep the tab open and in the foreground. The extension
    scrolls each page to force all rows to render, scrapes them, waits a random 2.5–5 s,
    clicks Next, and repeats until Next is disabled. Progress is shown in the popup and on
    the toolbar badge.
-4. Click **Download CSV**. You can also download partway through; **Stop** pauses it and
+5. Click **Download CSV**. You can also download partway through; **Stop** pauses it and
    **Export all pages** on the same list offers to resume from the current page.
 
 If the page reloads mid-export the content script picks the export back up automatically
 as long as you're still on the same list.
+
+## Saving a whole search to a lead list
+
+Sales Navigator only lets you select the 25 leads on the current page, so building a list from
+a big search means clicking through every page by hand. On a people-search page the popup shows
+**Save all search results to a lead list**:
+
+1. Type the list name. If the list doesn't exist yet it will be created on the first page.
+2. Click **Preview controls**. This selects the leads on the current page, opens the
+   "Save to list" menu, and reports what it found (select-all checkbox, the button, the menu
+   items, whether your list or a "Create new list" control is there), then deselects and closes
+   the menu without saving anything. Don't run the real thing until the preview says all
+   controls were found.
+3. Click **Save all pages**. It walks every page: select all → Save to list → tick your list →
+   Next, with the same random pacing as the exporter. Progress and a log show in the popup;
+   **Stop** halts after the current page. If a page reloads mid-run it resumes on its own.
+4. Open the list and run **Export all pages** on it.
+
+Notes and caveats:
+
+- A menu item that is already ticked means those leads are already in the list; the extension
+  leaves it alone (clicking would remove them) and logs "already in list".
+- I have not verified the current Sales Navigator lead-list size cap or whether "select all"
+  covers only rendered rows; the extension scrolls the page fully before selecting to be safe.
+- This automates *write* actions on LinkedIn, which is a bigger Terms-of-Service exposure than
+  reading. Same advice as above: keep the pacing, don't run huge searches back to back.
+- The controls are found by aria-labels and visible text ("Save to list", "Create new list",
+  "Create"/"Save"/"Done"); the selector lists are `selectAllCheckbox`, `saveToListButton`,
+  `listMenu`, `listMenuItem`, `createListInput` in `CONFIG.selectors`.
 
 ## CSV columns
 

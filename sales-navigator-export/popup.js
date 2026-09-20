@@ -69,6 +69,8 @@ function render(state) {
   $('log').scrollTop = $('log').scrollHeight;
 
   const supported = pageInfo && pageInfo.supported;
+  $('saveSection').classList.toggle('hidden', !(pageInfo && pageInfo.isSearch));
+  renderSave(pageInfo && pageInfo.saveState);
   $('startBtn').classList.toggle('hidden', running);
   $('stopBtn').classList.toggle('hidden', !running);
   $('startBtn').disabled = !supported;
@@ -89,8 +91,24 @@ function render(state) {
 }
 
 async function refresh() {
-  const { [STORAGE_KEY]: s } = await chrome.storage.local.get(STORAGE_KEY);
+  const { [STORAGE_KEY]: s, snx_save_state: ss } = await chrome.storage.local.get([STORAGE_KEY, 'snx_save_state']);
+  if (pageInfo) pageInfo.saveState = ss || null;
   render(s ? { ...s, count: Object.keys(s.leads || {}).length } : null);
+}
+
+function renderSave(ss) {
+  const running = !!(ss && ss.running);
+  $('saveStartBtn').classList.toggle('hidden', running);
+  $('saveStopBtn').classList.toggle('hidden', !running);
+  $('savePreviewBtn').disabled = running;
+  if (ss && ss.listName && !$('saveListName').value) $('saveListName').value = ss.listName;
+  if (ss && (ss.pagesDone || ss.error || running)) {
+    $('saveStatus').textContent =
+      `${running ? 'Running' : ss.error ? 'Stopped with error' : 'Done'}: ${ss.saved} leads saved across ${ss.pagesDone} page${ss.pagesDone === 1 ? '' : 's'}` +
+      (ss.totalPages ? ` (page ${ss.page} of ${ss.totalPages})` : '') + (ss.error ? ` — ${ss.error}` : '');
+    $('saveOut').textContent = (ss.log || []).slice(-12).join('\n');
+    $('saveOut').classList.remove('hidden');
+  }
 }
 
 // ─── CSV ───────────────────────────────────────────────────────────────────
@@ -162,7 +180,7 @@ $('startBtn').addEventListener('click', async () => {
     reset = !confirm(`You already have ${Object.keys(s.leads).length} leads from this list.\n\nOK = keep them and continue from the current page\nCancel = start over from scratch`);
   }
   try {
-    await sendToTab({ type: 'snx:start', reset });
+    await sendToTab({ type: 'snx:start', reset, label: $('labelInput').value });
   } catch (err) {
     showNotice(`Could not start: ${err.message}. Reload the LinkedIn tab and try again.`, 'error');
   }
@@ -178,7 +196,59 @@ $('stopBtn').addEventListener('click', async () => {
   refresh();
 });
 
+$('labelInput').addEventListener('change', async () => {
+  try { await sendToTab({ type: 'snx:set-label', label: $('labelInput').value }); } catch (_) {}
+  refresh();
+});
+
 $('downloadBtn').addEventListener('click', download);
+
+// ─── save-all-search-results-to-list ───────────────────────────────────────
+$('savePreviewBtn').addEventListener('click', async () => {
+  const name = $('saveListName').value.trim();
+  $('savePreviewBtn').disabled = true;
+  $('saveStatus').textContent = 'Previewing… (selects leads and opens the menu, saves nothing)';
+  try {
+    const { report: r } = await sendToTab({ type: 'snx:save-preview', listName: name });
+    const lines = [
+      `Rows on page: ${r.rows}`,
+      `Select-all checkbox: ${r.selectAll || 'NOT found'} → selected ${r.selected} (${r.selectMethod || 'n/a'})`,
+      `"Save to list" button: ${r.saveButton || 'NOT found'}`,
+      `Menu opened: ${r.menuOpened || 'no'}`,
+      `Menu items: ${r.menuItems.length ? r.menuItems.join(' | ') : '(none)'}`,
+      name ? `List "${name}": ${r.listFound ? 'found' : 'not found' + (r.createFound ? ' (Create control found, will create it)' : ' (no Create control found!)')}` : 'Type a list name to check for it.',
+      r.error ? `Error: ${r.error}` : '',
+    ].filter(Boolean);
+    $('saveOut').textContent = lines.join('\n');
+    $('saveOut').classList.remove('hidden');
+    const ready = r.selected > 0 && r.saveButton && r.menuOpened && (r.listFound || r.createFound);
+    $('saveStatus').textContent = ready ? 'Looks good: all controls found.' : 'Some controls were not found; see below and the README before running.';
+  } catch (err) {
+    $('saveStatus').textContent = `Preview failed: ${err.message}`;
+  } finally {
+    $('savePreviewBtn').disabled = false;
+  }
+});
+
+$('saveStartBtn').addEventListener('click', async () => {
+  const name = $('saveListName').value.trim();
+  if (!name) { $('saveStatus').textContent = 'Type a lead list name first.'; return; }
+  if (!confirm(`Save every lead in this search to the list "${name}"?\n\nThis clicks through all pages and saves for real. Keep the tab in the foreground.`)) return;
+  try {
+    await sendToTab({ type: 'snx:save-start', listName: name, reset: true });
+  } catch (err) {
+    $('saveStatus').textContent = `Could not start: ${err.message}`;
+  }
+  refresh();
+});
+
+$('saveStopBtn').addEventListener('click', async () => {
+  try { await sendToTab({ type: 'snx:save-stop' }); } catch (_) {
+    const { snx_save_state: ss } = await chrome.storage.local.get('snx_save_state');
+    if (ss) { ss.running = false; await chrome.storage.local.set({ snx_save_state: ss }); }
+  }
+  refresh();
+});
 
 $('diagBtn').addEventListener('click', async () => {
   try {
@@ -207,10 +277,10 @@ $('clearBtn').addEventListener('click', async () => {
 
 // Live updates while the popup is open.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[STORAGE_KEY]) refresh();
+  if (area === 'local' && (changes[STORAGE_KEY] || changes.snx_save_state)) refresh();
 });
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && msg.type === 'snx:progress') refresh();
+  if (msg && (msg.type === 'snx:progress' || msg.type === 'snx:save-progress')) refresh();
 });
 
 (async function init() {

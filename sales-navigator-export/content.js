@@ -114,6 +114,35 @@
         '.artdeco-pagination__indicator--number[aria-current]',
       ],
 
+      // "Save search results to a list" flow. All have text-based fallbacks.
+      selectAllCheckbox: [
+        'input[type="checkbox"][aria-label*="select all" i]',
+        '.search-results__select-all input[type="checkbox"]',
+        '[data-x--select-all] input[type="checkbox"]',
+        'thead input[type="checkbox"]',
+      ],
+      rowCheckbox: [
+        'input[type="checkbox"]',
+      ],
+      saveToListButton: [
+        'button[aria-label*="save to list" i]',
+        'button[class*="save-to-list"]',
+        '[data-control-name*="save_to_list"]',
+      ],
+      listMenu: [
+        '.artdeco-dropdown__content--is-open',
+        '[class*="save-to-list"][class*="content"]',
+        '[role="menu"]',
+        '[role="listbox"]',
+        '[role="dialog"]',
+      ],
+      listMenuItem: [
+        '[role="menuitem"]', '[role="option"]', '[role="menuitemcheckbox"]', 'label', 'button', 'li',
+      ],
+      createListInput: [
+        'input[type="text"]', 'input:not([type])', 'textarea',
+      ],
+
       // List title (for the list_name column)
       listTitle: [
         'h1',
@@ -446,6 +475,291 @@
     return false;
   }
 
+  // ─── Save all search results to a lead list ──────────────────────────────
+  const SAVE_KEY = 'snx_save_state';
+  const visible = (el) => !!el && el.getClientRects().length > 0;
+  function findByText(root, tags, re) {
+    for (const el of root.querySelectorAll(tags)) {
+      if (visible(el) && re.test(txt(el))) return el;
+    }
+    return null;
+  }
+  // Prefer the innermost element whose text matches (a <li> wrapping a <label>
+  // wrapping the text all "match"; we want the label).
+  function findAllByText(root, tags, re) {
+    return Array.from(root.querySelectorAll(tags)).filter((el) => visible(el) && re.test(txt(el)));
+  }
+  function innermost(els) {
+    return els.filter((el) => !els.some((o) => o !== el && el.contains(o)));
+  }
+
+  function findSelectAll() {
+    const S = CONFIG.selectors;
+    const cb = qa(document, S.selectAllCheckbox).find(visible);
+    if (cb) return cb;
+    // Fallback: the last visible checkbox that appears before the first lead
+    // card in document order (the header "select all" box).
+    const firstLead = q(document, S.leadLink);
+    if (!firstLead) return null;
+    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"]')).filter(visible);
+    const before = boxes.filter((b) => b.compareDocumentPosition(firstLead) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return before.length ? before[before.length - 1] : null;
+  }
+  function rowCheckboxes() {
+    return findRows().map((r) => q(r, CONFIG.selectors.rowCheckbox)).filter(visible);
+  }
+  function selectedCount() {
+    return rowCheckboxes().filter((cb) => cb.checked).length;
+  }
+  async function toggleCheckbox(cb, want) {
+    if (cb.checked === want) return true;
+    cb.click();
+    await sleep(250);
+    if (cb.checked !== want) {
+      // Some UIs listen on the label / wrapper rather than the input.
+      const label = cb.closest('label') || (cb.id && document.querySelector(`label[for="${cb.id}"]`));
+      if (label) { label.click(); await sleep(250); }
+    }
+    return cb.checked === want;
+  }
+  async function selectAllOnPage() {
+    const master = findSelectAll();
+    if (master) {
+      await toggleCheckbox(master, true);
+      await sleep(400);
+      const n = selectedCount();
+      if (n > 0) return { method: 'select-all', selected: n };
+    }
+    // Fallback: tick every row checkbox individually.
+    let n = 0;
+    for (const cb of rowCheckboxes()) if (await toggleCheckbox(cb, true)) n++;
+    return { method: master ? 'per-row (select-all did nothing)' : 'per-row (no select-all found)', selected: n };
+  }
+  async function deselectAllOnPage() {
+    const master = findSelectAll();
+    if (master && master.checked) await toggleCheckbox(master, false);
+    for (const cb of rowCheckboxes()) if (cb.checked) await toggleCheckbox(cb, false);
+  }
+
+  function findSaveToList() {
+    const S = CONFIG.selectors;
+    return (
+      qa(document, S.saveToListButton).find(visible) ||
+      findByText(document, 'button, a, [role="button"]', /^\s*save to list\s*$/i) ||
+      findByText(document, 'button, a, [role="button"]', /save to list/i)
+    );
+  }
+  function findOpenMenu(anchor) {
+    const S = CONFIG.selectors;
+    const menus = qa(document, S.listMenu).filter(visible);
+    // Prefer a menu that is not an ancestor of the trigger (i.e. a popover).
+    return menus.find((m) => !anchor || !m.contains(anchor)) || menus[0] || null;
+  }
+  function menuItems(menu) {
+    const S = CONFIG.selectors;
+    const els = Array.from(menu.querySelectorAll(S.listMenuItem.join(','))).filter((el) => visible(el) && txt(el));
+    return innermost(els);
+  }
+  function findListItem(menu, name) {
+    const n = name.trim().toLowerCase();
+    const items = menuItems(menu);
+    return (
+      items.find((el) => txt(el).toLowerCase() === n) ||
+      items.find((el) => txt(el).toLowerCase().replace(/\s*\(\d+\)$/, '') === n) ||
+      items.find((el) => txt(el).toLowerCase().startsWith(n)) ||
+      null
+    );
+  }
+  // Pick a list in the menu. If the item wraps a checkbox/radio, toggle that
+  // input directly (clicking the label can fire twice and un-tick it) and
+  // verify; then press a Save/Done/Apply button if the menu has one.
+  async function pickListItem(item, menu) {
+    const input = item.querySelector('input[type="checkbox"], input[type="radio"]') ||
+      (item.tagName === 'INPUT' ? item : null);
+    if (input) {
+      if (input.checked) {
+        // Already ticked for this selection = these leads are already in the
+        // list. Clicking would remove them, so leave it.
+        return 'already-in-list';
+      }
+      input.click(); await sleep(250);
+      if (!input.checked) { item.click(); await sleep(250); }
+    } else {
+      item.click();
+      await sleep(250);
+    }
+    const scope = findOpenMenu() || menu;
+    const confirmBtn = scope && findByText(scope, 'button, [role="button"]', /^\s*(save|done|apply)\s*$/i);
+    if (confirmBtn && !confirmBtn.disabled) { confirmBtn.click(); await sleep(400); }
+    return 'picked';
+  }
+  function findCreateControl(menu) {
+    return (
+      findByText(menu, 'button, a, [role="button"], [role="menuitem"], li', /create\s+(a\s+)?(new\s+)?list|new\s+list|\+\s*create/i) ||
+      findByText(document, 'button, a, [role="button"], [role="menuitem"]', /create\s+(a\s+)?(new\s+)?list|new\s+list/i)
+    );
+  }
+  async function waitFor(fn, timeoutMs = 6000, step = 200) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const v = fn();
+      if (v) return v;
+      await sleep(step);
+    }
+    return null;
+  }
+  function setInputValue(input, value) {
+    const proto = input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  async function openListMenu() {
+    const btn = findSaveToList();
+    if (!btn) throw new Error('"Save to list" button not found (select leads first, or update selectors)');
+    btn.click();
+    const menu = await waitFor(() => findOpenMenu(btn));
+    if (!menu) throw new Error('"Save to list" menu did not open');
+    return { btn, menu };
+  }
+  async function closeMenus() {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.body.click();
+    await sleep(300);
+  }
+  async function createListNamed(menu, name) {
+    const S = CONFIG.selectors;
+    const ctl = findCreateControl(menu);
+    if (!ctl) throw new Error(`List "${name}" not in the menu and no "Create new list" control found`);
+    ctl.click();
+    const input = await waitFor(() => {
+      const scope = findOpenMenu(ctl) || document;
+      return qa(scope, S.createListInput).find(visible) || qa(document, S.createListInput).find(visible);
+    });
+    if (!input) throw new Error('Clicked "Create new list" but no name input appeared');
+    input.focus();
+    setInputValue(input, name);
+    await sleep(300);
+    const scope = input.closest('[role="dialog"], form, [class*="dropdown"], [class*="modal"]') || document;
+    const submit =
+      findByText(scope, 'button, [role="button"]', /^\s*(create|save|done|add)\s*$/i) ||
+      findByText(document, 'button, [role="button"]', /^\s*(create|save|done|add)(\s+list)?\s*$/i);
+    if (submit && !submit.disabled) submit.click();
+    else input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, bubbles: true }));
+    await sleep(1200);
+  }
+
+  // Dry run: touches the UI (selects, opens the menu) but saves nothing, then
+  // puts everything back. Returns what it found so the popup can show it.
+  async function previewSaveFlow(listName) {
+    const report = { listName, rows: 0, selectAll: null, selected: 0, saveButton: false, menuOpened: false, menuItems: [], listFound: false, createFound: false, error: null };
+    try {
+      await waitForRows();
+      report.rows = (await scrollToRenderAll()).length;
+      const master = findSelectAll();
+      report.selectAll = master ? describe(master) : null;
+      const sel = await selectAllOnPage();
+      report.selected = sel.selected;
+      report.selectMethod = sel.method;
+      const btn = findSaveToList();
+      report.saveButton = btn ? describe(btn) : false;
+      if (btn) {
+        const { menu } = await openListMenu();
+        report.menuOpened = describe(menu);
+        report.menuItems = menuItems(menu).map(txt).slice(0, 40);
+        report.listFound = !!(listName && findListItem(menu, listName));
+        report.createFound = !!findCreateControl(menu);
+      }
+    } catch (e) {
+      report.error = String(e && e.message ? e.message : e);
+    } finally {
+      await closeMenus();
+      await deselectAllOnPage();
+    }
+    return report;
+  }
+
+  async function loadSaveState() {
+    const { [SAVE_KEY]: s } = await chrome.storage.local.get(SAVE_KEY);
+    return s || { running: false, searchKey: null, listName: '', page: 0, totalPages: null, pagesDone: 0, saved: 0, log: [], error: null, finishedAt: null };
+  }
+  async function saveSaveState(s) {
+    await chrome.storage.local.set({ [SAVE_KEY]: s });
+    chrome.runtime.sendMessage({ type: 'snx:save-progress' }).catch(() => {});
+  }
+  function pushSaveLog(s, msg) {
+    s.log.push(`${new Date().toLocaleTimeString()}  ${msg}`);
+    if (s.log.length > 200) s.log.shift();
+    log('[save]', msg);
+  }
+
+  let saveLoopActive = false;
+  async function runSaveToList() {
+    if (saveLoopActive) return;
+    saveLoopActive = true;
+    try {
+      for (let guard = 0; guard < CONFIG.maxPages; guard++) {
+        const s = await loadSaveState();
+        if (!s.running) return;
+        const rows0 = await waitForRows();
+        if (!rows0.length) { s.error = 'No lead rows found on this page.'; pushSaveLog(s, s.error); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+        const rows = await scrollToRenderAll();
+        const pageNum = readCurrentPageOrNull() ?? (s.page || 0) + 1;
+        s.page = pageNum;
+        s.totalPages = readTotalPages() || s.totalPages;
+
+        const sel = await selectAllOnPage();
+        if (!sel.selected) { s.error = 'Could not select any leads on this page.'; pushSaveLog(s, s.error); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+
+        const { menu } = await openListMenu();
+        let item = findListItem(menu, s.listName);
+        if (!item) {
+          pushSaveLog(s, `List "${s.listName}" not found in menu; creating it.`);
+          await createListNamed(menu, s.listName);
+          // Some UIs save the selection to the new list immediately; others
+          // need the list picked afterwards. Re-open and pick if it's there.
+          await sleep(800);
+          const stillOpen = findOpenMenu();
+          const menu2 = stillOpen || (findSaveToList() ? (await openListMenu()).menu : null);
+          item = menu2 ? findListItem(menu2, s.listName) : null;
+        }
+        let outcome = 'picked';
+        if (item) {
+          outcome = await pickListItem(item, menu);
+          await sleep(1500);
+        } else {
+          pushSaveLog(s, 'Could not find the list in the menu after creating it; assuming the create step saved the selection.');
+        }
+        await closeMenus();
+        s.saved += sel.selected;
+        s.pagesDone += 1;
+        pushSaveLog(s, `Page ${pageNum}${s.totalPages ? ` of ${s.totalPages}` : ''}: ${outcome === 'already-in-list' ? 'already in list' : 'saved'} ${sel.selected} leads (${sel.method}). Total ${s.saved}.`);
+        await saveSaveState(s);
+
+        const nextBtn = findNextButton();
+        if (nextIsDisabled(nextBtn)) { pushSaveLog(s, 'Reached last page. Done.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+        const prevUrl = location.href;
+        const prevFirstKey = scrapeRow(rows[0], pageNum).key;
+        nextBtn.scrollIntoView({ block: 'center' });
+        await sleep(300);
+        nextBtn.click();
+        const changed = await waitForPageChange(prevFirstKey, prevUrl);
+        if (!changed) { pushSaveLog(s, 'Clicked Next but the page did not change; stopping.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+        await randDelay();
+      }
+    } catch (err) {
+      const s = await loadSaveState();
+      s.error = String(err && err.message ? err.message : err);
+      pushSaveLog(s, `Error: ${s.error}`);
+      s.running = false; s.finishedAt = Date.now();
+      await saveSaveState(s);
+      await closeMenus();
+    } finally {
+      saveLoopActive = false;
+    }
+  }
+
   // ─── diagnostics ─────────────────────────────────────────────────────────
   // Structure only: text nodes become "…", record ids in hrefs become "ID",
   // so the report can be shared without leaking lead data.
@@ -605,10 +919,34 @@
           sendResponse({
             ok: true,
             supported: isSupportedPage(),
+            isSearch: location.pathname.startsWith('/sales/search/'),
             listKey: listKeyFromLocation(),
             listName: readListName(),
             state: summarize(s),
+            saveState: await loadSaveState(),
           });
+          break;
+        }
+        case 'snx:save-preview': {
+          sendResponse({ ok: true, report: await previewSaveFlow(msg.listName || '') });
+          break;
+        }
+        case 'snx:save-start': {
+          const s = await loadSaveState();
+          const key = listKeyFromLocation();
+          if (s.searchKey !== key || msg.reset) { s.log = []; s.page = 0; s.totalPages = null; s.pagesDone = 0; s.saved = 0; }
+          s.searchKey = key; s.listName = msg.listName; s.running = true; s.error = null; s.finishedAt = null;
+          pushSaveLog(s, `Saving all results of ${key} to list "${msg.listName}"`);
+          await saveSaveState(s);
+          runSaveToList();
+          sendResponse({ ok: true });
+          break;
+        }
+        case 'snx:save-stop': {
+          const s = await loadSaveState();
+          s.running = false; pushSaveLog(s, 'Stop requested…');
+          await saveSaveState(s);
+          sendResponse({ ok: true });
           break;
         }
         case 'snx:diagnose': {
@@ -628,6 +966,13 @@
           });
           break;
         }
+        case 'snx:set-label': {
+          const s = await loadState();
+          s.listName = (msg.label || '').trim() || readListName();
+          await saveState(s);
+          sendResponse({ ok: true });
+          break;
+        }
         case 'snx:start': {
           const s = await loadState();
           const key = listKeyFromLocation();
@@ -640,6 +985,7 @@
             s.listName = '';
           }
           s.listKey = key;
+          if (msg.label && msg.label.trim()) s.listName = msg.label.trim();
           s.running = true;
           s.error = null;
           s.finishedAt = null;
@@ -674,6 +1020,12 @@
       log('Resuming export after page load');
       await sleep(1500);
       runExport();
+    }
+    const ss = await loadSaveState();
+    if (ss.running && ss.searchKey === listKeyFromLocation()) {
+      log('Resuming save-to-list after page load');
+      await sleep(1500);
+      runSaveToList();
     }
   })();
 })();

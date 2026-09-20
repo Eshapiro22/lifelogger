@@ -35,8 +35,9 @@ For the `research` step you need an Anthropic API key: `export ANTHROPIC_API_KEY
 **Option A — CSV export (no API access needed).** In Salesforce, build a report or list view
 of your accounts and export it as CSV. Include at least these columns:
 `Account ID` (the 18-character ID — required for Merge/Delete requests), `Account Name`,
-`Website`, `Industry`, `Billing Country`, `Billing City`, `Type`, `Last Activity`,
-`Last Modified Date`. Extra columns are kept but ignored. Report footers are skipped.
+`Website`, `Phone`, `Billing Street`, `Billing City`, `Billing Zip/Postal Code`, `Billing Country`,
+`Industry`, `Type`, `Parent Account`, `Last Activity`, `Last Modified Date`. Extra columns are
+kept but ignored; checks for columns that aren't in the export are skipped. Report footers are skipped.
 
 ```bash
 node src/cli.mjs scan --csv ~/Downloads/my-accounts.csv
@@ -57,7 +58,8 @@ Or set `SF_INSTANCE_URL` and `SF_ACCESS_TOKEN` directly.
 
 | kind               | signal                                                                 | proposal          |
 |--------------------|------------------------------------------------------------------------|-------------------|
-| `duplicate`        | same name after stripping Inc/Ltd/GmbH/… and punctuation, or same website domain | **Merge** (picks the richer / more recently active record as master) |
+| `duplicate`        | same name after stripping Inc/Ltd/GmbH/… and punctuation; or same website domain / phone / street address **and** overlapping names. A second matcher agreeing raises confidence. | **Merge** (picks the richer / more recently active record as master) |
+| `same_domain` / `same_phone` / `same_address` | same domain, phone, or address but unrelated names — often a subsidiary, shared switchboard, or office tower | Merge proposal at low confidence; review carefully |
 | `suspicious_name`  | "test", "do not use", "duplicate", "old", ALL CAPS, stray spaces        | Mass Update row   |
 | `missing_field`    | missing website / industry / billing country (configurable)             | Mass Update row   |
 | `bad_website`      | website value isn't a URL                                               | Mass Update row   |

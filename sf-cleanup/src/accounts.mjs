@@ -22,6 +22,9 @@ const HEADER_MAP = {
   type: ["type", "account type"],
   owner: ["account owner", "owner", "owner name", "owner.name"],
   parentId: ["parent account id", "parentid", "parent id"],
+  phone: ["phone", "account phone", "billing phone", "main phone", "phone number"],
+  street: ["billing street", "billingstreet", "billing address", "street", "address", "billing address line 1"],
+  postalCode: ["billing zip/postal code", "billing postal code", "billingpostalcode", "zip", "postal code", "zip/postal code", "billing zip"],
   parentName: ["parent account", "parent account name", "parent.name"],
   employees: ["employees", "numberofemployees", "number of employees"],
   revenue: ["annual revenue", "annualrevenue"],
@@ -62,6 +65,9 @@ export async function loadAccountsFromCsv(path) {
       country: get("country"),
       city: get("city"),
       state: get("state"),
+      phone: get("phone"),
+      street: get("street"),
+      postalCode: get("postalCode"),
       type: get("type"),
       owner: get("owner"),
       parentId: get("parentId") || null,
@@ -106,7 +112,7 @@ export async function resolveSalesforceAuth({ org } = {}) {
 }
 
 export const DEFAULT_SOQL =
-  "SELECT Id, Name, Website, Industry, BillingCountry, BillingCity, BillingState, Type, Owner.Name, ParentId, " +
+  "SELECT Id, Name, Website, Phone, Industry, BillingStreet, BillingCity, BillingState, BillingPostalCode, BillingCountry, Type, Owner.Name, ParentId, " +
   "Parent.Name, NumberOfEmployees, AnnualRevenue, LastActivityDate, LastModifiedDate, CreatedDate " +
   "FROM Account WHERE OwnerId = :me AND IsDeleted = false ORDER BY Name";
 
@@ -143,6 +149,9 @@ export async function loadAccountsFromSalesforce({ org, soql = DEFAULT_SOQL, api
     country: r.BillingCountry || "",
     city: r.BillingCity || "",
     state: r.BillingState || "",
+    phone: r.Phone || "",
+    street: r.BillingStreet || "",
+    postalCode: r.BillingPostalCode || "",
     type: r.Type || "",
     owner: r.Owner?.Name || "",
     parentId: r.ParentId || null,

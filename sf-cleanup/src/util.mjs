@@ -112,3 +112,32 @@ export function daysSince(dateStr) {
 }
 
 export function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+/** Digits only; drop a leading country code 1 on 11-digit North American numbers. Returns "" if too short. */
+export function normalizePhone(v) {
+  if (!v) return "";
+  let d = String(v).replace(/\D/g, "");
+  // Drop extensions typed as "x123" / "ext 123" — take digits before the marker.
+  const m = String(v).match(/^(.*?)(?:\s*(?:x|ext\.?|extension)\s*\d+)\s*$/i);
+  if (m) d = m[1].replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) d = d.slice(1);
+  return d.length >= 7 ? d : "";
+}
+
+const STREET_WORDS = { street: "st", avenue: "ave", boulevard: "blvd", road: "rd", drive: "dr", suite: "ste", floor: "fl", north: "n", south: "s", east: "e", west: "w", rue: "rue", boul: "blvd", chemin: "ch" };
+/** Key for "same physical address": street line + postal code (or city when no postal code). */
+export function normalizeAddress({ street, postalCode, city }) {
+  if (!street) return "";
+  let st = String(street).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
+  st = st.split(/\r?\n/)[0]; // first line only: drop "Suite 200" lines etc.
+  st = st.replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter(Boolean).map((w) => STREET_WORDS[w] || w);
+  // Drop unit/suite numbers so "100 Main St Suite 500" and "100 Main St" match.
+  const out = [];
+  for (let i = 0; i < st.length; i++) {
+    if (["ste", "unit", "apt", "fl", "bureau", "suite"].includes(st[i])) { i += 1; continue; }
+    out.push(st[i]);
+  }
+  const zone = postalCode ? String(postalCode).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5) : city ? String(city).toLowerCase().replace(/[^a-z]/g, "") : "";
+  if (!zone || out.length < 2) return "";
+  return `${out.join(" ")}|${zone}`;
+}

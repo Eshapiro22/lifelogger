@@ -86,11 +86,14 @@ async function cmdScan(config) {
     ...checkRequiredFields(accounts, (rules.requiredFields || ["website", "industry", "country"]).filter((k) => !accounts.columns || accounts.columns.includes(k))),
     ...checkStale(accounts, rules.staleDays),
   ];
+  const data = await loadFindings(FINDINGS_PATH);
   if (rules.checkWebsites !== false && !args["no-web"]) {
     log("Probing websites (dead domains / redirects)...");
     fresh.push(...(await checkWebsites(accounts, { concurrency: rules.websiteConcurrency || 8, log: args.verbose ? log : () => {} })));
+  } else {
+    // Website probes skipped: keep the previous run's website findings rather than dropping them.
+    fresh.push(...data.findings.filter((f) => f.kind.startsWith("website_")));
   }
-  const data = await loadFindings(FINDINGS_PATH);
   // Keep LLM research findings from earlier runs; they are refreshed by `research`, not `scan`.
   const researchKinds = new Set(["acquired", "merged", "renamed", "defunct"]);
   const kept = data.findings.filter((f) => researchKinds.has(f.kind));

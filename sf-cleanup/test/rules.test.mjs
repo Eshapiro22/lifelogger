@@ -139,3 +139,31 @@ test("checkNames flags mojibake with a decoded fix and ignores ALL CAPS", () => 
   assert.equal(f[0].proposal.fields["Account Name"], "CHU de Québec");
   assert.ok(f[1].accountName.startsWith("Aerorepair"));
 });
+
+test("phone and address normalization", async () => {
+  const { normalizePhone, normalizeAddress } = await import("../src/util.mjs");
+  assert.equal(normalizePhone("+1 (617) 555-0100"), "6175550100");
+  assert.equal(normalizePhone("617.555.0100 x204"), "6175550100");
+  assert.equal(normalizePhone("555"), "");
+  assert.equal(normalizeAddress({ street: "100 Main Street, Suite 500", postalCode: "02110-1234" }), "100 main st|02110");
+  assert.equal(normalizeAddress({ street: "100 Main St.\nSuite 500", postalCode: "02110" }), "100 main st|02110");
+  assert.equal(normalizeAddress({ street: "1 Rue Sainte-Catherine O", postalCode: "H2X 1K4" }), "1 rue sainte catherine o|H2X1K");
+  assert.equal(normalizeAddress({ street: "", postalCode: "02110" }), "");
+});
+
+test("duplicates by phone and address, with corroboration boosting confidence", () => {
+  const a = { id: "A", name: "Acme Widgets Inc", phone: "(617) 555-0100", street: "100 Main St", postalCode: "02110" };
+  const b = { id: "B", name: "ACME Widget Co", phone: "617-555-0100", street: "100 Main Street Suite 5", postalCode: "02110" };
+  const c = { id: "C", name: "Totally Different LLC", phone: "1 617 555 0100", street: "", postalCode: "" };
+  const f = checkDuplicates([a, b, c]);
+  const ab = f.find((x) => x.accountId === "B" || x.relatedAccountId === "B");
+  assert.equal(ab.kind, "duplicate");
+  assert.ok(ab.confidence >= 0.75, `expected corroborated confidence, got ${ab.confidence}`);
+  assert.ok(ab.evidence.some((e) => e.startsWith("Also matches on")));
+  const c1 = f.find((x) => x.accountId === "C");
+  assert.equal(c1.kind, "same_phone");
+  assert.equal(c1.severity, "low");
+  // A switchboard number shared by many accounts is ignored
+  const many = Array.from({ length: 9 }, (_, i) => ({ id: String(i), name: `Tenant ${i}`, phone: "4165550000" }));
+  assert.equal(checkDuplicates(many).length, 0);
+});

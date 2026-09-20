@@ -3,56 +3,62 @@
 //   missing required fields, malformed websites, dead/redirecting websites, stale accounts.
 // Each check emits findings in the shape defined in findings.mjs.
 
-import { normalizeName, registrableDomain, looksLikeUrl, pool, daysSince } from "./util.mjs";
+import { normalizeName, registrableDomain, normalizePhone, normalizeAddress, looksLikeUrl, pool, daysSince } from "./util.mjs";
 import { makeFinding } from "./findings.mjs";
 
 const SUSPICIOUS_NAME = /\b(test|dummy|do not use|donotuse|duplicate|dup|delete|deleted|to be deleted|wind[- ]?down|defunct|closed|dissolved|zz+|xx+|sample|unknown|tbd|n\/a|placeholder)\b/i;
 // Names that were UTF-8 but stored as Latin-1 ("QuÃ©bec", "MontrÃ©al").
 const MOJIBAKE = /Ã[\u0080-\u00bf]|Â[\u00a0-\u00bf]|â€/;
 
-export function checkDuplicates(accounts, { maxDomainGroup = 6 } = {}) {
+export function checkDuplicates(accounts, { maxDomainGroup = 6, maxGroup = 6 } = {}) {
   const findings = [];
-  const byName = new Map();
-  const byDomain = new Map();
-  for (const a of accounts) {
-    const n = normalizeName(a.name);
-    if (n) byName.set(n, [...(byName.get(n) || []), a]);
-    const d = registrableDomain(a.website);
-    if (d && !GENERIC_DOMAINS.has(d)) byDomain.set(d, [...(byDomain.get(d) || []), a]);
-  }
+  // Each matcher: key function, label for evidence, and whether a match is strong on its own.
+  const matchers = [
+    { why: "name", key: (a) => normalizeName(a.name), strong: true },
+    { why: "domain", key: (a) => { const d = registrableDomain(a.website); return d && !GENERIC_DOMAINS.has(d) ? d : ""; }, strong: false },
+    { why: "phone", key: (a) => normalizePhone(a.phone), strong: false },
+    { why: "address", key: (a) => normalizeAddress(a), strong: false },
+  ];
   const seenPairs = new Set();
   const isHierarchy = (x, y) => {
     const px = normalizeName(x.parentName), py = normalizeName(y.parentName);
     return (px && px === normalizeName(y.name)) || (py && py === normalizeName(x.name)) || (x.parentId && x.parentId === y.id) || (y.parentId && y.parentId === x.id);
   };
-  const emit = (group, why) => {
-    if (group.length < 2) return;
-    if (why === "domain" && group.length > maxDomainGroup) return; // shared/generic domain, not duplicates
-    const master = pickMaster(group);
-    for (const dup of group) {
-      if (dup === master) continue;
-      const key = [master.id || master.name, dup.id || dup.name].sort().join("|");
-      if (seenPairs.has(key)) continue;
-      seenPairs.add(key);
-      if (isHierarchy(master, dup)) continue; // already modelled as parent/child in Salesforce
-      let kind = "duplicate", severity = "high", confidence = 0.65;
-      if (why === "domain") {
-        const overlap = nameTokenOverlap(master.name, dup.name);
-        if (overlap) { confidence = 0.6; }
-        else { kind = "same_domain"; severity = "low"; confidence = 0.3; }
+  const shown = { name: (a) => `"${normalizeName(a.name)}"`, domain: (a) => registrableDomain(a.website), phone: (a) => a.phone, address: (a) => `${a.street}${a.postalCode ? ", " + a.postalCode : ""}` };
+  const softNote = { domain: "may be a subsidiary/affiliate rather than a duplicate", phone: "shared switchboard or a subsidiary?", address: "same building; could be a different tenant or a subsidiary" };
+
+  for (const m of matchers) {
+    const groups = new Map();
+    for (const a of accounts) { const k = m.key(a); if (k) groups.set(k, [...(groups.get(k) || []), a]); }
+    const limit = m.why === "domain" ? maxDomainGroup : maxGroup;
+    for (const group of groups.values()) {
+      if (group.length < 2) continue;
+      if (!m.strong && group.length > limit) continue; // shared/generic value (switchboard, office tower, generic domain)
+      const master = pickMaster(group);
+      for (const dup of group) {
+        if (dup === master) continue;
+        const key = [master.id || master.name, dup.id || dup.name].sort().join("|");
+        if (seenPairs.has(key)) continue;
+        seenPairs.add(key);
+        if (isHierarchy(master, dup)) continue; // already modelled as parent/child in Salesforce
+        let kind = "duplicate", severity = "high", confidence = 0.65;
+        if (!m.strong) {
+          if (nameTokenOverlap(master.name, dup.name)) confidence = 0.6;
+          else { kind = `same_${m.why}`; severity = "low"; confidence = 0.3; }
+        }
+        // Corroboration: a second independent matcher agreeing lifts confidence.
+        const corroborating = matchers.filter((o) => o !== m && o.key(master) && o.key(master) === o.key(dup)).map((o) => o.why);
+        if (corroborating.length) { confidence = Math.min(0.95, confidence + 0.15 * corroborating.length); if (kind !== "duplicate") { kind = "duplicate"; severity = "medium"; } }
+        const evidence = [
+          `Same ${m.why} as "${master.name}" (${master.id || "no id"}): ${shown[m.why](dup)}${kind.startsWith("same_") ? ` — names differ; ${softNote[m.why]}` : ""}`,
+          ...(corroborating.length ? [`Also matches on ${corroborating.join(", ")}`] : []),
+          `Proposed master: "${master.name}" (${describeRichness(master)}); disappearing: "${dup.name}" (${describeRichness(dup)})`,
+        ];
+        findings.push(makeFinding({ kind, severity, confidence, account: dup, related: master, evidence,
+          proposal: mergeProposal(master, dup, `Duplicate account (same ${[m.why, ...corroborating].join(" + ")}). Keeping ${master.id || master.name} as master.`) }));
       }
-      const evidence = [
-        why === "name"
-          ? `Same normalized name as "${master.name}" (${master.id || "no id"}): "${normalizeName(dup.name)}"`
-          : `Same website domain as "${master.name}" (${master.id || "no id"}): ${registrableDomain(dup.website)}${kind === "same_domain" ? " — names differ; may be a subsidiary/affiliate rather than a duplicate" : ""}`,
-        `Proposed master: "${master.name}" (${describeRichness(master)}); disappearing: "${dup.name}" (${describeRichness(dup)})`,
-      ];
-      findings.push(makeFinding({ kind, severity, confidence, account: dup, related: master, evidence,
-        proposal: mergeProposal(master, dup, `Duplicate account (same ${why}). Keeping ${master.id || master.name} as master.`) }));
     }
-  };
-  for (const g of byName.values()) emit(g, "name");
-  for (const g of byDomain.values()) emit(g, "domain");
+  }
   return findings;
 }
 
@@ -76,7 +82,7 @@ export function pickMaster(group) {
 }
 function score(a) {
   let s = 0;
-  for (const k of ["website", "industry", "country", "city", "type", "employees", "revenue", "parentId"]) if (a[k]) s += 1;
+  for (const k of ["website", "industry", "country", "city", "type", "employees", "revenue", "parentId", "phone", "street"]) if (a[k]) s += 1;
   const la = daysSince(a.lastActivity);
   if (la != null) s += Math.max(0, 3 - la / 365);
   if (SUSPICIOUS_NAME.test(a.name)) s -= 100; // never keep a placeholder-named record as master

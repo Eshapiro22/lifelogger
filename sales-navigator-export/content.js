@@ -362,12 +362,17 @@
       .filter((n) => !Number.isNaN(n));
     return nums.length ? Math.max(...nums) : null;
   }
-  function readCurrentPage() {
+  // Returns null when neither the pagination pill nor the URL says which page
+  // this is; callers fall back to counting.
+  function readCurrentPageOrNull() {
     const el = q(document, CONFIG.selectors.currentPage);
     const n = parseInt(txt(el), 10);
     if (!Number.isNaN(n)) return n;
     const fromUrl = parseInt(new URL(location.href).searchParams.get('page') || '', 10);
-    return Number.isNaN(fromUrl) ? 1 : fromUrl;
+    return Number.isNaN(fromUrl) ? null : fromUrl;
+  }
+  function readCurrentPage() {
+    return readCurrentPageOrNull() ?? 1;
   }
   function readListName() {
     return txt(q(document, CONFIG.selectors.listTitle)) || document.title;
@@ -416,7 +421,8 @@
         }
 
         const rows = await scrollToRenderAll();
-        const pageNum = readCurrentPage();
+        // Prefer what the page says; otherwise count up from the last page seen.
+        const pageNum = readCurrentPageOrNull() ?? (s.page || 0) + 1;
         s.page = pageNum;
         s.totalPages = readTotalPages() || s.totalPages;
         if (!s.listName) s.listName = readListName();

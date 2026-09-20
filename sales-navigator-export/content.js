@@ -102,8 +102,9 @@
         '[class*="degree"]',
       ],
       // Sales Navigator's CRM-sync badge ("In CRM" / "Not in CRM")
+      crmIn: ['[data-x--crm-badge-in-crm]', '[class*="in-crm-icon"]:not([class*="not-in-crm"])'],
+      crmNotIn: ['[data-x--crm-badge-not-in-crm]', '[class*="not-in-crm-icon"]'],
       crmBadge: [
-        '[data-x--crm-badge-in-crm]',
         '[data-x-crm-badge] .artdeco-button__text',
         '[class*="crm-badge"]',
       ],
@@ -319,7 +320,7 @@
   }
 
   // ─── DOM: text-based field parsing (used when field selectors miss) ──────
-  const JUNK_LINE = /^(1st|2nd|3rd|•|·|save|saved|unsave|message|add to list|view profile|connect|follow|more|see more|…|premium|linkedin member|open link|in your network|\d+\s+(mutual|shared)\s+connections?|\d+\s+(new|recent)\s+.*|list of .*|remove from list)$/i;
+  const JUNK_LINE = /^(1st|2nd|3rd|•|·|save|saved|unsave|message|add to list|save to list|view profile|connect|follow|more|see more|…|premium|linkedin member|open link|in your network|in crm|not in crm|\d+\s+(mutual|shared)\s+connections?|\d+\s+(new|recent)\s+.*|list of .*|remove from list)$/i;
   const DEGREE = /(^|\s)[•·]?\s*(1st|2nd|3rd|3rd\+)(\s|$)/gi;
   const LEGAL_TAIL = /\b(inc|llc|llp|lp|ltd|limited|plc|corp|corporation|co|company|gmbh|ag|sa|bv|pty|pte|s\.?e\.?n\.?c\.?r\.?l|pc|p\.c)\.?$/i;
   function parseFieldsFromText(row, name, known = {}) {
@@ -375,7 +376,8 @@
     const profileUrl = normalizeProfileUrl(link && link.getAttribute('href'));
     const companyUrl = normalizeProfileUrl(companyLinkEl && companyLinkEl.getAttribute('href'));
     const degree = txt(q(row, S.degree)).replace(/[^0-9a-z+]/gi, '');
-    const inCrm = txt(q(row, S.crmBadge));
+    // Yes/No from the badge's own markers; fall back to the badge text.
+    const inCrm = q(row, S.crmIn) ? 'Yes' : q(row, S.crmNotIn) ? 'No' : txt(q(row, S.crmBadge));
     const blurb = txt(q(row, S.blurb));
 
     // Keep the row's full text so nothing is lost if a field selector breaks.

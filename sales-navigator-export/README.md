@@ -84,7 +84,7 @@ Notes and caveats:
 | --- | --- |
 | `name`, `title`, `company`, `location`, `tenure` | parsed from the row |
 | `degree` | connection degree (1st/2nd/3rd) |
-| `in_crm` | Sales Navigator's CRM-sync badge text, when your org has CRM sync ("In CRM") |
+| `in_crm` | `Yes` / `No` from Sales Navigator's CRM-sync badge, when your org has CRM sync. This is LinkedIn's view of whether the *person* exists in your CRM; the reconciliation answers who owns the *account*. |
 | `blurb` | the short "about" line under the card, if shown |
 | `profile_url` | Sales Navigator lead URL (tracking params stripped). Used to de-duplicate. |
 | `company_url` | Sales Navigator company/account URL if present |

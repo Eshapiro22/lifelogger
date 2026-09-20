@@ -5,7 +5,8 @@
  *   node reconcile/cli.mjs \
  *     --leads    sales-navigator-leads.csv \
  *     --accounts salesforce-accounts.csv \
- *     --me       "Ethan Shapiro" \
+ *     [--me       "Ethan Shapiro"] \
+ *     [--my-accounts-only]   the accounts file holds only accounts you own; any match = mine
  *     [--contacts salesforce-contacts.csv] \
  *     [--sf-url   https://yourorg.lightning.force.com] \
  *     [--out      reconciled.csv]
@@ -34,8 +35,9 @@ function parseArgs(argv) {
 }
 
 const args = parseArgs(process.argv.slice(2));
-if (!args.leads || !args.accounts || !args.me) {
-  console.error('Usage: node reconcile/cli.mjs --leads leads.csv --accounts accounts.csv --me "Your Name" [--contacts contacts.csv] [--sf-url https://…] [--out out.csv]');
+const myAccountsOnly = args['my-accounts-only'] === 'true';
+if (!args.leads || !args.accounts || (!args.me && !myAccountsOnly)) {
+  console.error('Usage: node reconcile/cli.mjs --leads leads.csv --accounts accounts.csv (--me "Your Name" | --my-accounts-only) [--contacts contacts.csv] [--sf-url https://…] [--out out.csv]');
   process.exit(1);
 }
 
@@ -58,18 +60,23 @@ const { rows, summary, owners } = M.reconcile({
   leads: leadsCsv.rows, leadCols,
   accounts: acctsCsv.rows, accountCols,
   contacts: contactsCsv ? contactsCsv.rows : null, contactCols,
-  me: args.me,
+  me: args.me || '',
   sfBaseUrl: args['sf-url'] || '',
+  myAccountsOnly,
 });
 
-if (owners.length === 1) {
+if (myAccountsOnly) {
+  // ownership is implied by presence in the file; nothing to cross-check
+} else if (owners.length === 1) {
   console.error(`WARNING: every account in the file is owned by ${owners[0].owner}; the export looks scoped to one owner, so leads at other people's accounts will show as unmatched rather than "not mine".`);
 }
-if (!owners.some((o) => M.normalizePerson(o.owner) === M.normalizePerson(args.me))) {
+if (!myAccountsOnly && !owners.some((o) => M.normalizePerson(o.owner) === M.normalizePerson(args.me))) {
   console.error(`WARNING: "${args.me}" does not appear as an owner in the accounts file. Top owners: ${owners.slice(0, 5).map((o) => `${o.owner} (${o.count})`).join(', ')}`);
 }
 
 const out = args.out || 'reconciled.csv';
 writeFileSync(out, M.toCsv(rows, M.OUTPUT_COLUMNS));
-console.error(`\n${summary.total} leads → ${summary.mine} on my accounts, ${summary.notMine} on others', ${summary.unmatched} unmatched, ${summary.review} need review` +
+console.error(`\n${summary.total} leads → ${summary.mine} on my accounts, ` +
+  (myAccountsOnly ? `${summary.unmatched} not on my accounts` : `${summary.notMine} on others', ${summary.unmatched} unmatched`) +
+  `, ${summary.review} need review` +
   (contactsCsv ? `, ${summary.contactsFound} already in Salesforce as contacts` : '') + `\nWrote ${out}`);

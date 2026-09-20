@@ -101,4 +101,20 @@ assert.equal(soqlContact.account, 'Account.Name');
 assert.equal(soqlContact.owner, 'Owner.Name');
 assert.equal(soqlContact.firstName, 'FirstName');
 
+// my-accounts-only mode: presence in the file == mine, absence == not mine, `me` optional
+const mineOnly = M.reconcile({
+  leads: leads.rows, leadCols,
+  accounts: accts.rows.filter((r) => r['Account Owner'] === 'Ethan Shapiro'), accountCols,
+  contacts: contacts.rows, contactCols, me: '', myAccountsOnly: true,
+});
+const mo = Object.fromEntries(mineOnly.rows.map((r) => [r.name, r]));
+assert.equal(mineOnly.me, 'Ethan Shapiro', 'me inferred from single owner');
+assert.equal(mo['Jane Doe'].account_is_mine, 'Yes');
+assert.equal(mo['Jane Doe'].contact_is_mine, 'Yes', 'inferred me still drives contact ownership');
+assert.equal(mo['John Roe'].account_is_mine, 'No');
+assert.equal(mo['John Roe'].match_note, 'Not one of my accounts');
+assert.equal(mineOnly.summary.mine, 2);
+assert.equal(mineOnly.summary.unmatched, 4);
+assert.equal(mineOnly.summary.notMine, 0);
+
 console.log('all reconcile tests passed');

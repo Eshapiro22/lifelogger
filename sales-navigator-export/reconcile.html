@@ -57,6 +57,11 @@
     <section class="card">
       <h2>4. Who are you?</h2>
       <div class="row">
+        <label class="wide"><input type="checkbox" id="myAccountsOnly" />
+          <b>The accounts file contains only my accounts</b> (a "My accounts" report or an owner-filtered query).
+          Any match counts as mine; no match means "not one of my accounts". Ticked automatically when every account has the same owner.</label>
+      </div>
+      <div class="row">
         <label for="meSelect">Account Owner name, exactly as Salesforce shows it</label>
         <select id="meSelect"><option value="">— load an accounts file first —</option></select>
         <input type="text" id="meText" placeholder="or type it: Ethan Shapiro" />
@@ -77,8 +82,8 @@
       <div class="tiles">
         <button class="tile" data-filter="all"><span class="num" id="tTotal">0</span><span>leads</span></button>
         <button class="tile mine" data-filter="mine"><span class="num" id="tMine">0</span><span>on my accounts</span></button>
-        <button class="tile other" data-filter="other"><span class="num" id="tOther">0</span><span>on someone else's</span></button>
-        <button class="tile none" data-filter="unmatched"><span class="num" id="tUnmatched">0</span><span>no account found</span></button>
+        <button class="tile other" data-filter="other" id="tileOther"><span class="num" id="tOther">0</span><span>on someone else's</span></button>
+        <button class="tile none" data-filter="unmatched"><span class="num" id="tUnmatched">0</span><span id="tUnmatchedLabel">no account found</span></button>
         <button class="tile review" data-filter="review"><span class="num" id="tReview">0</span><span>need review</span></button>
         <button class="tile contact hidden" data-filter="contact" id="tileContact"><span class="num" id="tContact">0</span><span>already in Salesforce</span></button>
       </div>

@@ -361,14 +361,25 @@
    * @param {object}   p.accountCols       detectAccountColumns() result (user-corrected)
    * @param {object[]} [p.contacts]        rows from a Salesforce Contacts CSV
    * @param {object}   [p.contactCols]
-   * @param {string}   p.me                your name as it appears in Salesforce (Owner)
+   * @param {string}   [p.me]              your name as it appears in Salesforce (Owner)
    * @param {string}   [p.sfBaseUrl]       e.g. https://acme.lightning.force.com
+   * @param {boolean}  [p.myAccountsOnly]  the accounts file contains ONLY accounts you own
+   *                                       (e.g. a "My accounts" report). Then any match is
+   *                                       yours and no match means "not one of my accounts";
+   *                                       `me` is optional and only used for contact ownership.
    */
   function reconcile(p) {
     const aIndex = buildAccountIndex(p.accounts, p.accountCols);
     const cIndex = p.contacts && p.contacts.length ? buildContactIndex(p.contacts, p.contactCols) : null;
-    const meNorm = normalizePerson(p.me);
+    const owners = ownerCounts(aIndex.items);
+    // In my-accounts-only mode, infer "me" from the file when the caller gave nothing.
+    const meName = p.me || (p.myAccountsOnly && owners.length === 1 ? owners[0].owner : '');
+    const meNorm = normalizePerson(meName);
     const isMe = (ownerNorm) => (meNorm && ownerNorm ? (ownerNorm === meNorm ? 'Yes' : 'No') : 'Unknown');
+    const accountIsMine = (acct) => {
+      if (p.myAccountsOnly) return acct ? 'Yes' : 'No';
+      return acct ? isMe(acct.ownerNorm) : '';
+    };
 
     const rows = [];
     const summary = { total: 0, mine: 0, notMine: 0, unmatched: 0, review: 0, contactsFound: 0 };
@@ -392,7 +403,7 @@
         sf_account_type: acct ? acct.type : '',
         sf_account_website: acct ? acct.website : '',
         sf_parent_account: acct ? acct.parent : '',
-        account_is_mine: acct ? isMe(acct.ownerNorm) : '',
+        account_is_mine: accountIsMine(acct),
         match_tier: m.tier,
         match_score: m.score,
         match_note: m.note + (needsReview && !m.note ? 'Fuzzy match, please verify' : ''),
@@ -419,11 +430,12 @@
       if (!acct) summary.unmatched++;
       else if (out.account_is_mine === 'Yes') summary.mine++;
       else summary.notMine++;
+      if (p.myAccountsOnly && !acct && !out.match_note) out.match_note = 'Not one of my accounts';
       if (needsReview) summary.review++;
       if (c) summary.contactsFound++;
       rows.push(out);
     }
-    return { rows, summary, owners: ownerCounts(aIndex.items) };
+    return { rows, summary, owners, me: meName, myAccountsOnly: !!p.myAccountsOnly };
   }
 
   /** Distinct account owners with counts, most common first (for the "I am" picker). */

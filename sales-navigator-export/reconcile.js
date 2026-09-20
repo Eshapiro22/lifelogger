@@ -132,7 +132,13 @@ $('accountsFile').addEventListener('change', async (e) => {
 function refreshOwners() {
   if (!state.accounts || !state.accountCols.owner) { populateOwners([]); return; }
   const idx = M.buildAccountIndex(state.accounts.rows, state.accountCols);
-  populateOwners(M.ownerCounts(idx.items));
+  const owners = M.ownerCounts(idx.items);
+  populateOwners(owners);
+  // A single owner across the whole file almost always means a "My accounts" export.
+  if (owners.length === 1) {
+    $('myAccountsOnly').checked = true;
+    $('meSelect').value = owners[0].owner;
+  }
 }
 
 $('contactsFile').addEventListener('change', async (e) => {
@@ -152,7 +158,8 @@ $('runBtn').addEventListener('click', () => {
   const leads = currentLeads();
   if (!leads) return;
   const who = me();
-  if (!who) { notice('Pick or type your name (as it appears as Account Owner) before reconciling.', 'error'); return; }
+  const myAccountsOnly = $('myAccountsOnly').checked;
+  if (!who && !myAccountsOnly) { notice('Pick or type your name (as it appears as Account Owner) before reconciling, or tick "contains only my accounts".', 'error'); return; }
   try { localStorage.setItem('snx_me', who); localStorage.setItem('snx_sf_url', $('sfUrl').value.trim()); } catch (_) {}
 
   const t0 = performance.now();
@@ -160,12 +167,14 @@ $('runBtn').addEventListener('click', () => {
     leads: leads.rows, leadCols: leads.cols,
     accounts: state.accounts.rows, accountCols: state.accountCols,
     contacts: state.contacts ? state.contacts.rows : null, contactCols: state.contactCols,
-    me: who, sfBaseUrl: $('sfUrl').value.trim(),
+    me: who, sfBaseUrl: $('sfUrl').value.trim(), myAccountsOnly,
   });
   const ms = Math.round(performance.now() - t0);
 
   const meNorm = M.normalizePerson(who);
-  if (state.accountCols.owner && !state.result.owners.some((o) => M.normalizePerson(o.owner) === meNorm)) {
+  if (myAccountsOnly) {
+    // nothing to warn about: ownership is implied by presence in the file
+  } else if (state.accountCols.owner && !state.result.owners.some((o) => M.normalizePerson(o.owner) === meNorm)) {
     notice(`"${who}" is not an Account Owner anywhere in this file, so every account shows as not yours. Check the spelling, or pick a name from the dropdown.`);
   } else if (state.accountCols.owner && state.result.owners.length === 1) {
     notice(`Every account in this file is owned by ${state.result.owners[0].owner}. The export looks scoped to one owner, so leads at other people's accounts will show as "no account found" instead of "on someone else's". Re-export Accounts without an owner filter for a full picture.`);
@@ -194,6 +203,8 @@ function renderResults(ms) {
   $('tOther').textContent = summary.notMine;
   $('tUnmatched').textContent = summary.unmatched;
   $('tReview').textContent = summary.review;
+  $('tileOther').classList.toggle('hidden', state.result.myAccountsOnly);
+  $('tUnmatchedLabel').textContent = state.result.myAccountsOnly ? 'not one of my accounts' : 'no account found';
   $('tileContact').classList.toggle('hidden', !state.contacts);
   $('tContact').textContent = summary.contactsFound;
   document.querySelectorAll('.tile').forEach((t) => t.classList.toggle('active', t.dataset.filter === state.filter));

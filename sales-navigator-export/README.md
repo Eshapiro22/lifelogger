@@ -104,6 +104,16 @@ admin help. Any of these produce a usable file:
 3. **Salesforce CLI** (`sf data query --query "…" --result-format csv`). I have not verified the
    current CLI flags; check `sf data query --help`.
 
+### Two ways to answer "is this lead mine?"
+
+- **Only my accounts** (simplest). Export just the accounts you own (a "My accounts" report, or
+  a query with an owner filter) and tick **"The accounts file contains only my accounts"**.
+  The page ticks it for you when every row has the same owner. Any match is yours; no match
+  means *not one of my accounts*. You don't need to pick your name. The trade-off: it can't tell
+  "a colleague owns this account" apart from "this company isn't in Salesforce at all".
+- **All accounts.** Export every account and pick your name from the Owner dropdown. You get
+  three buckets: mine, someone else's (with the owner's name), and not in Salesforce.
+
 ### Running it
 
 1. Pick the leads: the ones the extension just collected, or upload the CSV it downloaded.
@@ -141,8 +151,10 @@ differently (subsidiaries, DBAs, acquisitions).
 Same logic, for big files or scripting:
 
 ```bash
-node reconcile/cli.mjs --leads leads.csv --accounts accounts.csv --me "Your Name" \
+node reconcile/cli.mjs --leads leads.csv --accounts accounts.csv --my-accounts-only \
   [--contacts contacts.csv] [--sf-url https://yourorg.lightning.force.com] [--out reconciled.csv]
+# or, with an all-accounts export:
+node reconcile/cli.mjs --leads leads.csv --accounts all-accounts.csv --me "Your Name"
 node reconcile/test.mjs   # runs the matcher's self-test
 ```
 

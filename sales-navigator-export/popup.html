@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Sales Navigator List Exporter</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>Sales Navigator List Exporter</h1>
+    <span id="badge" class="pill">idle</span>
+  </header>
+
+  <section id="notice" class="notice hidden"></section>
+
+  <section class="card">
+    <div class="row"><span class="label">List</span><span id="listName" class="value">—</span></div>
+    <div class="row"><span class="label">Progress</span><span id="progress" class="value">—</span></div>
+    <div class="row"><span class="label">Leads collected</span><span id="count" class="value">0</span></div>
+    <div class="bar"><div id="barFill" class="bar-fill"></div></div>
+  </section>
+
+  <section class="actions">
+    <button id="previewBtn" class="secondary">Preview this page</button>
+    <button id="startBtn" class="primary">Export all pages</button>
+    <button id="stopBtn" class="danger hidden">Stop</button>
+  </section>
+
+  <section class="actions">
+    <button id="downloadBtn" class="primary" disabled>Download CSV</button>
+    <button id="clearBtn" class="secondary" disabled>Clear data</button>
+  </section>
+
+  <section id="previewBox" class="card hidden">
+    <div class="card-title">Preview (first 5 of <span id="previewRows">0</span> rows on this page)</div>
+    <div id="previewMeta" class="muted"></div>
+    <pre id="previewSample"></pre>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Log</div>
+    <pre id="log" class="log">—</pre>
+  </section>
+
+  <footer class="muted">
+    Keep this tab open and in the foreground while exporting. Data is stored locally in your browser only.
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

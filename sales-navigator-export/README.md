@@ -76,12 +76,85 @@ If `resultRow` matches nothing, the scraper falls back to "find every link to
 `/sales/lead/` and use its nearest `<li>` ancestor", which is usually enough to keep
 `name` (link text), `profile_url` and `raw_text` working even when everything else breaks.
 
+## Reconciling leads with Salesforce
+
+Once you have a list exported, the **Reconcile with Salesforce…** button in the popup opens
+a page that matches each lead's company to a Salesforce Account and tells you whether the
+Account Owner is you. Salesforce is the source of truth; the page never writes to it and
+nothing leaves your browser.
+
+### Getting the Salesforce data
+
+The page takes CSV exports, so it works for any Salesforce user without a Connected App or
+admin help. Any of these produce a usable file:
+
+1. **A Salesforce report** (simplest). Reports → New Report → *Accounts*. Add the columns
+   **Account ID, Account Name, Account Owner, Website, Parent Account, Type**. Remove the
+   default "My accounts" scope so it covers all accounts. Export → *Details Only* → CSV.
+   Optionally do the same for *Contacts & Accounts* with **Contact ID, First Name, Last Name,
+   Account Name, Contact Owner, Title, Email** to also learn which leads already exist in
+   Salesforce and who owns them.
+2. **Claude with a Salesforce connector.** If your Claude instance is connected to Salesforce,
+   ask it to run these queries and save the results as CSV files, then drop them into the page:
+   ```sql
+   SELECT Id, Name, Owner.Name, Website, Parent.Name, Type FROM Account
+   SELECT Id, FirstName, LastName, Account.Name, Owner.Name, Title, Email FROM Contact
+   ```
+   The column detector recognises the `Owner.Name` / `Account.Name` style headers.
+3. **Salesforce CLI** (`sf data query --query "…" --result-format csv`). I have not verified the
+   current CLI flags; check `sf data query --help`.
+
+### Running it
+
+1. Pick the leads: the ones the extension just collected, or upload the CSV it downloaded.
+2. Upload the Accounts CSV. The page guesses which columns are name / owner / ID; correct them
+   in the dropdowns if it guessed wrong.
+3. Pick your name from the **Account Owner** dropdown (it lists every owner in the file with
+   their account counts), optionally paste your Salesforce URL for clickable record links.
+4. **Reconcile**. Tiles at the top filter the table: on my accounts, on someone else's, no
+   account found, needs review, already in Salesforce as a contact.
+5. **Download reconciled CSV**: the original lead columns plus `sf_account_name`,
+   `sf_account_owner`, `account_is_mine`, `match_tier`, `match_score`, `match_note`,
+   `alt_candidates`, and the contact columns if you supplied a contacts file.
+
+### How matching works, and what to double-check
+
+Sales Navigator list rows expose the company **name** only (no website/domain), so matching is
+by name. Names are normalised (case, accents, punctuation, "The", and legal suffixes such as
+Inc/LLC/Ltd/GmbH) and compared with a blend of word overlap and character-bigram similarity.
+
+| `match_tier` | meaning |
+| --- | --- |
+| `exact` | identical after normalisation ("Acme Corp" = "Acme Corporation, Inc.") |
+| `high` | score ≥ 0.9, or one name is a whole-word prefix of the other ("Acme" → "Acme Technologies") |
+| `medium` / `low` | fuzzy; shown under **needs review** with the runner-up candidates |
+| `none` | nothing scored above 0.6 |
+
+Rows are also flagged for review when two Salesforce accounts normalise to the same name
+(duplicates), when the runner-up scores within 0.05 of the winner, or when a contact with the
+lead's name exists on a *different* account. Treat "needs review" rows as suggestions, not
+answers, and skim the "no account found" bucket for companies Salesforce spells very
+differently (subsidiaries, DBAs, acquisitions).
+
+### Command line
+
+Same logic, for big files or scripting:
+
+```bash
+node reconcile/cli.mjs --leads leads.csv --accounts accounts.csv --me "Your Name" \
+  [--contacts contacts.csv] [--sf-url https://yourorg.lightning.force.com] [--out reconciled.csv]
+node reconcile/test.mjs   # runs the matcher's self-test
+```
+
 ## Files
 
 - `manifest.json` — MV3 manifest; only runs on `https://www.linkedin.com/sales/*`
 - `content.js` — scraping, scrolling, pagination loop, persistence, resume
 - `popup.html` / `popup.css` / `popup.js` — UI, preview, CSV building and download
 - `background.js` — mirrors the lead count onto the toolbar badge
+- `reconcile.html` / `reconcile.css` / `reconcile.js` — Salesforce reconciliation page
+- `reconcile/match.js` — CSV parsing, name normalisation and matching (shared by page and CLI)
+- `reconcile/cli.mjs`, `reconcile/test.mjs` — command-line runner and self-test
 - `icons/` — generated PNG icons
 
 ## Limits and known gaps

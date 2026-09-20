@@ -1,0 +1,443 @@
+/**
+ * Sales Navigator ⇄ Salesforce reconciliation — matching logic.
+ *
+ * Pure functions, no DOM, no dependencies. Loaded both by the extension's
+ * reconcile page (as a classic <script>, exposing window.SNXMatch) and by the
+ * Node CLI (require()). Keep it that way so the two never drift.
+ *
+ * Pipeline:
+ *   parseCsv → detectColumns → buildAccountIndex → reconcile()
+ *
+ * Matching is by company name only, because a Sales Navigator list row does
+ * not expose the company's website/domain. Names are normalised (case,
+ * accents, punctuation, legal suffixes like Inc/LLC/GmbH) and compared with a
+ * blend of token overlap and character-bigram similarity, with a boost when
+ * one name is a whole-token prefix of the other ("Acme" vs "Acme Technologies").
+ */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.SNXMatch = api;
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ─── CSV ─────────────────────────────────────────────────────────────────
+  /** RFC 4180-ish parser: quotes, escaped quotes, CRLF/LF, leading BOM. */
+  function parseCsv(text) {
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += c;
+      } else if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); field = '';
+        rows.push(row); row = [];
+      } else field += c;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+
+    // Drop fully-empty lines and Salesforce's trailing report footer
+    // ("Copyright (c) 2000-20xx salesforce.com…" / blank / "Filtered By…").
+    const cleaned = rows.filter((r) => r.some((v) => v.trim() !== ''));
+    if (!cleaned.length) return { headers: [], rows: [] };
+    const headers = cleaned[0].map((h) => h.trim());
+    const out = [];
+    for (let i = 1; i < cleaned.length; i++) {
+      const r = cleaned[i];
+      if (r.length === 1 && /^(copyright|filtered by|grand totals|total)/i.test(r[0].trim())) continue;
+      if (r.length < headers.length / 2) continue; // footer fragments
+      const obj = {};
+      headers.forEach((h, j) => { obj[h] = (r[j] ?? '').trim(); });
+      out.push(obj);
+    }
+    return { headers, rows: out };
+  }
+
+  function csvEscape(v) {
+    const s = v == null ? '' : String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+  function toCsv(rows, columns) {
+    const lines = [columns.join(',')];
+    for (const r of rows) lines.push(columns.map((c) => csvEscape(r[c])).join(','));
+    return '﻿' + lines.join('\r\n');
+  }
+
+  // ─── normalisation ───────────────────────────────────────────────────────
+  function stripDiacritics(s) {
+    return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  }
+
+  // Legal/entity suffixes that carry no identity. Matched as whole tokens at
+  // the END of the name only, repeatedly ("Acme Holdings Ltd" → "acme holdings").
+  const LEGAL_SUFFIXES = new Set([
+    'inc', 'incorporated', 'llc', 'llp', 'lp', 'ltd', 'limited', 'plc', 'pllc',
+    'corp', 'corporation', 'co', 'company', 'gmbh', 'ag', 'sa', 'sas', 'sarl',
+    'srl', 'spa', 'bv', 'nv', 'oy', 'ab', 'as', 'kk', 'pty', 'pte', 'pvt',
+    'sdn', 'bhd', 'kg', 'mbh', 'ou', 'ltda', 'sl', 'se',
+  ]);
+  // Tokens too generic to be useful for candidate *blocking* (still used in scoring).
+  const BLOCKING_STOPWORDS = new Set([
+    'the', 'and', 'of', 'group', 'technologies', 'technology', 'tech', 'solutions',
+    'services', 'service', 'systems', 'international', 'global', 'holdings',
+    'partners', 'consulting', 'software', 'digital', 'labs', 'industries',
+    'enterprises', 'worldwide', 'usa', 'us', 'uk', 'north', 'america', 'europe',
+  ]);
+
+  function baseNormalize(s) {
+    return stripDiacritics(String(s || ''))
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/\+/g, ' plus ')
+      .replace(/[’'`]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
+
+  function normalizeCompany(s) {
+    let toks = baseNormalize(s).split(' ').filter(Boolean);
+    if (toks[0] === 'the') toks = toks.slice(1);
+    while (toks.length > 1 && LEGAL_SUFFIXES.has(toks[toks.length - 1])) toks.pop();
+    return toks.join(' ');
+  }
+
+  function normalizePerson(s) {
+    let str = String(s || '');
+    str = str.replace(/\(.*?\)/g, ' ');        // "(he/him)", "(she/her)"
+    str = str.split(',')[0];                    // "Jane Doe, MBA, PMP"
+    str = str.replace(/\b(mba|phd|ph\.d|cpa|pmp|md|jr|sr|ii|iii|esq|dr|mr|mrs|ms)\b\.?/gi, ' ');
+    return baseNormalize(str);
+  }
+
+  // ─── similarity ──────────────────────────────────────────────────────────
+  function tokenSet(s) { return new Set(s.split(' ').filter(Boolean)); }
+  function diceSets(a, b) {
+    if (!a.size || !b.size) return 0;
+    let inter = 0;
+    for (const t of a) if (b.has(t)) inter++;
+    return (2 * inter) / (a.size + b.size);
+  }
+  function bigrams(s) {
+    const str = s.replace(/ /g, '');
+    const out = new Map();
+    for (let i = 0; i < str.length - 1; i++) {
+      const g = str.slice(i, i + 2);
+      out.set(g, (out.get(g) || 0) + 1);
+    }
+    return out;
+  }
+  function diceBigrams(a, b) {
+    let total = 0, inter = 0;
+    for (const n of a.values()) total += n;
+    for (const n of b.values()) total += n;
+    if (!total) return 0;
+    for (const [g, n] of a) if (b.has(g)) inter += Math.min(n, b.get(g));
+    return (2 * inter) / total;
+  }
+  function isTokenPrefix(shortToks, longToks) {
+    if (!shortToks.length || shortToks.length > longToks.length) return false;
+    for (let i = 0; i < shortToks.length; i++) if (shortToks[i] !== longToks[i]) return false;
+    return true;
+  }
+
+  /** 0..1 similarity between two *normalised* company names. */
+  function companySimilarity(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    const ta = a.split(' '), tb = b.split(' ');
+    const tokenScore = diceSets(new Set(ta), new Set(tb));
+    const charScore = diceBigrams(bigrams(a), bigrams(b));
+    let score = 0.5 * tokenScore + 0.5 * charScore;
+    const [s, l] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+    if (isTokenPrefix(s, l) && s.join('').length >= 4) score = Math.max(score, 0.85);
+    return Math.round(score * 1000) / 1000;
+  }
+
+  function tierForScore(score) {
+    if (score >= 0.999) return 'exact';
+    if (score >= 0.9) return 'high';
+    if (score >= 0.75) return 'medium';
+    if (score >= 0.6) return 'low';
+    return 'none';
+  }
+
+  // ─── column detection ────────────────────────────────────────────────────
+  function pickHeader(headers, patterns, exclude = []) {
+    for (const p of patterns) {
+      const hit = headers.find((h) => p.test(h) && !exclude.some((x) => x.test(h)));
+      if (hit) return hit;
+    }
+    return '';
+  }
+
+  /** Best-guess column mapping for a Salesforce Accounts export. */
+  function detectAccountColumns(headers) {
+    return {
+      id: pickHeader(headers, [/^account id( \(18\))?$/i, /^account: id$/i, /^id$/i, /account.*id/i]),
+      name: pickHeader(headers, [/^account name$/i, /^account: account name$/i, /^name$/i, /^account$/i, /account name/i]),
+      owner: pickHeader(headers, [/^account owner$/i, /^owner( full)? name$/i, /^owner\.name$/i, /^account owner: full name$/i, /owner/i], [/id$/i, /alias/i, /role/i, /email/i]),
+      website: pickHeader(headers, [/^website$/i, /website/i, /domain/i]),
+      parent: pickHeader(headers, [/^parent account$/i, /parent.*name/i, /parent/i], [/id$/i]),
+      type: pickHeader(headers, [/^type$/i, /^account type$/i]),
+    };
+  }
+
+  /** Best-guess column mapping for a Salesforce Contacts (or Leads) export. */
+  function detectContactColumns(headers) {
+    const first = pickHeader(headers, [/^first name$/i, /firstname/i]);
+    const last = pickHeader(headers, [/^last name$/i, /lastname/i]);
+    return {
+      id: pickHeader(headers, [/^contact id( \(18\))?$/i, /^lead id( \(18\))?$/i, /^id$/i, /(contact|lead).*id/i]),
+      name: pickHeader(headers, [/^full name$/i, /^name$/i, /^contact name$/i, /^contact$/i, /^lead name$/i, /full name/i]),
+      firstName: first,
+      lastName: last,
+      account: pickHeader(headers, [/^account name$/i, /^account$/i, /^company$/i, /account name/i, /company/i], [/id$/i]),
+      owner: pickHeader(headers, [/^contact owner$/i, /^lead owner$/i, /^owner( full)? name$/i, /owner/i], [/id$/i, /alias/i, /role/i, /email/i]),
+      title: pickHeader(headers, [/^title$/i, /title/i]),
+      email: pickHeader(headers, [/^email$/i, /email/i]),
+    };
+  }
+
+  /** Column mapping for the Sales Navigator export (or any leads CSV). */
+  function detectLeadColumns(headers) {
+    return {
+      name: pickHeader(headers, [/^name$/i, /^full name$/i, /name/i], [/company/i, /account/i, /list/i]),
+      company: pickHeader(headers, [/^company$/i, /^company name$/i, /^account$/i, /company/i, /account/i], [/url/i]),
+      title: pickHeader(headers, [/^title$/i, /title/i]),
+      profileUrl: pickHeader(headers, [/^profile_url$/i, /profile.*url/i, /linkedin/i]),
+    };
+  }
+
+  // ─── indexing ────────────────────────────────────────────────────────────
+  function buildAccountIndex(accounts, cols) {
+    const byNorm = new Map();     // normalised name → [account]
+    const byToken = new Map();    // token → Set(account idx)
+    const items = accounts.map((row, i) => ({
+      i,
+      row,
+      id: cols.id ? row[cols.id] : '',
+      name: row[cols.name] || '',
+      norm: normalizeCompany(row[cols.name] || ''),
+      owner: cols.owner ? row[cols.owner] : '',
+      ownerNorm: normalizePerson(cols.owner ? row[cols.owner] : ''),
+      website: cols.website ? row[cols.website] : '',
+      parent: cols.parent ? row[cols.parent] : '',
+      type: cols.type ? row[cols.type] : '',
+    }));
+    for (const it of items) {
+      if (!it.norm) continue;
+      if (!byNorm.has(it.norm)) byNorm.set(it.norm, []);
+      byNorm.get(it.norm).push(it);
+      for (const t of it.norm.split(' ')) {
+        if (!byToken.has(t)) byToken.set(t, new Set());
+        byToken.get(t).add(it.i);
+      }
+    }
+    return { items, byNorm, byToken };
+  }
+
+  function buildContactIndex(contacts, cols) {
+    const byPerson = new Map(); // normalised person name → [contact]
+    const items = contacts.map((row, i) => {
+      const fullName = cols.name
+        ? row[cols.name]
+        : [row[cols.firstName], row[cols.lastName]].filter(Boolean).join(' ');
+      return {
+        i, row,
+        id: cols.id ? row[cols.id] : '',
+        name: fullName || '',
+        nameNorm: normalizePerson(fullName || ''),
+        account: cols.account ? row[cols.account] : '',
+        accountNorm: normalizeCompany(cols.account ? row[cols.account] : ''),
+        owner: cols.owner ? row[cols.owner] : '',
+        ownerNorm: normalizePerson(cols.owner ? row[cols.owner] : ''),
+        title: cols.title ? row[cols.title] : '',
+        email: cols.email ? row[cols.email] : '',
+      };
+    });
+    for (const it of items) {
+      if (!it.nameNorm) continue;
+      if (!byPerson.has(it.nameNorm)) byPerson.set(it.nameNorm, []);
+      byPerson.get(it.nameNorm).push(it);
+    }
+    return { items, byPerson };
+  }
+
+  // ─── matching ────────────────────────────────────────────────────────────
+  /**
+   * Find the best Salesforce account for a company name.
+   * Returns { best, candidates, score, tier, note } where candidates is the
+   * top few alternatives (for the "needs review" UI).
+   */
+  function matchCompany(companyName, index) {
+    const norm = normalizeCompany(companyName);
+    if (!norm) return { best: null, candidates: [], score: 0, tier: 'none', note: 'No company on lead' };
+
+    // 1. Exact normalised match.
+    const exact = index.byNorm.get(norm);
+    if (exact && exact.length) {
+      const note = exact.length > 1 ? `${exact.length} accounts share this name` : '';
+      return { best: exact[0], candidates: exact.slice(0, 5), score: 1, tier: 'exact', note };
+    }
+
+    // 2. Blocking: candidates share at least one meaningful token.
+    let toks = norm.split(' ').filter((t) => !BLOCKING_STOPWORDS.has(t) && t.length > 1);
+    if (!toks.length) toks = norm.split(' ');
+    const candIdx = new Set();
+    for (const t of toks) {
+      const s = index.byToken.get(t);
+      if (s) for (const i of s) candIdx.add(i);
+    }
+    if (!candIdx.size) return { best: null, candidates: [], score: 0, tier: 'none', note: '' };
+
+    // 3. Score and rank.
+    const scored = [];
+    for (const i of candIdx) {
+      const it = index.items[i];
+      const score = companySimilarity(norm, it.norm);
+      if (score >= 0.5) scored.push({ it, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    if (!scored.length) return { best: null, candidates: [], score: 0, tier: 'none', note: '' };
+
+    const top = scored[0];
+    const tier = tierForScore(top.score);
+    let note = '';
+    // Ambiguity: runner-up is nearly as good → force review.
+    if (scored.length > 1 && scored[1].score >= top.score - 0.05 && scored[1].it.norm !== top.it.norm) {
+      note = `Ambiguous: also matches "${scored[1].it.name}"`;
+    }
+    return {
+      best: tier === 'none' ? null : top.it,
+      candidates: scored.slice(0, 5).map((s) => s.it),
+      score: top.score,
+      tier,
+      note,
+    };
+  }
+
+  function matchContact(leadName, accountNorm, cIndex) {
+    if (!cIndex) return null;
+    const norm = normalizePerson(leadName);
+    if (!norm) return null;
+    const hits = cIndex.byPerson.get(norm);
+    if (!hits || !hits.length) return null;
+    // Prefer a contact on the matched account; otherwise same-name anywhere.
+    const onAccount = accountNorm ? hits.find((h) => h.accountNorm === accountNorm) : null;
+    if (onAccount) return { contact: onAccount, sameAccount: true };
+    return { contact: hits[0], sameAccount: false, others: hits.length };
+  }
+
+  function sfRecordUrl(baseUrl, objectName, id) {
+    if (!baseUrl || !id) return '';
+    const base = baseUrl.replace(/\/+$/, '');
+    return `${base}/lightning/r/${objectName}/${id}/view`;
+  }
+
+  const OUTPUT_COLUMNS = [
+    'name', 'title', 'company', 'location', 'profile_url',
+    'sf_account_name', 'sf_account_id', 'sf_account_owner', 'sf_account_type', 'sf_account_website', 'sf_parent_account',
+    'account_is_mine', 'match_tier', 'match_score', 'match_note', 'sf_account_url',
+    'sf_contact_exists', 'sf_contact_name', 'sf_contact_owner', 'sf_contact_account', 'sf_contact_id', 'contact_is_mine', 'sf_contact_url',
+    'alt_candidates',
+  ];
+
+  /**
+   * @param {object} p
+   * @param {object[]} p.leads             rows from the Sales Navigator export
+   * @param {object}   p.leadCols          detectLeadColumns() result
+   * @param {object[]} p.accounts          rows from the Salesforce Accounts CSV
+   * @param {object}   p.accountCols       detectAccountColumns() result (user-corrected)
+   * @param {object[]} [p.contacts]        rows from a Salesforce Contacts CSV
+   * @param {object}   [p.contactCols]
+   * @param {string}   p.me                your name as it appears in Salesforce (Owner)
+   * @param {string}   [p.sfBaseUrl]       e.g. https://acme.lightning.force.com
+   */
+  function reconcile(p) {
+    const aIndex = buildAccountIndex(p.accounts, p.accountCols);
+    const cIndex = p.contacts && p.contacts.length ? buildContactIndex(p.contacts, p.contactCols) : null;
+    const meNorm = normalizePerson(p.me);
+    const isMe = (ownerNorm) => (meNorm && ownerNorm ? (ownerNorm === meNorm ? 'Yes' : 'No') : 'Unknown');
+
+    const rows = [];
+    const summary = { total: 0, mine: 0, notMine: 0, unmatched: 0, review: 0, contactsFound: 0 };
+
+    for (const lead of p.leads) {
+      const company = lead[p.leadCols.company] || '';
+      const m = matchCompany(company, aIndex);
+      const acct = m.best;
+      const needsReview = acct && (m.tier === 'low' || m.tier === 'medium' || !!m.note);
+      const c = matchContact(lead[p.leadCols.name], acct ? acct.norm : '', cIndex);
+
+      const out = {
+        name: lead[p.leadCols.name] || lead.name || '',
+        title: lead[p.leadCols.title] || lead.title || '',
+        company,
+        location: lead.location || '',
+        profile_url: lead[p.leadCols.profileUrl] || lead.profile_url || '',
+        sf_account_name: acct ? acct.name : '',
+        sf_account_id: acct ? acct.id : '',
+        sf_account_owner: acct ? acct.owner : '',
+        sf_account_type: acct ? acct.type : '',
+        sf_account_website: acct ? acct.website : '',
+        sf_parent_account: acct ? acct.parent : '',
+        account_is_mine: acct ? isMe(acct.ownerNorm) : '',
+        match_tier: m.tier,
+        match_score: m.score,
+        match_note: m.note + (needsReview && !m.note ? 'Fuzzy match, please verify' : ''),
+        sf_account_url: acct ? sfRecordUrl(p.sfBaseUrl, 'Account', acct.id) : '',
+        sf_contact_exists: cIndex ? (c ? 'Yes' : 'No') : '',
+        sf_contact_name: c ? c.contact.name : '',
+        sf_contact_owner: c ? c.contact.owner : '',
+        sf_contact_account: c ? c.contact.account : '',
+        sf_contact_id: c ? c.contact.id : '',
+        contact_is_mine: c ? isMe(c.contact.ownerNorm) : '',
+        sf_contact_url: c ? sfRecordUrl(p.sfBaseUrl, 'Contact', c.contact.id) : '',
+        alt_candidates: m.candidates
+          .filter((x) => x !== acct)
+          .slice(0, 3)
+          .map((x) => `${x.name}${x.owner ? ` (${x.owner})` : ''}`)
+          .join('; '),
+        _needsReview: !!needsReview,
+      };
+      if (c && !c.sameAccount) {
+        out.match_note = [out.match_note, `Contact with this name exists on "${c.contact.account}"`].filter(Boolean).join(' · ');
+      }
+
+      summary.total++;
+      if (!acct) summary.unmatched++;
+      else if (out.account_is_mine === 'Yes') summary.mine++;
+      else summary.notMine++;
+      if (needsReview) summary.review++;
+      if (c) summary.contactsFound++;
+      rows.push(out);
+    }
+    return { rows, summary, owners: ownerCounts(aIndex.items) };
+  }
+
+  /** Distinct account owners with counts, most common first (for the "I am" picker). */
+  function ownerCounts(items) {
+    const m = new Map();
+    for (const it of items) if (it.owner) m.set(it.owner, (m.get(it.owner) || 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([owner, count]) => ({ owner, count }));
+  }
+
+  return {
+    parseCsv, toCsv, csvEscape,
+    normalizeCompany, normalizePerson, companySimilarity, tierForScore,
+    detectAccountColumns, detectContactColumns, detectLeadColumns,
+    buildAccountIndex, buildContactIndex, matchCompany, matchContact,
+    reconcile, ownerCounts, sfRecordUrl, OUTPUT_COLUMNS,
+  };
+});

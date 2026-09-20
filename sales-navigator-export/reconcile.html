@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Reconcile leads with Salesforce</title>
+  <link rel="stylesheet" href="reconcile.css" />
+</head>
+<body>
+  <header>
+    <h1>Reconcile Sales Navigator leads with Salesforce</h1>
+    <p class="muted">Everything runs in this tab. Nothing is uploaded anywhere.</p>
+  </header>
+
+  <main>
+    <!-- Step 1: leads -->
+    <section class="card">
+      <h2>1. Leads</h2>
+      <div class="row">
+        <label><input type="radio" name="leadSource" value="ext" id="leadSrcExt" checked />
+          Use leads collected by the extension <span id="extLeadInfo" class="muted"></span></label>
+      </div>
+      <div class="row">
+        <label><input type="radio" name="leadSource" value="csv" id="leadSrcCsv" />
+          Upload a leads CSV (the file this extension downloaded)</label>
+        <input type="file" id="leadsFile" accept=".csv,text/csv" />
+      </div>
+      <div id="leadCols" class="colmap hidden"></div>
+    </section>
+
+    <!-- Step 2: accounts -->
+    <section class="card">
+      <h2>2. Salesforce Accounts export <span class="req">required</span></h2>
+      <p class="muted">
+        In Salesforce: Reports → New Report → <b>Accounts</b> → add columns
+        <b>Account ID, Account Name, Account Owner, Website, Parent Account, Type</b> → remove filters
+        so it covers all accounts (not just "My accounts") → Export → <b>Details Only</b>, CSV, UTF-8.
+      </p>
+      <input type="file" id="accountsFile" accept=".csv,text/csv" />
+      <div id="accountCols" class="colmap hidden"></div>
+      <div id="accountInfo" class="muted"></div>
+    </section>
+
+    <!-- Step 3: contacts (optional) -->
+    <section class="card">
+      <h2>3. Salesforce Contacts export <span class="opt">optional</span></h2>
+      <p class="muted">
+        Tells you which leads already exist in Salesforce and who owns the contact. Report on
+        <b>Contacts &amp; Accounts</b> with columns <b>Contact ID, First Name, Last Name, Account Name,
+        Contact Owner, Title, Email</b>.
+      </p>
+      <input type="file" id="contactsFile" accept=".csv,text/csv" />
+      <div id="contactCols" class="colmap hidden"></div>
+      <div id="contactInfo" class="muted"></div>
+    </section>
+
+    <!-- Step 4: settings -->
+    <section class="card">
+      <h2>4. Who are you?</h2>
+      <div class="row">
+        <label for="meSelect">Account Owner name, exactly as Salesforce shows it</label>
+        <select id="meSelect"><option value="">— load an accounts file first —</option></select>
+        <input type="text" id="meText" placeholder="or type it: Ethan Shapiro" />
+      </div>
+      <div class="row">
+        <label for="sfUrl">Salesforce URL <span class="opt">optional, adds clickable record links</span></label>
+        <input type="text" id="sfUrl" placeholder="https://yourorg.lightning.force.com" />
+      </div>
+      <div class="actions">
+        <button id="runBtn" class="primary" disabled>Reconcile</button>
+        <button id="downloadBtn" class="secondary" disabled>Download reconciled CSV</button>
+      </div>
+      <div id="runNotice" class="notice hidden"></div>
+    </section>
+
+    <!-- Results -->
+    <section id="results" class="hidden">
+      <div class="tiles">
+        <button class="tile" data-filter="all"><span class="num" id="tTotal">0</span><span>leads</span></button>
+        <button class="tile mine" data-filter="mine"><span class="num" id="tMine">0</span><span>on my accounts</span></button>
+        <button class="tile other" data-filter="other"><span class="num" id="tOther">0</span><span>on someone else's</span></button>
+        <button class="tile none" data-filter="unmatched"><span class="num" id="tUnmatched">0</span><span>no account found</span></button>
+        <button class="tile review" data-filter="review"><span class="num" id="tReview">0</span><span>need review</span></button>
+        <button class="tile contact hidden" data-filter="contact" id="tileContact"><span class="num" id="tContact">0</span><span>already in Salesforce</span></button>
+      </div>
+      <div class="tablewrap">
+        <table id="table">
+          <thead>
+            <tr>
+              <th>Lead</th><th>Company (LinkedIn)</th><th>Salesforce account</th><th>Owner</th>
+              <th>Mine?</th><th>Match</th><th>Contact in SF</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <p class="muted" id="tableFoot"></p>
+    </section>
+  </main>
+
+  <script src="reconcile/match.js"></script>
+  <script src="reconcile.js"></script>
+</body>
+</html>

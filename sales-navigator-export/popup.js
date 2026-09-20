@@ -180,6 +180,10 @@ $('stopBtn').addEventListener('click', async () => {
 
 $('downloadBtn').addEventListener('click', download);
 
+$('reconcileBtn').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('reconcile.html') });
+});
+
 $('clearBtn').addEventListener('click', async () => {
   if (!confirm('Delete all collected leads from this extension\'s storage?')) return;
   await chrome.storage.local.remove(STORAGE_KEY);

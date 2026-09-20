@@ -92,4 +92,13 @@ const back = M.parseCsv(csv);
 assert.equal(back.rows.length, 6);
 assert.equal(back.rows[1].company, 'Globex, Inc');
 
+// SOQL-style headers (what a Salesforce connector / CLI query produces)
+assert.deepEqual(
+  M.detectAccountColumns(['Id', 'Name', 'Owner.Name', 'Website', 'Parent.Name', 'Type']),
+  { id: 'Id', name: 'Name', owner: 'Owner.Name', website: 'Website', parent: 'Parent.Name', type: 'Type' });
+const soqlContact = M.detectContactColumns(['Id', 'FirstName', 'LastName', 'Account.Name', 'Owner.Name', 'Title', 'Email']);
+assert.equal(soqlContact.account, 'Account.Name');
+assert.equal(soqlContact.owner, 'Owner.Name');
+assert.equal(soqlContact.firstName, 'FirstName');
+
 console.log('all reconcile tests passed');

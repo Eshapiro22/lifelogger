@@ -185,7 +185,7 @@
   function detectAccountColumns(headers) {
     return {
       id: pickHeader(headers, [/^account id( \(18\))?$/i, /^account: id$/i, /^id$/i, /account.*id/i]),
-      name: pickHeader(headers, [/^account name$/i, /^account: account name$/i, /^name$/i, /^account$/i, /account name/i]),
+      name: pickHeader(headers, [/^account[\s._]*name$/i, /^account: account name$/i, /^name$/i, /^account$/i, /account[\s._]*name/i]),
       owner: pickHeader(headers, [/^account owner$/i, /^owner( full)? name$/i, /^owner\.name$/i, /^account owner: full name$/i, /owner/i], [/id$/i, /alias/i, /role/i, /email/i]),
       website: pickHeader(headers, [/^website$/i, /website/i, /domain/i]),
       parent: pickHeader(headers, [/^parent account$/i, /parent.*name/i, /parent/i], [/id$/i]),
@@ -202,7 +202,7 @@
       name: pickHeader(headers, [/^full name$/i, /^name$/i, /^contact name$/i, /^contact$/i, /^lead name$/i, /full name/i]),
       firstName: first,
       lastName: last,
-      account: pickHeader(headers, [/^account name$/i, /^account$/i, /^company$/i, /account name/i, /company/i], [/id$/i]),
+      account: pickHeader(headers, [/^account[\s._]*name$/i, /^account$/i, /^company$/i, /account[\s._]*name/i, /company/i], [/id$/i]),
       owner: pickHeader(headers, [/^contact owner$/i, /^lead owner$/i, /^owner( full)? name$/i, /owner/i], [/id$/i, /alias/i, /role/i, /email/i]),
       title: pickHeader(headers, [/^title$/i, /title/i]),
       email: pickHeader(headers, [/^email$/i, /email/i]),

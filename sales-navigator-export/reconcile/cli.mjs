@@ -62,6 +62,9 @@ const { rows, summary, owners } = M.reconcile({
   sfBaseUrl: args['sf-url'] || '',
 });
 
+if (owners.length === 1) {
+  console.error(`WARNING: every account in the file is owned by ${owners[0].owner}; the export looks scoped to one owner, so leads at other people's accounts will show as unmatched rather than "not mine".`);
+}
 if (!owners.some((o) => M.normalizePerson(o.owner) === M.normalizePerson(args.me))) {
   console.error(`WARNING: "${args.me}" does not appear as an owner in the accounts file. Top owners: ${owners.slice(0, 5).map((o) => `${o.owner} (${o.count})`).join(', ')}`);
 }

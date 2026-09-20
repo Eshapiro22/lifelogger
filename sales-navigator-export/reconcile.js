@@ -167,6 +167,8 @@ $('runBtn').addEventListener('click', () => {
   const meNorm = M.normalizePerson(who);
   if (state.accountCols.owner && !state.result.owners.some((o) => M.normalizePerson(o.owner) === meNorm)) {
     notice(`"${who}" is not an Account Owner anywhere in this file, so every account shows as not yours. Check the spelling, or pick a name from the dropdown.`);
+  } else if (state.accountCols.owner && state.result.owners.length === 1) {
+    notice(`Every account in this file is owned by ${state.result.owners[0].owner}. The export looks scoped to one owner, so leads at other people's accounts will show as "no account found" instead of "on someone else's". Re-export Accounts without an owner filter for a full picture.`);
   }
   $('downloadBtn').disabled = false;
   renderResults(ms);

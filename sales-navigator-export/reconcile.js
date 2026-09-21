@@ -80,6 +80,8 @@ function populateOwners(owners) {
     if (saved && owners.some((o) => o.owner === saved)) sel.value = saved;
     const savedUrl = localStorage.getItem('snx_sf_url');
     if (savedUrl && !$('sfUrl').value) $('sfUrl').value = savedUrl;
+    const savedOv = localStorage.getItem('snx_overrides');
+    if (savedOv && !$('overrides').value) $('overrides').value = savedOv;
   } catch (_) {}
 }
 
@@ -169,7 +171,9 @@ $('runBtn').addEventListener('click', () => {
     accounts: state.accounts.rows, accountCols: state.accountCols,
     contacts: state.contacts ? state.contacts.rows : null, contactCols: state.contactCols,
     me: who, sfBaseUrl: $('sfUrl').value.trim(), myAccountsOnly,
+    overrides: M.parseOverrides($('overrides').value),
   });
+  try { localStorage.setItem('snx_overrides', $('overrides').value); } catch (_) {}
   const ms = Math.round(performance.now() - t0);
 
   const meNorm = M.normalizePerson(who);
@@ -188,7 +192,7 @@ $('runBtn').addEventListener('click', () => {
 function rowMatchesFilter(r, f) {
   switch (f) {
     case 'mine': return r.account_is_mine === 'Yes';
-    case 'other': return !!r.sf_account_name && r.account_is_mine !== 'Yes';
+    case 'other': return !!r.sf_account_name && r.account_is_mine !== 'Yes' && r.account_is_mine !== 'Unverified';
     case 'unmatched': return !r.sf_account_name;
     case 'review': return r._needsReview;
     case 'contact': return r.sf_contact_exists === 'Yes';

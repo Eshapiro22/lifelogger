@@ -151,7 +151,14 @@
     return true;
   }
 
-  /** 0..1 similarity between two *normalised* company names. */
+  /**
+   * 0..1 similarity between a *normalised* lead company name (a) and account
+   * name (b). Prefix matches are boosted asymmetrically: when the lead name is
+   * a prefix of the account ("ntt data mexico" → "ntt data mexico s de rl")
+   * the account is the more specific record and scores 0.88; when the account
+   * is a prefix of the lead ("ntt data" → "ntt data mexico") it is the generic
+   * record and scores 0.85, so the specific one wins ties.
+   */
   function companySimilarity(a, b) {
     if (!a || !b) return 0;
     if (a === b) return 1;
@@ -159,13 +166,14 @@
     const tokenScore = diceSets(new Set(ta), new Set(tb));
     const charScore = diceBigrams(bigrams(a), bigrams(b));
     let score = 0.5 * tokenScore + 0.5 * charScore;
-    const [s, l] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
-    if (isTokenPrefix(s, l) && s.join('').length >= 4) score = Math.max(score, 0.85);
+    if (a.length >= 4 && isTokenPrefix(ta, tb)) score = Math.max(score, 0.88);
+    else if (b.length >= 4 && isTokenPrefix(tb, ta)) score = Math.max(score, 0.85);
     // Space-insensitive prefix: "nttdata" vs "ntt data international services",
     // "pcconnection" vs "pc connection".
     const ca = a.replace(/ /g, ''), cb = b.replace(/ /g, '');
-    const [cs, cl] = ca.length <= cb.length ? [ca, cb] : [cb, ca];
-    if (cs.length >= 5 && cl.startsWith(cs)) score = Math.max(score, ca === cb ? 0.95 : 0.85);
+    if (ca === cb) score = Math.max(score, 0.95);
+    else if (ca.length >= 5 && cb.startsWith(ca)) score = Math.max(score, 0.88);
+    else if (cb.length >= 5 && ca.startsWith(cb)) score = Math.max(score, 0.85);
     return Math.round(score * 1000) / 1000;
   }
 
@@ -378,6 +386,8 @@
    * @param {object}   [p.contactCols]
    * @param {string}   [p.me]              your name as it appears in Salesforce (Owner)
    * @param {string}   [p.sfBaseUrl]       e.g. https://acme.lightning.force.com
+   * @param {object}   [p.overrides]       confirmed matches: { "<company as on LinkedIn>": "<Salesforce account name or Id>" }.
+   *                                       Matched case-insensitively after normalisation; wins over fuzzy matching.
    * @param {boolean}  [p.myAccountsOnly]  the accounts file contains ONLY accounts you own
    *                                       (e.g. a "My accounts" report). Then any match is
    *                                       yours and no match means "not one of my accounts";
@@ -391,19 +401,35 @@
     const meName = p.me || (p.myAccountsOnly && owners.length === 1 ? owners[0].owner : '');
     const meNorm = normalizePerson(meName);
     const isMe = (ownerNorm) => (meNorm && ownerNorm ? (ownerNorm === meNorm ? 'Yes' : 'No') : 'Unknown');
-    const accountIsMine = (acct) => {
+    const accountIsMine = (acct, tier) => {
       if (p.myAccountsOnly) return acct ? 'Yes' : 'No';
-      return acct ? isMe(acct.ownerNorm) : '';
+      if (!acct) return '';
+      if (tier === 'low') return 'Unverified';
+      return isMe(acct.ownerNorm);
     };
 
+    // Confirmed matches: normalised company → account item.
+    const overrides = new Map();
+    for (const [company, target] of Object.entries(p.overrides || {})) {
+      const key = normalizeCompany(company);
+      const t = String(target || '').trim();
+      const acct = aIndex.items.find((it) => it.id && it.id === t) ||
+        (aIndex.byNorm.get(normalizeCompany(t)) || [])[0] ||
+        aIndex.items.find((it) => it.name.toLowerCase() === t.toLowerCase());
+      if (key && acct) overrides.set(key, acct);
+    }
+
     const rows = [];
-    const summary = { total: 0, mine: 0, notMine: 0, unmatched: 0, review: 0, contactsFound: 0 };
+    const summary = { total: 0, mine: 0, notMine: 0, unmatched: 0, review: 0, contactsFound: 0, confirmed: 0 };
 
     for (const lead of p.leads) {
       const company = lead[p.leadCols.company] || '';
-      const m = matchCompany(company, aIndex);
+      const ov = overrides.get(normalizeCompany(company));
+      const m = ov
+        ? { best: ov, candidates: [ov], score: 1, tier: 'confirmed', note: '' }
+        : matchCompany(company, aIndex);
       const acct = m.best;
-      const needsReview = acct && (m.tier === 'low' || m.tier === 'medium' || !!m.note);
+      const needsReview = acct && m.tier !== 'confirmed' && (m.tier === 'low' || m.tier === 'medium' || !!m.note);
       const c = matchContact(lead[p.leadCols.name], acct ? acct.norm : '', cIndex);
 
       const out = {
@@ -419,7 +445,7 @@
         sf_account_type: acct ? acct.type : '',
         sf_account_website: acct ? acct.website : '',
         sf_parent_account: acct ? acct.parent : '',
-        account_is_mine: accountIsMine(acct),
+        account_is_mine: accountIsMine(acct, m.tier),
         match_tier: m.tier,
         match_score: m.score,
         match_note: m.note + (needsReview && !m.note ? 'Fuzzy match, please verify' : ''),
@@ -443,15 +469,17 @@
       }
 
       summary.total++;
+      if (m.tier === 'confirmed') summary.confirmed++;
       if (!acct) summary.unmatched++;
       else if (out.account_is_mine === 'Yes') summary.mine++;
+      else if (out.account_is_mine === 'Unverified') { /* counted under review only */ }
       else summary.notMine++;
       if (p.myAccountsOnly && !acct && !out.match_note) out.match_note = 'Not one of my accounts';
       if (needsReview) summary.review++;
       if (c) summary.contactsFound++;
       rows.push(out);
     }
-    return { rows, summary, owners, me: meName, myAccountsOnly: !!p.myAccountsOnly };
+    return { rows, summary, owners, me: meName, myAccountsOnly: !!p.myAccountsOnly, overridesApplied: overrides.size };
   }
 
   /** Distinct account owners with counts, most common first (for the "I am" picker). */
@@ -543,8 +571,23 @@
     ].join('\n');
   }
 
+  /** "Company => Account name or Id" per line (also accepts "Company = Account", or CSV company,account). */
+  function parseOverrides(text) {
+    const out = {};
+    for (const raw of String(text || '').split(/\r?\n/)) {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) continue;
+      const m = line.match(/^(.+?)\s*(?:=>|\t| = )\s*(.+)$/);
+      if (m) { out[m[1].trim().replace(/^"|"$/g, '')] = m[2].trim().replace(/^"|"$/g, ''); continue; }
+      // CSV line "company,account" (quote-aware, so names with commas survive)
+      const fields = parseCsv(line).headers;
+      if (fields.length >= 2 && fields[0] && fields[1]) out[fields[0]] = fields[1];
+    }
+    return out;
+  }
+
   return {
-    parseCsv, toCsv, csvEscape,
+    parseCsv, toCsv, csvEscape, parseOverrides,
     searchTermFor, buildLookupQueries, lookupPromptFor, ACCOUNT_FIELDS,
     normalizeCompany, normalizePerson, companySimilarity, tierForScore,
     detectAccountColumns, detectContactColumns, detectLeadColumns,

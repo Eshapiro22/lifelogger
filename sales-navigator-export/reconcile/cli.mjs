@@ -9,6 +9,7 @@
  *     [--my-accounts-only]   the accounts file holds only accounts you own; any match = mine
  *     [--contacts salesforce-contacts.csv] \
  *     [--sf-url   https://yourorg.lightning.force.com] \
+ *     [--overrides confirmed.txt]   lines of "Company on LinkedIn => Salesforce account name or Id"
  *     [--out      reconciled.csv]
  *
  * Same logic as the extension's "Reconcile with Salesforce" page (reconcile/match.js).
@@ -56,14 +57,17 @@ if (contactCols) console.error('  contacts', contactCols);
 if (!accountCols.name) { console.error('Could not find an account-name column in the accounts CSV.'); process.exit(2); }
 if (!accountCols.owner) console.error('WARNING: no owner column detected; account_is_mine will be "Unknown".');
 
-const { rows, summary, owners } = M.reconcile({
+const overrides = args.overrides ? M.parseOverrides(readFileSync(args.overrides, 'utf8')) : {};
+const { rows, summary, owners, overridesApplied } = M.reconcile({
   leads: leadsCsv.rows, leadCols,
   accounts: acctsCsv.rows, accountCols,
   contacts: contactsCsv ? contactsCsv.rows : null, contactCols,
   me: args.me || '',
   sfBaseUrl: args['sf-url'] || '',
   myAccountsOnly,
+  overrides,
 });
+if (args.overrides) console.error(`Confirmed matches applied: ${overridesApplied} of ${Object.keys(overrides).length} (unapplied ones name an account not in the file).`);
 
 if (myAccountsOnly) {
   // ownership is implied by presence in the file; nothing to cross-check

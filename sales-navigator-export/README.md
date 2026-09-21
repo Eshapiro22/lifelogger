@@ -203,6 +203,21 @@ node reconcile/queries.mjs --leads leads.csv --format soql       # raw SOQL only
    `sf_account_owner`, `account_is_mine`, `match_tier`, `match_score`, `match_note`,
    `alt_candidates`, and the contact columns if you supplied a contacts file.
 
+### Confirmed matches
+
+Generic names ("NTT DATA", "Goodwin") can match several Salesforce accounts equally well. Once
+you know the right one, pin it in **Confirmed matches** on the page (or `--overrides file.txt`
+on the CLI), one per line:
+
+```
+NTT DATA => Ntt Data International Services, Inc.
+Goodwin => Goodwin Procter LLP
+```
+
+The right-hand side is the account's name or Id. Confirmed rows get `match_tier = confirmed`,
+never land in "needs review", and the page remembers the list between runs. Low-confidence
+matches now report `account_is_mine = Unverified` rather than a misleading No.
+
 ### How matching works, and what to double-check
 
 Sales Navigator list rows expose the company **name** only (no website/domain), so matching is

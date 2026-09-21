@@ -83,7 +83,7 @@ assert.equal(by['Cy Moe'].match_tier, 'none');
 assert.equal(by['Cy Moe'].sf_account_name, '');
 assert.equal(by['Di Noe'].match_note, 'No company on lead');
 
-assert.deepEqual(summary, { total: 6, mine: 2, notMine: 2, unmatched: 2, review: 1, contactsFound: 2 });
+assert.deepEqual(summary, { total: 6, mine: 2, notMine: 2, unmatched: 2, review: 1, contactsFound: 2, confirmed: 0 });
 assert.equal(owners[0].owner, 'Ethan Shapiro');
 
 // CSV round-trip keeps quoting intact
@@ -138,5 +138,25 @@ assert.deepEqual(M.buildLookupQueries(['Retired', 'Self-employed', 'Acme']).skip
   const idx = M.buildAccountIndex([{ N: 'Ntt Data International Services, Inc.' }, { N: 'PC Connection Inc' }], { name: 'N' });
   assert.equal(M.matchCompany('NTTData', idx).best.name, 'Ntt Data International Services, Inc.', 'one-word variant blocks via compact prefix');
   assert.equal(M.matchCompany('PCConnection Inc', idx).best.name, 'PC Connection Inc');
+}
+{
+  const accounts = [{ Id: '1', Name: 'Goodwin plc', Owner: 'John Smith' }, { Id: '2', Name: 'Goodwin Procter LLP', Owner: 'Ethan Shapiro' }];
+  const cols = { id: 'Id', name: 'Name', owner: 'Owner' };
+  const leadsG = [{ company: 'Goodwin', name: 'X' }];
+  const lc = { name: 'name', company: 'company' };
+  const plain = M.reconcile({ leads: leadsG, leadCols: lc, accounts, accountCols: cols, me: 'Ethan Shapiro' });
+  assert.equal(plain.rows[0].sf_account_name, 'Goodwin plc', 'without override, exact-after-suffix-strip wins');
+  const withOv = M.reconcile({ leads: leadsG, leadCols: lc, accounts, accountCols: cols, me: 'Ethan Shapiro', overrides: M.parseOverrides('Goodwin => Goodwin Procter LLP') });
+  assert.equal(withOv.rows[0].sf_account_name, 'Goodwin Procter LLP');
+  assert.equal(withOv.rows[0].match_tier, 'confirmed');
+  assert.equal(withOv.rows[0].account_is_mine, 'Yes');
+  assert.equal(withOv.summary.review, 0);
+  assert.deepEqual(M.parseOverrides('A => B\n# comment\nC = D\n"E, Inc" , F'), { A: 'B', C: 'D', 'E, Inc': 'F' });
+}
+{
+  const specific = M.companySimilarity('ntt data mexico', 'ntt data mexico s de r l de c v');
+  const generic = M.companySimilarity('ntt data mexico', 'ntt data');
+  assert.ok(specific > generic, `specific account should beat generic (${specific} vs ${generic})`);
+  assert.ok(M.companySimilarity('harcourt', 'town of harcourt') < 0.75, 'containment without prefix is not boosted');
 }
 console.log('all reconcile tests passed');

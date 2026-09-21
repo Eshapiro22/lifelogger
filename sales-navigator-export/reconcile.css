@@ -64,8 +64,8 @@ td a:hover { text-decoration: underline; }
 .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: #fff; white-space: nowrap; }
 .pill.yes { background: var(--mine); }
 .pill.no { background: var(--other); }
-.pill.unknown, .pill.none { background: var(--none); }
-.pill.exact, .pill.high { background: var(--mine); }
+.pill.unknown, .pill.none, .pill.unverified { background: var(--none); }
+.pill.exact, .pill.high, .pill.confirmed { background: var(--mine); }
 .pill.medium { background: var(--other); }
 .pill.low { background: var(--review); }
 .sub { display: block; color: var(--muted); font-size: 12px; }
@@ -74,3 +74,4 @@ td a:hover { text-decoration: underline; }
 .sub-box { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .sub-box summary { cursor: pointer; }
 textarea { width: 100%; margin-top: 8px; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }

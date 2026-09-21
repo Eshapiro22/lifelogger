@@ -89,6 +89,11 @@
         <input type="text" id="meText" placeholder="or type it: Ethan Shapiro" />
       </div>
       <div class="row">
+        <label class="wide" for="overrides">Confirmed matches <span class="opt">optional</span>
+          <span class="muted">one per line, <code>Company as on LinkedIn =&gt; Salesforce account name or Id</code>. Wins over fuzzy matching; use it to pin generic names like "NTT DATA" to the right account.</span></label>
+        <textarea id="overrides" rows="4" spellcheck="false" placeholder="NTT DATA => Ntt Data International Services, Inc.&#10;Goodwin => Goodwin Procter LLP"></textarea>
+      </div>
+      <div class="row">
         <label for="sfUrl">Salesforce URL <span class="opt">optional, adds clickable record links</span></label>
         <input type="text" id="sfUrl" placeholder="https://yourorg.lightning.force.com" />
       </div>

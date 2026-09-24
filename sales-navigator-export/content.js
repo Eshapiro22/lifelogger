@@ -153,8 +153,9 @@
         '[data-control-name*="save_to_list"]',
       ],
       listMenu: [
-        '[id^="hue-menu-"]',
-        '[class*="hue-menu"]',
+        '[data-x--hue-list-dropdown--content]',
+        '[role="group"][aria-label*="list" i]',
+        '[id^="hue-menu-"]:not([id*="trigger"]):not(button)',
         '.artdeco-dropdown__content--is-open',
         '[class*="save-to-list"][class*="content"]',
         '[role="menu"]',
@@ -162,7 +163,7 @@
         '[role="dialog"]',
       ],
       listMenuItem: [
-        '[role="menuitem"]', '[role="option"]', '[role="menuitemcheckbox"]', 'label', 'button', 'li',
+        '[role="menuitem"]', '[role="option"]', '[role="menuitemcheckbox"]', '[role="menuitemradio"]', 'label', 'button', 'li', '[class*="list-item"]', '[class*="option"]',
       ],
       createListInput: [
         'input[type="text"]', 'input:not([type])', 'textarea',
@@ -593,7 +594,11 @@
     return cs.visibility !== 'hidden' && cs.opacity !== '0';
   };
   // An open popover has content; LinkedIn keeps the empty container around.
-  const isOpenMenu = (el) => visible(el) && el.childElementCount > 0;
+  // Never a button / dropdown trigger, and never something in the app header.
+  const isOpenMenu = (el) =>
+    visible(el) && el.childElementCount > 0 &&
+    el.tagName !== 'BUTTON' && !el.hasAttribute('aria-haspopup') && !/trigger/i.test(el.id || '') &&
+    !el.closest('header, nav, [class*="app-header"], [class*="global-nav"]');
   // Checkboxes are custom-styled: the real <input> is often opacity:0 or clipped
   // behind its <label>. Treat it as usable if it or its label is laid out.
   function usableCheckbox(cb) {
@@ -1033,10 +1038,10 @@
           s.listCreated = true;
           await saveSaveState(s);
           await sleep(800);
-          // If the menu is still open (or can be re-opened with the selection
-          // intact), tick the new list in case creation didn't save it.
-          const stillOpen = currentMenu(menu);
-          const menu2 = stillOpen || (findSaveToList() ? (await openListMenu()).menu : null);
+          // If the popover closed, creation saved the selection into the new
+          // list (that's how Sales Navigator behaves). Only if it stayed open
+          // do we still need to pick the new list.
+          const menu2 = currentMenu(menu);
           item = menu2 ? findListItem(menu2, s.listName) : null;
           if (item) {
             await pickListItem(item, menu2);

@@ -1,0 +1,59 @@
+<!doctype html>
+<!-- A fake, simplified stand-in for Outreach used only by test/e2e.mjs.
+     It does NOT reflect Outreach's real UI. -->
+<html><head><meta charset="utf-8"><title>Mock Outreach</title></head>
+<body>
+<div id="app"></div>
+<script>
+const PROSPECTS = [
+  { id: 1, name: 'Jane Doe', company: 'Acme Corp', email: 'jane@acme.com' },
+  { id: 2, name: 'John Smith', company: 'Globex', email: 'john@globex.com' },
+  { id: 3, name: 'John Smith', company: 'Initech', email: 'jsmith@initech.com' },
+  { id: 4, name: 'Chris Lee', company: 'Umbrella', email: 'chris@umbrella.com' },
+  { id: 5, name: 'Chris Lee', company: 'Hooli', email: 'clee@hooli.com' },
+];
+const report = ev => fetch('/__event', { method: 'POST', body: JSON.stringify(ev) });
+const app = document.getElementById('app');
+const path = location.pathname;
+
+if (path === '/prospects') {
+  app.innerHTML = `<input aria-label="Search prospects"><table><tbody id="rows"></tbody></table>`;
+  const input = app.querySelector('input');
+  input.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const q = input.value.toLowerCase();
+    setTimeout(() => {
+      document.getElementById('rows').innerHTML = PROSPECTS
+        .filter(p => p.name.toLowerCase().includes(q) || p.email === q)
+        .map(p => `<tr><td><a href="/prospects/${p.id}">${p.name}</a></td><td>${p.company}</td></tr>`).join('');
+    }, 300);
+  });
+} else if (path.startsWith('/prospects/')) {
+  const p = PROSPECTS.find(x => x.id === Number(path.split('/')[2]));
+  app.innerHTML = `<h1>${p.name}</h1><button id="seq"><span>Add to sequence</span></button> <button id="email">Email</button><div id="panel"></div>`;
+  const panel = document.getElementById('panel');
+  document.getElementById('seq').onclick = () => {
+    panel.innerHTML = `<div role="dialog"><input placeholder="Search sequences"><ul id="opts"></ul><button id="confirm">Add to sequence</button></div>`;
+    let chosen = null;
+    panel.querySelector('input').addEventListener('input', e => {
+      const q = e.target.value.toLowerCase();
+      const opts = ['Q4 Outbound', 'Nurture'].filter(s => s.toLowerCase().includes(q));
+      panel.querySelector('#opts').innerHTML = opts.map(s => `<li role="option">${s}</li>`).join('');
+      panel.querySelectorAll('li').forEach(li => li.onclick = () => { chosen = li.textContent; li.style.fontWeight = 'bold'; });
+    });
+    panel.querySelector('#confirm').onclick = () => report({ type: 'sequence', prospect: p.name, company: p.company, sequence: chosen });
+  };
+  document.getElementById('email').onclick = () => {
+    panel.innerHTML = `<div role="dialog"><button id="tpl">Templates</button><div id="tplbox"></div><div id="body" contenteditable="true"></div><button id="send">Send</button></div>`;
+    let tpl = null;
+    panel.querySelector('#tpl').onclick = () => {
+      panel.querySelector('#tplbox').innerHTML = `<input placeholder="Search templates"><ul><li role="option">LinkedIn intro v2</li><li role="option">Follow up</li></ul>`;
+      panel.querySelectorAll('li').forEach(li => li.onclick = () => { tpl = li.textContent; panel.querySelector('#body').textContent = 'Hi ' + p.name; });
+    };
+    panel.querySelector('#send').onclick = () => report({ type: 'email', prospect: p.name, company: p.company, template: tpl });
+  };
+} else {
+  app.innerHTML = '<h1>Home</h1>';
+}
+</script>
+</body></html>

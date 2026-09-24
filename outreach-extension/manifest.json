@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn → Outreach Sender",
+  "version": "0.1.0",
+  "description": "Upload a Sales Navigator CSV, find each lead in Outreach, and add them to a sequence or send a one-off template email.",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": ["https://*.outreach.io/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Open LinkedIn → Outreach Sender" },
+  "content_scripts": [
+    {
+      "matches": ["https://*.outreach.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>LinkedIn → Outreach Sender</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header>
+    <h1>LinkedIn → Outreach Sender</h1>
+    <nav>
+      <button class="tab active" data-tab="run">Run</button>
+      <button class="tab" data-tab="recipes">Recipes</button>
+      <button class="tab" data-tab="history">History</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="tab-run" class="panel">
+      <div class="card">
+        <h2>1. Leads</h2>
+        <input type="file" id="csvFile" accept=".csv,text/csv">
+        <p id="csvInfo" class="muted">Upload a Sales Navigator export (CSV).</p>
+        <div id="mapping" class="grid hidden"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Action</h2>
+        <div class="row">
+          <label class="radio"><input type="radio" name="mode" value="sequence" checked> Add to sequence</label>
+          <label class="radio"><input type="radio" name="mode" value="email"> Send one-off email</label>
+        </div>
+        <label id="sequenceField">Sequence name (exactly as in Outreach)
+          <input type="text" id="sequenceName" placeholder="e.g. Q4 Outbound – VP Sales">
+        </label>
+        <label id="templateField" class="hidden">Template name (exactly as in Outreach)
+          <input type="text" id="templateName" placeholder="e.g. LinkedIn intro v2">
+        </label>
+      </div>
+
+      <div class="card">
+        <h2>3. Safety</h2>
+        <label class="check"><input type="checkbox" id="dryRun" checked> <strong>Dry run</strong>: do every step except the final Add/Send click</label>
+        <label class="check"><input type="checkbox" id="confirmEach"> Ask me to confirm before each live send</label>
+        <label class="check"><input type="checkbox" id="includeDone"> Include leads already processed in earlier runs</label>
+        <div class="row">
+          <label>Delay between leads (sec)
+            <span class="row tight"><input type="number" id="delayMin" value="20" min="0"> – <input type="number" id="delayMax" value="45" min="0"></span>
+          </label>
+          <label>Max leads this run <input type="number" id="maxLeads" value="25" min="1"></label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>4. Run</h2>
+        <div class="row">
+          <button id="startBtn" class="primary" disabled>Start</button>
+          <button id="stopBtn" disabled>Stop</button>
+          <button id="exportBtn" disabled>Export results CSV</button>
+          <span id="progress" class="muted"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="leadTable">
+            <thead><tr><th><input type="checkbox" id="selectAll" checked></th><th>Name</th><th>Company</th><th>Email</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-recipes" class="panel hidden">
+      <div class="card">
+        <h2>Recipes</h2>
+        <p class="muted">
+          Each run does <code>find</code>, then <code>sequence</code> or <code>email</code>. The defaults are guesses at
+          Outreach's UI and <strong>will likely need adjusting</strong>. Use <em>Record</em> while you do the task by hand
+          in an Outreach tab, then swap literal values for variables like <code>{{firstName}}</code>, <code>{{email|fullName}}</code>,
+          <code>{{sequence}}</code>, <code>{{template}}</code>, or any CSV column header. Mark the irreversible click with <code>"final": true</code>.
+        </p>
+        <div class="row">
+          <select id="recipeName">
+            <option value="find">find</option>
+            <option value="sequence">sequence</option>
+            <option value="email">email</option>
+          </select>
+          <button id="recordBtn">● Record in Outreach tab</button>
+          <button id="testBtn">Test find + this recipe on first selected lead (dry run)</button>
+          <button id="resetBtn">Reset to defaults</button>
+          <button id="saveBtn" class="primary">Save</button>
+        </div>
+        <textarea id="recipeEditor" spellcheck="false"></textarea>
+        <p id="recipeStatus" class="muted"></p>
+      </div>
+    </section>
+
+    <section id="tab-history" class="panel hidden">
+      <div class="card">
+        <h2>History</h2>
+        <p class="muted">Leads marked done here are skipped in future runs unless you tick "Include leads already processed".</p>
+        <div class="row"><button id="clearHistoryBtn">Clear history</button></div>
+        <div class="table-wrap">
+          <table id="historyTable">
+            <thead><tr><th>Lead</th><th>Status</th><th>Action</th><th>When</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="card">
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </div>
+  </main>
+
+  <dialog id="confirmDialog">
+    <p id="confirmText"></p>
+    <div class="row">
+      <button id="confirmNo">Skip this lead</button>
+      <button id="confirmYes" class="primary">Send</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+{
+  "dealId": "STR-2026-001",
+  "dealName": "Blue Ridge Cabin",
+  "address": "142 Overlook Trail, Blue Ridge, GA 30513",
+  "jurisdiction": { "city": "Blue Ridge", "county": "Fannin", "state": "GA" },
+  "parcelApn": "0000-000-000",
+  "propertyType": "single-family",
+  "bedrooms": 3,
+  "bathrooms": 2,
+  "guestCapacity": 8,
+  "sqft": 1850,
+  "yearBuilt": 2004,
+  "hoa": false,
+  "intendedUse": "whole-home",
+  "amenitiesPresent": ["parking", "wifi", "deck"],
+  "strategy": "cash-flow-str",
+  "purchase": {
+    "price": 525000,
+    "closingCostPct": 0.03,
+    "ownerUseNights": 15
+  },
+  "financing": {
+    "loanType": "dscr",
+    "ltv": 0.75,
+    "aprPct": 0.0725,
+    "amortYears": 30,
+    "interestOnly": false
+  },
+  "targets": {
+    "minDSCR": 1.10,
+    "minCashOnCashYear1": 0.02,
+    "minRiskScoreStrategyThreshold": "cash-flow-str"
+  },
+  "notes": "Example deal config. Copy to deal.json and edit. providerIds/keys are never needed — all data comes from public web sources at analysis time."
+}

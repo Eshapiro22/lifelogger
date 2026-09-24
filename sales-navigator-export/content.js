@@ -594,6 +594,15 @@
   };
   // An open popover has content; LinkedIn keeps the empty container around.
   const isOpenMenu = (el) => visible(el) && el.childElementCount > 0;
+  // Checkboxes are custom-styled: the real <input> is often opacity:0 or clipped
+  // behind its <label>. Treat it as usable if it or its label is laid out.
+  function usableCheckbox(cb) {
+    if (!cb || cb.disabled) return false;
+    if (cb.closest('[aria-hidden="true"]')) return false;
+    if (cb.getClientRects().length) return true;
+    const label = cb.closest('label') || (cb.id && document.querySelector(`label[for="${CSS.escape(cb.id)}"]`));
+    return !!(label && label.getClientRects().length);
+  }
   function findByText(root, tags, re) {
     for (const el of root.querySelectorAll(tags)) {
       if (visible(el) && re.test(txt(el))) return el;
@@ -613,18 +622,18 @@
     const S = CONFIG.selectors;
     const rows = findRows();
     const inRow = (el) => rows.some((r) => r.contains(el));
-    const cb = qa(document, S.selectAllCheckbox).find((el) => visible(el) && !inRow(el));
+    const cb = qa(document, S.selectAllCheckbox).find((el) => usableCheckbox(el) && !inRow(el));
     if (cb) return cb;
-    // Fallback: a visible checkbox outside every lead card, positioned before
+    // Fallback: a usable checkbox outside every lead card, positioned before
     // the first card in document order (the header "select all" box).
     const firstRow = rows[0];
     if (!firstRow) return null;
-    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"]')).filter((b) => visible(b) && !inRow(b));
+    const boxes = Array.from(document.querySelectorAll('input[type="checkbox"]')).filter((b) => usableCheckbox(b) && !inRow(b));
     const before = boxes.filter((b) => b.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING);
     return before.length ? before[before.length - 1] : null;
   }
   function rowCheckboxes() {
-    return findRows().map((r) => q(r, CONFIG.selectors.rowCheckbox)).filter(visible);
+    return findRows().map((r) => q(r, CONFIG.selectors.rowCheckbox)).filter(usableCheckbox);
   }
   function selectedCount() {
     return rowCheckboxes().filter((cb) => cb.checked).length;
@@ -646,7 +655,14 @@
     let method = master ? 'select-all' : 'per-row (no select-all found)';
     if (master) {
       await toggleCheckbox(master, true);
-      await sleep(400);
+      // Give the page a moment to tick the rows; stop as soon as the count settles.
+      let last = -1;
+      for (let i = 0; i < 8; i++) {
+        await sleep(300);
+        const n = selectedCount();
+        if (n === total || (n > 0 && n === last)) break;
+        last = n;
+      }
     }
     let n = selectedCount();
     if (n < total) {
@@ -985,7 +1001,23 @@
         s.totalPages = readTotalPages() || s.totalPages;
 
         const sel = await selectAllOnPage();
-        if (!sel.selected) { s.error = 'Could not select any leads on this page.'; pushSaveLog(s, s.error); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+        if (!sel.selected) {
+          if (!sel.total) {
+            // e.g. every lead on the page is out-of-network (no checkbox): nothing to save here.
+            pushSaveLog(s, `Page ${pageNum}: no selectable leads (${rows.length} cards, none with a checkbox); skipping.`);
+            s.pagesDone += 1;
+            await saveSaveState(s);
+            const nb = findNextButton();
+            if ((s.totalPages && pageNum >= s.totalPages) || nextIsDisabled(nb)) { pushSaveLog(s, 'Reached last page. Done.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+            const how = await advancePage(pageNum, scrapeRow(rows[0], pageNum).key);
+            if (how === 'reload') return;
+            if (!how) { pushSaveLog(s, 'Could not move to the next page; stopping.'); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return; }
+            await randDelay();
+            continue;
+          }
+          s.error = `Could not select any leads on this page (${sel.total} checkboxes found, none would tick).`;
+          pushSaveLog(s, s.error); s.running = false; s.finishedAt = Date.now(); await saveSaveState(s); return;
+        }
 
         const found = await locateList(s.listName, s.pagesDone === 0 && !s.listCreated ? 1 : 3);
         const menu = found.menu;

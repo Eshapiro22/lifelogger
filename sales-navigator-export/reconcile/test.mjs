@@ -159,4 +159,17 @@ assert.deepEqual(M.buildLookupQueries(['Retired', 'Self-employed', 'Acme']).skip
   assert.ok(specific > generic, `specific account should beat generic (${specific} vs ${generic})`);
   assert.ok(M.companySimilarity('harcourt', 'town of harcourt') < 0.75, 'containment without prefix is not boosted');
 }
+{
+  const accounts = [{ Id: '1', Name: 'Town Of Harcourt', Owner: 'Rafa' }, { Id: '2', Name: 'Houghton Mifflin Harcourt Co.', Owner: 'Ethan Shapiro' }, { Id: '3', Name: 'Connection Inc.', Owner: 'Ethan Shapiro' }];
+  const cols = { id: 'Id', name: 'Name', owner: 'Owner' };
+  const lc = { name: 'name', company: 'company' };
+  const leadsP = ['Harcourt', 'Harcourt Education Group', 'PCConnection Inc', 'PC Connection, Inc.', 'Harcourtside Bakery'].map((c) => ({ name: 'x', company: c }));
+  const r = M.reconcile({ leads: leadsP, leadCols: lc, accounts, accountCols: cols, me: 'Ethan Shapiro',
+    overrides: M.parseOverrides('Harcourt* => Houghton Mifflin Harcourt Co.\nPC Connection* => Connection Inc.\nPCConnection* => Connection Inc.') });
+  assert.equal(r.rows[0].sf_account_name, 'Houghton Mifflin Harcourt Co.');
+  assert.equal(r.rows[1].sf_account_name, 'Houghton Mifflin Harcourt Co.');
+  assert.equal(r.rows[2].sf_account_name, 'Connection Inc.');
+  assert.equal(r.rows[3].sf_account_name, 'Connection Inc.');
+  assert.notEqual(r.rows[4].match_tier, 'confirmed', 'prefix rule needs a word boundary or compact prefix, not "harcourtside"');
+}
 console.log('all reconcile tests passed');

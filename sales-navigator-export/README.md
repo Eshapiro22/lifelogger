@@ -214,7 +214,9 @@ NTT DATA => Ntt Data International Services, Inc.
 Goodwin => Goodwin Procter LLP
 ```
 
-The right-hand side is the account's name or Id. Confirmed rows get `match_tier = confirmed`,
+A name ending in `*` is a prefix rule: `Harcourt* => Houghton Mifflin Harcourt Co.` covers
+"Harcourt", "Harcourt Inc.", "Harcourt Education Group" and so on (whole words only, so it
+won't catch "Harcourtside"). The right-hand side is the account's name or Id. Confirmed rows get `match_tier = confirmed`,
 never land in "needs review", and the page remembers the list between runs. Low-confidence
 matches now report `account_is_mine = Unverified` rather than a misleading No.
 

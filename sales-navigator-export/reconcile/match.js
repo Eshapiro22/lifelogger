@@ -408,23 +408,38 @@
       return isMe(acct.ownerNorm);
     };
 
-    // Confirmed matches: normalised company → account item.
+    // Confirmed matches: normalised company → account item. A key ending in
+    // "*" is a prefix rule ("Harcourt*" covers every Harcourt spelling).
     const overrides = new Map();
+    const prefixRules = [];
     for (const [company, target] of Object.entries(p.overrides || {})) {
-      const key = normalizeCompany(company);
+      const isPrefix = /\*\s*$/.test(company);
+      const key = normalizeCompany(company.replace(/\*\s*$/, ''));
       const t = String(target || '').trim();
       const acct = aIndex.items.find((it) => it.id && it.id === t) ||
         (aIndex.byNorm.get(normalizeCompany(t)) || [])[0] ||
         aIndex.items.find((it) => it.name.toLowerCase() === t.toLowerCase());
-      if (key && acct) overrides.set(key, acct);
+      if (!key || !acct) continue;
+      if (isPrefix) prefixRules.push({ key, acct });
+      else overrides.set(key, acct);
     }
+    prefixRules.sort((a, b) => b.key.length - a.key.length); // longest prefix wins
+    const findOverride = (norm) => {
+      if (!norm) return null;
+      if (overrides.has(norm)) return overrides.get(norm);
+      const compact = norm.replace(/ /g, '');
+      for (const r of prefixRules) {
+        if (norm === r.key || norm.startsWith(r.key + ' ') || compact === r.key.replace(/ /g, '')) return r.acct;
+      }
+      return null;
+    };
 
     const rows = [];
     const summary = { total: 0, mine: 0, notMine: 0, unmatched: 0, review: 0, contactsFound: 0, confirmed: 0 };
 
     for (const lead of p.leads) {
       const company = lead[p.leadCols.company] || '';
-      const ov = overrides.get(normalizeCompany(company));
+      const ov = findOverride(normalizeCompany(company));
       const m = ov
         ? { best: ov, candidates: [ov], score: 1, tier: 'confirmed', note: '' }
         : matchCompany(company, aIndex);
@@ -479,7 +494,7 @@
       if (c) summary.contactsFound++;
       rows.push(out);
     }
-    return { rows, summary, owners, me: meName, myAccountsOnly: !!p.myAccountsOnly, overridesApplied: overrides.size };
+    return { rows, summary, owners, me: meName, myAccountsOnly: !!p.myAccountsOnly, overridesApplied: overrides.size + prefixRules.length };
   }
 
   /** Distinct account owners with counts, most common first (for the "I am" picker). */

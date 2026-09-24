@@ -27,7 +27,7 @@ const events = [];
 let breakProspectsPage = false;
 await context.route('https://app.outreach.io/**', async route => {
   const req = route.request();
-  if (breakProspectsPage && req.url().endsWith('/prospects')) return route.abort('namenotresolved');
+  if (breakProspectsPage && new URL(req.url()).pathname === '/prospects') return route.abort('namenotresolved');
   if (req.url().endsWith('/__event')) {
     events.push(JSON.parse(req.postData()));
     return route.fulfill({ status: 204 });
@@ -70,6 +70,10 @@ try {
   console.table(s);
   assert.equal(events.length, 0, 'dry run must not click the final button');
   assert.deepEqual(s.map(r => r[1]), ['dry-run', 'dry-run', 'review', 'review', 'skipped']);
+  // One search tab per lead: closed when it went fine, left open for review otherwise.
+  const openSearches = () => context.pages().map(p => p.url()).filter(u => u.includes('/prospects?search=')).map(u => new URL(u).searchParams.get('search')).sort();
+  assert.deepEqual(openSearches(), ['Chris Lee', 'Pat Nobody']);
+  for (const p of context.pages()) if (p.url().includes('/prospects?search=')) await p.close();
 
   // Live sequence run.
   s = await run({ mode: 'sequence', name: 'Q4 Outbound', dryRun: false });

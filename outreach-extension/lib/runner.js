@@ -57,18 +57,36 @@ export async function getOutreachTab() {
   throw new FatalError('No Outreach tab is open. Open Outreach in a tab, log in, and try again.');
 }
 
-// Runs one step. Returns { ok, skipped?, detail? }; throws on failure.
-export async function runStep(tabId, rawStep, vars, { dryRun }) {
+async function openTab(url) {
+  // Open blank, then navigate, so the load can be awaited the same way as in-tab navigation.
+  const tab = await chrome.tabs.create({ url: 'about:blank', active: true });
+  await sleep(300);
+  const loaded = waitForTabLoad(tab.id);
+  await chrome.tabs.update(tab.id, { url });
+  await loaded;
+  return tab.id;
+}
+
+// Runs one step in ctx.tabId. A navigate step with newTab opens its own tab
+// and points ctx.tabId at it for the following steps.
+// Returns { ok, skipped?, detail? }; throws on failure.
+export async function runStep(ctx, rawStep, vars, { dryRun }) {
   if (rawStep.if && !vars[rawStep.if]) return { ok: true, skipped: true, detail: `skipped (no ${rawStep.if})` };
   if (rawStep.unless && vars[rawStep.unless]) return { ok: true, skipped: true, detail: `skipped (has ${rawStep.unless})` };
   if (rawStep.dryRunOnly && !dryRun) return { ok: true, skipped: true };
 
   const step = interpolate(rawStep, vars);
+  let tabId = ctx.tabId;
   try {
     if (step.action === 'navigate') {
-      const loaded = waitForTabLoad(tabId);
-      await chrome.tabs.update(tabId, { url: step.url });
-      await loaded;
+      if (step.newTab) {
+        tabId = ctx.tabId = await openTab(step.url);
+        ctx.openedTabs.push(tabId);
+      } else {
+        const loaded = waitForTabLoad(tabId);
+        await chrome.tabs.update(tabId, { url: step.url });
+        await loaded;
+      }
       await sleep(step.settle ?? 1000); // single-page apps keep rendering after "complete"
       try {
         await chrome.scripting.executeScript({ target: { tabId }, func: () => true });
@@ -107,7 +125,7 @@ export function describeStep(step) {
 
 // Runs a list of steps; onFinal (optional) is awaited before any live final
 // click and may return false to cancel the lead.
-export async function runSteps(tabId, steps, vars, opts) {
+export async function runSteps(ctx, steps, vars, opts) {
   const log = [];
   for (const step of steps) {
     if (opts.shouldStop?.()) throw new Error('Stopped');
@@ -115,7 +133,7 @@ export async function runSteps(tabId, steps, vars, opts) {
       const go = await opts.onFinal(interpolate(step, vars));
       if (!go) throw new Error('Cancelled at confirmation');
     }
-    const res = await runStep(tabId, step, vars, opts);
+    const res = await runStep(ctx, step, vars, opts);
     log.push(res.detail || describeStep(interpolate(step, vars)) + (res.skipped ? ' (skipped)' : ''));
   }
   return log;

@@ -5,9 +5,10 @@
 // recorder there captures your own clicks as steps).
 //
 // {{outreachOrigin}} is the start of your open Outreach tab's address (scheme + host).
+// Every variable also has a URL-encoded twin ending in "Encoded", e.g. {{fullNameEncoded}}.
 //
 // Step reference (all string values support {{var}} and {{a|b}} fallbacks):
-//   navigate    { url }
+//   navigate    { url, newTab? }                newTab = open in a new tab (closed after a successful lead)
 //   pause       { ms }
 //   waitFor     { target, timeout? }
 //   click       { target, final?, timeout? }  final = the irreversible click (skipped in dry run)
@@ -19,11 +20,17 @@
 // Any step may also have: optional (don't fail the lead), if / unless (var name),
 // dryRunOnly (only runs in dry run), note (free text).
 
+// Bump when a default changes in a way saved recipes should pick up.
+export const RECIPES_VERSION = 2;
+
 export const DEFAULT_RECIPES = {
   find: [
-    { action: 'navigate', url: '{{outreachOrigin}}/prospects' },
-    { action: 'type', target: { label: 'Search' }, value: '{{email|fullName}}', clear: true },
-    { action: 'key', key: 'Enter' },
+    {
+      action: 'navigate',
+      note: "Opens Outreach's own prospect search for this lead in a new tab.",
+      url: '{{outreachOrigin}}/prospects?search={{fullNameEncoded}}&sortBy=touchedAt&sortDirection=desc',
+      newTab: true,
+    },
     {
       action: 'pickResult',
       note: 'Opens the prospect only if exactly one row contains the lead\'s first and last name.',

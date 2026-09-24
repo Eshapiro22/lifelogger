@@ -1,5 +1,5 @@
 import { parseCsv, guessMapping, toLead, leadKey, toCsv, FIELDS } from './lib/csv.js';
-import { DEFAULT_RECIPES } from './lib/recipes.js';
+import { DEFAULT_RECIPES, RECIPES_VERSION } from './lib/recipes.js';
 import { getOutreachTab, runSteps, FatalError } from './lib/runner.js';
 
 const $ = sel => document.querySelector(sel);
@@ -27,7 +27,7 @@ function log(msg) {
 const SETTING_IDS = ['sequenceName', 'templateName', 'dryRun', 'confirmEach', 'includeDone', 'delayMin', 'delayMax', 'maxLeads'];
 
 async function loadSettings() {
-  const saved = await store.get(['settings', 'recipes', 'history']);
+  const saved = await store.get(['settings', 'recipes', 'recipesVersion', 'history']);
   const s = saved.settings || {};
   for (const id of SETTING_IDS) {
     const el = $('#' + id);
@@ -42,7 +42,14 @@ async function loadSettings() {
     // Older versions hard-coded app.outreach.io; use whichever Outreach host the user is on.
     const migrated = JSON.parse(JSON.stringify(saved.recipes).replaceAll('https://app.outreach.io', '{{outreachOrigin}}'));
     state.recipes = { ...state.recipes, ...migrated };
+    if ((saved.recipesVersion || 1) < 2) {
+      // v2 replaced "type into the search box" with Outreach's ?search= URL.
+      state.recipes.find = structuredClone(DEFAULT_RECIPES.find);
+      store.set({ recipes: state.recipes });
+      log('Updated the "find" recipe to open Outreach\'s search page directly.');
+    }
   }
+  store.set({ recipesVersion: RECIPES_VERSION });
   state.history = saved.history || {};
   updateModeFields();
 }
@@ -140,6 +147,14 @@ $('#selectAll').addEventListener('change', e => {
 });
 
 // ---------- Run ----------
+function buildVars(lead, target, tab) {
+  const vars = { ...lead, sequence: target, template: target, outreachOrigin: new URL(tab.url).origin };
+  for (const [k, v] of Object.entries({ ...vars })) {
+    if (typeof v === 'string') vars[`${k}Encoded`] = encodeURIComponent(v);
+  }
+  return vars;
+}
+
 async function confirmSend(lead, step) {
   const me = await chrome.tabs.getCurrent();
   if (me) await chrome.tabs.update(me.id, { active: true });
@@ -198,9 +213,11 @@ async function start() {
     if (state.stop) break;
     const row = queue[i];
     row.status = 'running'; row.detail = ''; renderLeads();
-    const vars = { ...row.lead, sequence: target, template: target, outreachOrigin: new URL(tab.url).origin };
+    const vars = buildVars(row.lead, target, tab);
+    const ctx = { tabId: tab.id, openedTabs: [] };
+    let ok = false;
     try {
-      const stepLog = await runSteps(tab.id, steps, vars, {
+      const stepLog = await runSteps(ctx, steps, vars, {
         dryRun,
         shouldStop: () => state.stop,
         onFinal: $('#confirmEach').checked ? step => confirmSend(row.lead, step) : null,
@@ -212,6 +229,7 @@ async function start() {
         await store.set({ history: state.history });
       }
       log(`✓ ${row.lead.fullName}: ${row.detail}`);
+      ok = true;
     } catch (e) {
       if (e instanceof FatalError) {
         row.status = 'pending';
@@ -224,6 +242,9 @@ async function start() {
       row.status = e.message === 'Stopped' ? 'pending' : review ? 'review' : 'failed';
       row.detail = e.message;
       log(`✗ ${row.lead.fullName}: ${e.message}`);
+    } finally {
+      // Close this lead's tab when it went fine; leave it open for review otherwise.
+      if (ok) await chrome.tabs.remove(ctx.openedTabs).catch(() => {});
     }
     renderLeads();
 
@@ -336,8 +357,7 @@ $('#testBtn').addEventListener('click', async () => {
   try {
     const tab = await getOutreachTab();
     await chrome.tabs.update(tab.id, { active: true });
-    const vars = { ...row.lead, sequence: target, template: target, outreachOrigin: new URL(tab.url).origin };
-    const out = await runSteps(tab.id, steps, vars, { dryRun: true });
+    const out = await runSteps({ tabId: tab.id, openedTabs: [] }, steps, buildVars(row.lead, target, tab), { dryRun: true });
     log(`Test passed:\n  ${out.join('\n  ')}`);
   } catch (e) {
     log(`Test failed: ${e.message}`);

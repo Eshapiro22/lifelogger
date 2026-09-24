@@ -45,11 +45,14 @@ Outreach API.
 
 ### How matching works
 
-The default `find` recipe searches Outreach for the lead's email, or for their
-full name if there's no email. It then opens a result only if **exactly one**
-result row contains both the first and last name. If several rows match, the
-company (and email) are used to narrow it down. If there are still several,
-the lead goes to `review`.
+For each lead, the extension opens a new tab at Outreach's own search page for
+that person:
+`<your Outreach address>/prospects?search=<full name>`.
+It opens a prospect only if **exactly one** search result contains both the
+lead's first and last name. If several results match, the company (and email)
+are used to narrow them down. If there are still several, or none, the lead is
+marked `review`. After a lead goes fine, its tab is closed. When a lead fails
+or needs review, its tab stays open so you can see what Outreach showed.
 
 ## Calibrating the recipes (do this first)
 

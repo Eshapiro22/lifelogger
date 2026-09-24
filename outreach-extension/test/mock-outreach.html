@@ -19,15 +19,15 @@ const path = location.pathname;
 if (path === '/prospects') {
   app.innerHTML = `<input aria-label="Search prospects"><div id="rows"></div>`;
   const input = app.querySelector('input');
-  input.addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
-    const q = input.value.toLowerCase();
-    setTimeout(() => {
-      document.getElementById('rows').innerHTML = PROSPECTS
-        .filter(p => p.name.toLowerCase().includes(q) || p.email === q)
-        .map(p => `<div class="r"><div><a href="/prospects/${p.id}/overview">${p.name}</a></div><div>${p.company}</div></div>`).join('');
-    }, 300);
-  });
+  const search = q => setTimeout(() => {
+    q = q.toLowerCase();
+    document.getElementById('rows').innerHTML = PROSPECTS
+      .filter(p => p.name.toLowerCase().includes(q) || p.email === q)
+      .map(p => `<div class="r"><div><a href="/prospects/${p.id}/overview">${p.name}</a></div><div>${p.company}</div></div>`).join('');
+  }, 300);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') search(input.value); });
+  const q = new URLSearchParams(location.search).get('search');
+  if (q) { input.value = q; search(q); }
 } else if (path.startsWith('/prospects/')) {
   const p = PROSPECTS.find(x => x.id === Number(path.split('/')[2]));
   app.innerHTML = `<h1>${p.name}</h1><button id="seq"><span>Add to sequence</span></button> <button id="email">Email</button><div id="panel"></div>`;

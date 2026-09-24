@@ -1,6 +1,6 @@
 import { parseCsv, guessMapping, toLead, leadKey, toCsv, FIELDS } from './lib/csv.js';
 import { DEFAULT_RECIPES } from './lib/recipes.js';
-import { getOutreachTab, runSteps } from './lib/runner.js';
+import { getOutreachTab, runSteps, FatalError } from './lib/runner.js';
 
 const $ = sel => document.querySelector(sel);
 const store = chrome.storage.local;
@@ -38,7 +38,11 @@ async function loadSettings() {
   if (s.mode) document.querySelector(`input[name=mode][value=${s.mode}]`).checked = true;
   // Dry run always starts on — a fresh page should never send by surprise.
   $('#dryRun').checked = true;
-  if (saved.recipes) state.recipes = { ...state.recipes, ...saved.recipes };
+  if (saved.recipes) {
+    // Older versions hard-coded app.outreach.io; use whichever Outreach host the user is on.
+    const migrated = JSON.parse(JSON.stringify(saved.recipes).replaceAll('https://app.outreach.io', '{{outreachOrigin}}'));
+    state.recipes = { ...state.recipes, ...migrated };
+  }
   state.history = saved.history || {};
   updateModeFields();
 }
@@ -194,7 +198,7 @@ async function start() {
     if (state.stop) break;
     const row = queue[i];
     row.status = 'running'; row.detail = ''; renderLeads();
-    const vars = { ...row.lead, sequence: target, template: target };
+    const vars = { ...row.lead, sequence: target, template: target, outreachOrigin: new URL(tab.url).origin };
     try {
       const stepLog = await runSteps(tab.id, steps, vars, {
         dryRun,
@@ -209,6 +213,13 @@ async function start() {
       }
       log(`✓ ${row.lead.fullName}: ${row.detail}`);
     } catch (e) {
+      if (e instanceof FatalError) {
+        row.status = 'pending';
+        row.detail = '';
+        log(`Run stopped: ${e.message}`);
+        state.stop = true;
+        break;
+      }
       const review = /No matching prospect|Ambiguous|Cancelled/.test(e.message);
       row.status = e.message === 'Stopped' ? 'pending' : review ? 'review' : 'failed';
       row.detail = e.message;
@@ -325,7 +336,8 @@ $('#testBtn').addEventListener('click', async () => {
   try {
     const tab = await getOutreachTab();
     await chrome.tabs.update(tab.id, { active: true });
-    const out = await runSteps(tab.id, steps, { ...row.lead, sequence: target, template: target }, { dryRun: true });
+    const vars = { ...row.lead, sequence: target, template: target, outreachOrigin: new URL(tab.url).origin };
+    const out = await runSteps(tab.id, steps, vars, { dryRun: true });
     log(`Test passed:\n  ${out.join('\n  ')}`);
   } catch (e) {
     log(`Test failed: ${e.message}`);

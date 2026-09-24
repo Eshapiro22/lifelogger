@@ -46,12 +46,15 @@ async function ensureContentScript(tabId) {
   await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
 }
 
+export class FatalError extends Error {}
+
+// Prefers the Outreach tab you're looking at, then any Outreach tab.
 export async function getOutreachTab() {
   const tabs = await chrome.tabs.query({ url: 'https://*.outreach.io/*' });
-  if (tabs.length) return tabs[0];
-  const tab = await chrome.tabs.create({ url: 'https://app.outreach.io/', active: false });
-  await waitForTabLoad(tab.id);
-  return tab;
+  const usable = tabs.filter(t => t.status === 'complete' || t.url);
+  const tab = usable.find(t => t.active) || usable[0];
+  if (tab) return tab;
+  throw new FatalError('No Outreach tab is open. Open Outreach in a tab, log in, and try again.');
 }
 
 // Runs one step. Returns { ok, skipped?, detail? }; throws on failure.
@@ -67,6 +70,12 @@ export async function runStep(tabId, rawStep, vars, { dryRun }) {
       await chrome.tabs.update(tabId, { url: step.url });
       await loaded;
       await sleep(step.settle ?? 1000); // single-page apps keep rendering after "complete"
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, func: () => true });
+      } catch (err) {
+        // Chrome shows its own error page (bad address, DNS, redirect loop) — every lead would fail the same way.
+        throw new FatalError(`Page failed to load: ${step.url} (${err.message}). Fix the "navigate" URL in the find recipe.`);
+      }
       return { ok: true };
     }
     if (step.action === 'pause') {
@@ -78,6 +87,7 @@ export async function runStep(tabId, rawStep, vars, { dryRun }) {
     if (!res?.ok) throw new Error(res?.error || 'Step failed');
     return res;
   } catch (err) {
+    if (err instanceof FatalError) throw err;
     if (step.optional) return { ok: true, skipped: true, detail: `optional step failed: ${err.message}` };
     throw new Error(`${describeStep(step)}: ${err.message}`);
   }

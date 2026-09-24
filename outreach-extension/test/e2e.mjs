@@ -24,8 +24,10 @@ const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir()
 });
 
 const events = [];
+let breakProspectsPage = false;
 await context.route('https://app.outreach.io/**', async route => {
   const req = route.request();
+  if (breakProspectsPage && req.url().endsWith('/prospects')) return route.abort('namenotresolved');
   if (req.url().endsWith('/__event')) {
     events.push(JSON.parse(req.postData()));
     return route.fulfill({ status: 204 });
@@ -36,6 +38,10 @@ await context.route('https://app.outreach.io/**', async route => {
 let [sw] = context.serviceWorkers();
 if (!sw) sw = await context.waitForEvent('serviceworker');
 const extId = new URL(sw.url()).host;
+
+// The extension works in the user's existing Outreach tab.
+const outreachTab = await context.newPage();
+await outreachTab.goto('https://app.outreach.io/');
 
 async function run({ mode, name, dryRun }) {
   const page = await context.newPage();
@@ -50,9 +56,11 @@ async function run({ mode, name, dryRun }) {
   if (!dryRun) await page.uncheck('#dryRun');
   await page.check('#includeDone');
   await page.click('#startBtn');
-  await page.waitForFunction(() => document.querySelector('#log').textContent.includes('Run finished'), null, { timeout: 120000 });
+  await page.waitForFunction(() => /Run finished|Stopped\./.test(document.querySelector('#log').textContent), null, { timeout: 120000 });
+  const logText = await page.textContent('#log');
   const statuses = await page.$$eval('#leadTable tbody tr', trs => trs.map(tr => [tr.children[1].textContent, tr.children[4].textContent, tr.children[5].textContent]));
   await page.close();
+  statuses.log = logText;
   return statuses;
 }
 
@@ -82,6 +90,17 @@ try {
     { type: 'email', prospect: 'Jane Doe', company: 'Acme Corp', template: 'LinkedIn intro v2' },
     { type: 'email', prospect: 'John Smith', company: 'Globex', template: 'LinkedIn intro v2' },
   ]);
+
+  // A page that fails to load stops the whole run instead of failing every lead.
+  events.length = 0;
+  breakProspectsPage = true;
+  s = await run({ mode: 'email', name: 'LinkedIn intro v2', dryRun: true });
+  breakProspectsPage = false;
+  assert.match(s.log, /Run stopped: Page failed to load: https:\/\/app\.outreach\.io\/prospects/);
+  assert.equal(s[0][1], 'pending', 'the lead in progress goes back to pending');
+  assert.ok(!s.some(r => ['failed', 'review'].includes(r[1])), 'no lead is blamed for a page that failed to load');
+  assert.equal((s.log.match(/✗/g) || []).length, 0);
+  assert.equal(events.length, 0);
 
   console.log('e2e tests passed');
 } finally {

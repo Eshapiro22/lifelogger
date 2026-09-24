@@ -4,6 +4,8 @@
 // Outreach UI. Expect to adjust labels/selectors on the Recipes tab (the
 // recorder there captures your own clicks as steps).
 //
+// {{outreachOrigin}} is the start of your open Outreach tab's address (scheme + host).
+//
 // Step reference (all string values support {{var}} and {{a|b}} fallbacks):
 //   navigate    { url }
 //   pause       { ms }
@@ -19,7 +21,7 @@
 
 export const DEFAULT_RECIPES = {
   find: [
-    { action: 'navigate', url: 'https://app.outreach.io/prospects' },
+    { action: 'navigate', url: '{{outreachOrigin}}/prospects' },
     { action: 'type', target: { label: 'Search' }, value: '{{email|fullName}}', clear: true },
     { action: 'key', key: 'Enter' },
     {

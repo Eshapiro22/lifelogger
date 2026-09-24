@@ -187,7 +187,14 @@ assert.deepEqual(M.splitLocation('Greater Toronto Area'), { city: 'Greater Toron
     { name: 'Cy Moe', sf_account_id: '', account_is_mine: '', sf_contact_exists: 'No', in_crm: 'No' },
   ];
   const ci = M.buildContactImport(rec, { listName: 'L' });
-  assert.deepEqual(ci.counts, { total: 6, toCreate: 1, notMine: 1, noAccount: 1, existing: 1, inCrm: 1, noName: 0, duplicateInList: 1 });
+  assert.deepEqual(ci.counts, { total: 6, toCreate: 1, held: 0, notMine: 1, noAccount: 1, existing: 1, inCrm: 1, noName: 0, duplicateInList: 1 });
+  const heldRun = M.buildContactImport(rec, { listName: 'L', holdAccounts: ['acme'], ownerId: '005X' });
+  assert.equal(heldRun.counts.held, 1); assert.equal(heldRun.counts.toCreate, 0);
+  const dl = M.toDataLoaderRows(ci.rows, { ownerId: '005X', linkedInField: 'LinkedIn_Profile__c' });
+  assert.deepEqual(Object.keys(dl[0]), M.dataLoaderColumns('LinkedIn_Profile__c'));
+  assert.equal(dl[0].OwnerId, '005X'); assert.equal(dl[0].LinkedIn_Profile__c, 'u1');
+  const dl2 = M.toDataLoaderRows(ci.rows, {});
+  assert.match(dl2[0].Description, /LinkedIn: u1/);
   assert.equal(ci.rows[0].LastName, 'Doe');
   assert.equal(ci.rows[0].MailingState, 'Massachusetts');
   assert.equal(ci.rows[0].AccountId, '001A');

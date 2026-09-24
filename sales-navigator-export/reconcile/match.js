@@ -625,10 +625,31 @@
     return { city: parts[0] || '', state: '', country: '' };
   }
 
+  // Review file: everything, human-readable.
   const CONTACT_IMPORT_COLUMNS = [
-    'FirstName', 'LastName', 'Title', 'AccountId', 'Account Name', 'LeadSource', 'Description',
+    'FirstName', 'LastName', 'Title', 'AccountId', 'Account Name', 'OwnerId', 'LeadSource', 'Description',
     'MailingCity', 'MailingState', 'MailingCountry', 'LinkedIn URL', 'Source list', 'Skip reason',
   ];
+  // Data Loader / Import Wizard file: exact Contact API names only.
+  function dataLoaderColumns(linkedInField) {
+    const cols = ['FirstName', 'LastName', 'Title', 'AccountId', 'OwnerId', 'LeadSource', 'Description', 'MailingCity', 'MailingState', 'MailingCountry'];
+    if (linkedInField) cols.push(linkedInField);
+    return cols;
+  }
+  /** Rows from buildContactImport → Data Loader rows (no human-only columns; OwnerId optional). */
+  function toDataLoaderRows(rows, opts = {}) {
+    const lf = opts.linkedInField || '';
+    return rows.map((r) => {
+      const o = {
+        FirstName: r.FirstName, LastName: r.LastName, Title: r.Title, AccountId: r.AccountId,
+        OwnerId: opts.ownerId || r.OwnerId || '', LeadSource: r.LeadSource,
+        Description: lf ? r.Description : `${r.Description}${r['LinkedIn URL'] ? ` LinkedIn: ${r['LinkedIn URL']}` : ''}`,
+        MailingCity: r.MailingCity, MailingState: r.MailingState, MailingCountry: r.MailingCountry,
+      };
+      if (lf) o[lf] = r['LinkedIn URL'];
+      return o;
+    });
+  }
 
   /**
    * Turn reconciled rows into Salesforce Contact import rows.
@@ -639,13 +660,20 @@
    * @param {boolean} [opts.skipInCrm=true]       skip leads LinkedIn flags as "In CRM"
    * @param {string}  [opts.listName]             for the Description / Source list columns
    * @param {string}  [opts.leadSource='LinkedIn Sales Navigator']
-   * @returns {{ rows: object[], skipped: object[], counts: object }}
+   * @param {string}  [opts.ownerId]              Salesforce User Id to set as Contact Owner
+   * @param {string[]} [opts.holdAccounts]        account names (or Ids) to hold back, e.g. partners /
+   *                                              rules-of-engagement reviews; those rows go to `held`
+   * @returns {{ rows: object[], held: object[], skipped: object[], counts: object }}
    */
   function buildContactImport(reconciled, opts = {}) {
-    const o = { onlyMine: true, skipExisting: true, skipInCrm: true, leadSource: 'LinkedIn Sales Navigator', listName: '', ...opts };
+    const o = { onlyMine: true, skipExisting: true, skipInCrm: true, leadSource: 'LinkedIn Sales Navigator', listName: '', ownerId: '', holdAccounts: [], ...opts };
+    const hold = new Set((o.holdAccounts || []).map((x) => String(x).trim()).filter(Boolean).map((x) => x.toLowerCase()));
+    const isHeld = (r) => hold.size && (hold.has(String(r.sf_account_name || '').toLowerCase()) || hold.has(String(r.sf_account_id || '').toLowerCase()) ||
+      hold.has(normalizeCompany(r.sf_account_name || '')));
     const rows = [];
+    const held = [];
     const skipped = [];
-    const counts = { total: reconciled.length, toCreate: 0, notMine: 0, noAccount: 0, existing: 0, inCrm: 0, noName: 0, duplicateInList: 0 };
+    const counts = { total: reconciled.length, toCreate: 0, held: 0, notMine: 0, noAccount: 0, existing: 0, inCrm: 0, noName: 0, duplicateInList: 0 };
     const seen = new Set();
     const today = new Date().toISOString().slice(0, 10);
     for (const r of reconciled) {
@@ -666,6 +694,7 @@
         Title: r.title || '',
         AccountId: r.sf_account_id || '',
         'Account Name': r.sf_account_name || '',
+        OwnerId: o.ownerId || '',
         LeadSource: o.leadSource,
         Description: `Imported from Sales Navigator${o.listName ? ` "${o.listName}"` : ''} on ${today}.` +
           (r.title ? ` Title on LinkedIn: ${r.title}.` : '') + (r.tenure ? ` ${r.tenure}.` : ''),
@@ -682,12 +711,16 @@
         else if (reason.startsWith('already')) counts.existing++;
         else if (reason.startsWith('LinkedIn')) counts.inCrm++;
         else counts.duplicateInList++;
+      } else if (isHeld(r)) {
+        row['Skip reason'] = 'held: account on hold list';
+        held.push(row);
+        counts.held++;
       } else {
         rows.push(row);
         counts.toCreate++;
       }
     }
-    return { rows, skipped, counts };
+    return { rows, held, skipped, counts };
   }
 
   /** Paste-ready instruction for a Claude with a Salesforce connector. */
@@ -697,12 +730,14 @@
       `Please create one Contact per row in our Salesforce org, with me as the Contact Owner. Map the columns as follows: FirstName, LastName, Title, AccountId (the 18-character Id of the Account to attach to), LeadSource, Description, MailingCity, MailingState, MailingCountry. Ignore "Account Name", "Source list" and "Skip reason" (they are for humans). If our org has a custom field for LinkedIn profile URL on Contact, put "LinkedIn URL" there; otherwise append it to Description.`,
       `Before creating each Contact, check for an existing Contact with the same first and last name on the same AccountId and skip it if found. Work in batches, and when finished give me a CSV of every row with the created Contact Id (or "skipped: <reason>"), plus totals created / skipped / failed.`,
       `These rows have no email or phone: leave those fields blank rather than guessing.`,
+      `If your Salesforce connector is read-only, don't create anything: instead verify the AccountIds, check for existing duplicate contacts on those accounts, confirm the LeadSource value and any LinkedIn URL field's API name, and tell me what you found so I can load the file with Data Loader.`,
     ].join('\n');
   }
 
   return {
     parseCsv, toCsv, csvEscape, parseOverrides,
     splitPersonName, splitLocation, buildContactImport, contactImportPrompt, CONTACT_IMPORT_COLUMNS,
+    dataLoaderColumns, toDataLoaderRows,
     searchTermFor, buildLookupQueries, lookupPromptFor, ACCOUNT_FIELDS,
     normalizeCompany, normalizePerson, companySimilarity, tierForScore,
     detectAccountColumns, detectContactColumns, detectLeadColumns,

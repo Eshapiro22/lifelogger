@@ -229,6 +229,13 @@ country and the Sales Navigator URL. Leads already found as contacts, leads Link
 "In CRM", leads at other people's accounts and duplicates within the list are left out and
 listed in a separate skipped file with the reason.
 
+Fill in your Salesforce **User Id** (becomes `OwnerId`) and the API name of a **LinkedIn URL
+field** on Contact if your org has one (otherwise the URL is appended to Description). Accounts
+you're not cleared to sell into (partners, build-own, rules-of-engagement reviews) go in **Hold
+these accounts**, one per line; their rows land in a separate held file so the load file is
+safe to insert as-is. The load file uses exact Contact API names only; a review file carries
+the human-readable columns.
+
 The extension does not write to Salesforce itself (that needs a Connected App). Two ways to
 load the file:
 
@@ -242,7 +249,8 @@ Sales Navigator list rows carry **no email or phone**, so contacts are created w
 For email-based sequencing you'll need an enrichment step (your org's data provider, or
 Sales Navigator's per-profile contact info) after the contacts exist.
 
-Command line: `node reconcile/contact-import.mjs --reconciled reconciled.csv --list "My list"`.
+Command line: `node reconcile/contact-import.mjs --reconciled reconciled.csv --list "My list"
+--owner-id 005… --linkedin-field LinkedIn_Profile__c --hold-file hold.txt`.
 
 ### How matching works, and what to double-check
 

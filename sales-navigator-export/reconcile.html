@@ -144,9 +144,22 @@
           <label for="impListName">Source list name <span class="opt">goes in Description</span></label>
           <input type="text" id="impListName" placeholder="e.g. Tier 1 Account Leads" />
         </div>
+        <div class="row">
+          <label for="impOwnerId">Your Salesforce User Id <span class="opt">OwnerId, 005…; blank = Data Loader default</span></label>
+          <input type="text" id="impOwnerId" placeholder="0055b00000XXXXXXXX" />
+          <label for="impLinkedInField">LinkedIn URL field API name <span class="opt">blank = append to Description</span></label>
+          <input type="text" id="impLinkedInField" placeholder="LinkedIn_Profile__c" />
+        </div>
+        <div class="row">
+          <label class="wide" for="impHold">Hold these accounts <span class="opt">optional</span>
+            <span class="muted">one account name (or Id) per line: partners, build-own, rules-of-engagement reviews. Their rows go to a separate "held" file instead of the load file.</span></label>
+          <textarea id="impHold" rows="3" spellcheck="false" placeholder="Ntt Data International Services, Inc.&#10;Dynatrace, Inc."></textarea>
+        </div>
         <div class="actions">
-          <button id="impBuildBtn" class="primary">Build import file</button>
-          <button id="impDownloadBtn" class="secondary" disabled>Download contacts CSV</button>
+          <button id="impBuildBtn" class="primary">Build import files</button>
+          <button id="impDownloadBtn" class="secondary" disabled>Download Data Loader CSV</button>
+          <button id="impHeldBtn" class="secondary hidden" disabled>Download held rows</button>
+          <button id="impReviewBtn" class="secondary" disabled>Download review CSV</button>
           <button id="impSkippedBtn" class="secondary" disabled>Download skipped rows</button>
           <button id="impPromptBtn" class="secondary" disabled>Copy prompt for Claude</button>
         </div>

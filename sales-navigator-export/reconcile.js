@@ -307,23 +307,38 @@ function downloadCsv(text, name) {
 $('impBuildBtn').addEventListener('click', () => {
   if (!state.result) { $('impInfo').textContent = 'Run the reconciliation first.'; return; }
   const listName = $('impListName').value.trim();
+  const ownerId = $('impOwnerId').value.trim();
+  const linkedInField = $('impLinkedInField').value.trim();
+  const holdAccounts = $('impHold').value.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  try {
+    localStorage.setItem('snx_owner_id', ownerId); localStorage.setItem('snx_li_field', linkedInField); localStorage.setItem('snx_hold', $('impHold').value);
+  } catch (_) {}
   contactImport = M.buildContactImport(state.result.rows, {
-    listName,
+    listName, ownerId, holdAccounts,
     onlyMine: $('impOnlyMine').checked,
     skipExisting: $('impSkipExisting').checked,
     skipInCrm: $('impSkipInCrm').checked,
   });
+  contactImport.linkedInField = linkedInField;
+  contactImport.ownerId = ownerId;
   const c = contactImport.counts;
   $('impInfo').textContent =
-    `${c.toCreate} contacts to create. Skipped: ${c.notMine} at others' accounts, ${c.existing} already contacts, ` +
+    `${c.toCreate} contacts in the load file` + (c.held ? `, ${c.held} held back` : '') + `. Skipped: ${c.notMine} at others' accounts, ${c.existing} already contacts, ` +
     `${c.inCrm} shown In CRM, ${c.noAccount} without an account, ${c.duplicateInList} duplicates in this list, ${c.noName} without a name.`;
-  $('impPrompt').value = M.contactImportPrompt(c.toCreate, listName);
+  $('impPrompt').value = M.contactImportPrompt(c.toCreate, listName, 'contacts-dataloader.csv');
   $('impPrompt').classList.remove('hidden');
   $('impDownloadBtn').disabled = !c.toCreate;
+  $('impReviewBtn').disabled = !c.toCreate;
   $('impPromptBtn').disabled = !c.toCreate;
+  $('impHeldBtn').classList.toggle('hidden', !c.held);
+  $('impHeldBtn').disabled = !c.held;
   $('impSkippedBtn').disabled = !contactImport.skipped.length;
 });
-$('impDownloadBtn').addEventListener('click', () => contactImport && downloadCsv(M.toCsv(contactImport.rows, M.CONTACT_IMPORT_COLUMNS), 'contacts-to-create.csv'));
+$('impDownloadBtn').addEventListener('click', () => contactImport && downloadCsv(
+  M.toCsv(M.toDataLoaderRows(contactImport.rows, { ownerId: contactImport.ownerId, linkedInField: contactImport.linkedInField }), M.dataLoaderColumns(contactImport.linkedInField)), 'contacts-dataloader.csv'));
+$('impHeldBtn').addEventListener('click', () => contactImport && downloadCsv(
+  M.toCsv(M.toDataLoaderRows(contactImport.held, { ownerId: contactImport.ownerId, linkedInField: contactImport.linkedInField }), M.dataLoaderColumns(contactImport.linkedInField)), 'contacts-held.csv'));
+$('impReviewBtn').addEventListener('click', () => contactImport && downloadCsv(M.toCsv([...contactImport.rows, ...contactImport.held], M.CONTACT_IMPORT_COLUMNS), 'contacts-review.csv'));
 $('impSkippedBtn').addEventListener('click', () => contactImport && downloadCsv(M.toCsv(contactImport.skipped, M.CONTACT_IMPORT_COLUMNS), 'contacts-skipped.csv'));
 $('impPromptBtn').addEventListener('click', () => contactImport && copyText($('impPrompt').value, $('impPromptBtn')));
 // Pre-fill the list name from the extension's export, if any.
@@ -331,5 +346,10 @@ $('impPromptBtn').addEventListener('click', () => contactImport && copyText($('i
   try {
     const { snx_state: s } = await chrome.storage.local.get('snx_state');
     if (s && s.listName && !$('impListName').value) $('impListName').value = s.listName;
+  } catch (_) {}
+  try {
+    $('impOwnerId').value = localStorage.getItem('snx_owner_id') || '';
+    $('impLinkedInField').value = localStorage.getItem('snx_li_field') || '';
+    $('impHold').value = localStorage.getItem('snx_hold') || '';
   } catch (_) {}
 })();

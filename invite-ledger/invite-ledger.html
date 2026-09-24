@@ -1,0 +1,443 @@
+<title>Invite Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F3F5F1; --surface:#FFFFFF; --sunk:#E9EDE7; --ink:#18211E; --muted:#5B6862; --line:#D8DED6;
+  --accent:#2E5B4E; --accent-ink:#FFFFFF; --accent-soft:#DCEAE3;
+  --warn:#8F5400; --warn-soft:#FAE9C8;
+  --mail:#1D5585; --mail-soft:#DFEAF5; --slack:#5A3E8A; --slack-soft:#EBE4F4;
+  --going:#256B3A; --going-soft:#DDF0E1; --pass:#6B6F6D;
+  --scrim:rgba(16,24,21,.42); --shadow:0 18px 48px rgba(16,26,22,.22);
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#111614; --surface:#19201D; --sunk:#141A18; --ink:#E4EBE7; --muted:#95A29C; --line:#2A3330;
+    --accent:#86BFAA; --accent-ink:#0F1714; --accent-soft:#1F3029;
+    --warn:#EDB65C; --warn-soft:#3A2C12;
+    --mail:#8DBBE6; --mail-soft:#172636; --slack:#BDA4E6; --slack-soft:#251D35;
+    --going:#8ED3A0; --going-soft:#18301F; --pass:#8C9591;
+    --scrim:rgba(0,0,0,.6); --shadow:0 18px 48px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#111614; --surface:#19201D; --sunk:#141A18; --ink:#E4EBE7; --muted:#95A29C; --line:#2A3330;
+  --accent:#86BFAA; --accent-ink:#0F1714; --accent-soft:#1F3029;
+  --warn:#EDB65C; --warn-soft:#3A2C12;
+  --mail:#8DBBE6; --mail-soft:#172636; --slack:#BDA4E6; --slack-soft:#251D35;
+  --going:#8ED3A0; --going-soft:#18301F; --pass:#8C9591;
+  --scrim:rgba(0,0,0,.6); --shadow:0 18px 48px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:28px 56px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:22px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(28px,5vw,40px);font-weight:700;line-height:1.05}
+h2{font-size:19px;font-weight:600}
+h3{font-size:15px;font-weight:600;font-family:var(--body)}
+p{margin:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+a{color:var(--accent)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 24px}
+header.top .lede{max-width:56ch;margin-top:8px;color:var(--muted)}
+.scan{font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:right}
+.scan b{color:var(--ink);font-weight:500}
+
+.banner{background:var(--warn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:8px;padding:10px 14px;font-size:14px}
+.banner b{color:var(--warn)}
+
+.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-block:1px solid var(--line)}
+.summary > div{padding:14px 16px 14px 0;display:grid;gap:2px}
+.summary > div + div{padding-left:16px;border-left:1px solid var(--line)}
+.summary .num{font-family:var(--display);font-size:30px;font-weight:600;line-height:1}
+.summary .num.warn{color:var(--warn)}
+@media (max-width:560px){.summary{grid-template-columns:1fr}.summary > div + div{padding-left:0;border-left:0;border-top:1px solid var(--line)}}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tabs{display:inline-flex;background:var(--sunk);border-radius:8px;padding:3px}
+.tabs button{border:0;background:transparent;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:500;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.toolbar input[type=search],.toolbar select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.toolbar input[type=search]{flex:1 1 180px;min-width:0}
+.toolbar label.check{display:inline-flex;gap:6px;align-items:center;font-size:14px;color:var(--muted);cursor:pointer}
+
+/* agenda */
+.month-group{display:grid;gap:8px}
+.month-group + .month-group{margin-top:18px}
+.month-group > .eyebrow{padding-bottom:6px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:left;width:100%}
+.row:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.row.past{opacity:.62}
+.date{display:grid;justify-items:center;line-height:1.1;font-family:var(--mono);border-right:1px dashed var(--line);padding-right:12px}
+.date .d{font-family:var(--display);font-size:26px;font-weight:600}
+.date .m,.date .w{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.row .main{display:grid;gap:4px;min-width:0}
+.row .title{font-weight:600;font-size:15.5px;overflow-wrap:anywhere}
+.row .meta{color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.chip{font-family:var(--mono);font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.chip.email{background:var(--mail-soft);color:var(--mail)}
+.chip.slack{background:var(--slack-soft);color:var(--slack)}
+.chip.rsvp{background:var(--warn-soft);color:var(--warn)}
+.chip.kit{background:var(--accent-soft);color:var(--accent)}
+.decision{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font-size:13.5px}
+.decision[data-v="going"]{border-color:var(--going);color:var(--going);background:var(--going-soft)}
+.decision[data-v="pass"]{color:var(--pass)}
+@media (max-width:560px){
+  .row{grid-template-columns:52px minmax(0,1fr)}
+  .row .side{grid-column:2}
+  .date .d{font-size:22px}
+}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}
+
+/* month */
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.cal-head button{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+.cal-scroll{overflow-x:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(78px,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);min-width:560px}
+.cal .dow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--sunk)}
+.cal .cell{min-height:96px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:4px;background:var(--surface)}
+.cal .cell.out{background:var(--sunk)}
+.cal .cell.out .n{opacity:.5}
+.cal .n{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.cal .cell.today .n{color:var(--accent-ink);background:var(--accent);border-radius:999px;padding:0 6px;align-self:flex-start}
+.pill{display:block;width:100%;text-align:left;font-size:12px;line-height:1.3;border:0;border-radius:5px;padding:3px 6px;cursor:pointer;background:var(--accent-soft);color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill.rsvp-mark{background:var(--warn-soft)}
+.more{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:10}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--bg);box-shadow:var(--shadow);z-index:11;overflow-y:auto;padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(28px + env(safe-area-inset-bottom,0px));display:grid;gap:20px;align-content:start}
+.drawer .close{justify-self:end;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;font-size:14px}
+.facts dt{color:var(--muted);font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.section{display:grid;gap:10px}
+.kit-box{background:var(--accent-soft);border-radius:10px;padding:14px;display:grid;gap:6px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px}
+.step-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.step .subject{font-weight:600}
+.step pre{margin:0;white-space:pre-wrap;font-family:var(--body);font-size:14px;background:var(--sunk);border-radius:8px;padding:10px 12px;max-height:260px;overflow:auto}
+.copy{justify-self:start;background:transparent;border:1px solid var(--line);border-radius:7px;padding:4px 10px;font-size:13px;cursor:pointer}
+.copy.done{border-color:var(--going);color:var(--going)}
+.note{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Shared calendar</div>
+      <h1>Invite Ledger</h1>
+      <p class="lede">Events we've been invited to over Outlook and Slack, pulled in by a weekly scan. Each one has the partner's outreach kit, or a suggested sequence if they didn't send one.</p>
+    </div>
+    <div class="scan" id="scan">Waiting for first scan</div>
+  </header>
+
+  <div class="banner" id="banner" hidden><b>Example events.</b> These are sample rows so you can see the layout. The first weekly scan replaces them with real invites.</div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="toolbar">
+    <div class="tabs" role="group" aria-label="View">
+      <button type="button" id="tab-agenda" aria-pressed="true">Agenda</button>
+      <button type="button" id="tab-month" aria-pressed="false">Month</button>
+    </div>
+    <input type="search" id="q" placeholder="Search events, hosts, places" aria-label="Search">
+    <select id="src" aria-label="Source">
+      <option value="all">All sources</option>
+      <option value="email">Email</option>
+      <option value="slack">Slack</option>
+    </select>
+    <select id="needs" aria-label="Outreach">
+      <option value="all">Any outreach</option>
+      <option value="partner">Partner kit</option>
+      <option value="suggested">Suggested sequence</option>
+    </select>
+    <label class="check"><input type="checkbox" id="past"> Show past</label>
+  </div>
+
+  <main id="view"></main>
+  <p class="note" id="ro" hidden>You can view this calendar but not change attendance. Ask the owner for "Can interact" access.</p>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden></aside>
+
+<script>
+(function(){
+  const DAY = 864e5;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const pad = n => String(n).padStart(2,'0');
+  const iso = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const parse = s => { if(!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return null; const [y,m,d]=s.slice(0,10).split('-').map(Number); return new Date(y,m-1,d); };
+  const plus = n => iso(new Date(today.getFullYear(), today.getMonth(), today.getDate()+n));
+  const daysUntil = s => { const d=parse(s); return d ? Math.round((d-today)/DAY) : null; };
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safeUrl = u => (typeof u==='string' && /^https?:\/\//i.test(u)) ? u : null;
+  const fmtDate = s => { const d=parse(s); return d ? WD[d.getDay()]+' '+MON[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear() : ''; };
+  const fmtTime = t => { if(!t || !/^\d{1,2}:\d{2}/.test(t)) return ''; let [h,m]=t.split(':').map(Number); const ap=h>=12?'pm':'am'; h=h%12||12; return h+(m?':'+pad(m):'')+ap; };
+  const rel = n => n===0?'today':n===1?'tomorrow':n===-1?'yesterday':n>0?'in '+n+' days':Math.abs(n)+' days ago';
+
+  const EXAMPLES = [
+    {id:'ex-dinner', title:'Customer dinner during industry week', host:'Example Partner Co.', category:'dinner',
+     startDate:plus(9), startTime:'19:00', timezone:'America/New_York', location:'Restaurant TBD, Midtown', url:null,
+     rsvpDeadline:plus(4), summary:'Partner is hosting 20 joint customers. They asked us to bring two accounts.',
+     source:{type:'slack', from:'A teammate', where:'#partnerships', link:null},
+     outreach:{mode:'suggested', steps:[
+       {label:'Invite', sendOn:plus(1), audience:'2–3 shared customers', subject:'Dinner with us and Example Partner Co. next week?', body:'Hi {first name},\n\nWe\'re co-hosting a small customer dinner with Example Partner Co. on the evening of {date} in Midtown. It\'s about 20 people, no presentations, just good food and conversation with teams working on similar problems.\n\nWould you like to join? I can hold a seat for you until {rsvp date}.\n\nBest,\n{your name}'},
+       {label:'Reminder', sendOn:plus(7), audience:'Confirmed guests', subject:'See you Thursday', body:'Hi {first name},\n\nLooking forward to dinner on {date} at {time}. Address and parking details: {details}.\n\nSee you there,\n{your name}'},
+       {label:'Follow-up', sendOn:plus(11), audience:'Everyone who attended', subject:'Great to see you last night', body:'Hi {first name},\n\nThanks for coming out. You mentioned {topic}; I\'d be glad to set up 30 minutes to go deeper. Does next week work?\n\n{your name}'}
+     ]}, decision:'undecided'},
+    {id:'ex-webinar', title:'Co-hosted webinar: migrating legacy data', host:'Example Partner Co.', category:'webinar',
+     startDate:plus(16), startTime:'13:00', timezone:'America/New_York', location:'Online', url:null,
+     rsvpDeadline:null, summary:'Joint webinar. Partner is running registration and has promo copy ready.',
+     source:{type:'email', from:'Partner marketing', where:'"Save the date: joint webinar"', link:null},
+     outreach:{mode:'partner', partnerNote:'Partner sent a promo kit: 3-email sequence, 2 LinkedIn posts, and a tracked registration link. Use theirs so sign-ups are attributed.', partnerLink:null, steps:[]},
+     decision:'going'},
+    {id:'ex-summit', title:'Cloud partner summit', host:'Acme Cloud (example)', category:'conference',
+     startDate:plus(23), endDate:plus(24), startTime:'09:00', timezone:'America/Chicago', location:'Convention center, Chicago', url:null,
+     rsvpDeadline:plus(6), summary:'Two-day partner summit. Partner booth passes available on request.',
+     source:{type:'email', from:'Partner program team', where:'"You\'re invited: Partner Summit"', link:null},
+     outreach:{mode:'partner', partnerNote:'Invite email includes a "bring a customer" registration code and a one-pager.', partnerLink:null, steps:[]},
+     decision:'maybe'},
+    {id:'ex-meetup', title:'Founders happy hour', host:'Local community group (example)', category:'meetup',
+     startDate:plus(41), startTime:'18:00', timezone:'America/Los_Angeles', location:'Rooftop bar, SoMa', url:null,
+     rsvpDeadline:null, summary:'Open-invite happy hour shared in Slack.',
+     source:{type:'slack', from:'A teammate', where:'#events', link:null},
+     outreach:{mode:'suggested', steps:[
+       {label:'Heads-up', sendOn:plus(34), audience:'Local prospects', subject:'Heading to the founders happy hour?', body:'Hi {first name},\n\nA few of us are going to the founders happy hour on {date}. If you\'re around, it would be great to meet in person.\n\n{your name}'},
+       {label:'Follow-up', sendOn:plus(43), audience:'People you met', subject:'Good to meet you', body:'Hi {first name},\n\nGood to meet you on {date}. Here\'s the {resource} I mentioned. Happy to find time if it\'s useful.\n\n{your name}'}
+     ]}, decision:'undecided'}
+  ];
+
+  const state = { events: EXAMPLES.slice(), example: true, meta: null, db: null, readOnly: false,
+    view: 'agenda', q: '', src: 'all', needs: 'all', past: false, month: new Date(today.getFullYear(), today.getMonth(), 1), openId: null };
+  try { const v = localStorage.getItem('il-view'); if (v === 'month' || v === 'agenda') state.view = v; } catch(e) {}
+
+  const $ = id => document.getElementById(id);
+
+  function visible(){
+    const q = state.q.trim().toLowerCase();
+    return state.events.filter(e => {
+      if (!e || !parse(e.startDate)) return false;
+      const endN = daysUntil(e.endDate || e.startDate);
+      if (!state.past && endN < 0) return false;
+      if (state.src !== 'all' && (e.source?.type) !== state.src) return false;
+      if (state.needs !== 'all' && (e.outreach?.mode) !== state.needs) return false;
+      if (q) { const hay = [e.title,e.host,e.location,e.summary,e.category,e.source?.where].join(' ').toLowerCase(); if (!hay.includes(q)) return false; }
+      return true;
+    }).sort((a,b) => (a.startDate+(a.startTime||'')).localeCompare(b.startDate+(b.startTime||'')));
+  }
+
+  function renderSummary(){
+    const up = state.events.filter(e => { const n = daysUntil(e.startDate); return n !== null && n >= 0 && n <= 30; });
+    const rsvp = state.events.filter(e => { const n = daysUntil(e.rsvpDeadline); return n !== null && n >= 0 && n <= 14 && e.decision !== 'pass'; });
+    const sug = state.events.filter(e => daysUntil(e.startDate) >= 0 && e.outreach?.mode === 'suggested' && e.decision !== 'pass');
+    $('summary').innerHTML =
+      '<div><span class="num">'+up.length+'</span><span class="muted">events in the next 30 days</span></div>'+
+      '<div><span class="num'+(rsvp.length?' warn':'')+'">'+rsvp.length+'</span><span class="muted">RSVPs due within 14 days</span></div>'+
+      '<div><span class="num">'+sug.length+'</span><span class="muted">need our own outreach (no partner kit)</span></div>';
+  }
+
+  function renderScan(){
+    const m = state.meta;
+    if (state.example || !m) { $('scan').textContent = 'Waiting for first scan'; return; }
+    const d = m.ranAt ? new Date(m.ranAt) : null;
+    const when = d && !isNaN(d) ? MON[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear() : 'unknown';
+    $('scan').innerHTML = 'Last scan <b>'+esc(when)+'</b><br>'+esc(m.newEvents ?? 0)+' new · '+esc(m.updatedEvents ?? 0)+' updated';
+  }
+
+  function chips(e){
+    const out = [];
+    const t = e.source?.type;
+    if (t === 'email') out.push('<span class="chip email">Email</span>');
+    if (t === 'slack') out.push('<span class="chip slack">Slack</span>');
+    const n = daysUntil(e.rsvpDeadline);
+    if (n !== null && n >= 0) out.push('<span class="chip'+(n<=14?' rsvp':'')+'">RSVP '+esc(rel(n))+'</span>');
+    if (n !== null && n < 0 && daysUntil(e.startDate) >= 0) out.push('<span class="chip">RSVP closed</span>');
+    if (e.outreach?.mode === 'partner') out.push('<span class="chip kit">Partner kit</span>');
+    else if (e.outreach?.mode === 'suggested') out.push('<span class="chip">'+(e.outreach.steps?.length||0)+'-step sequence</span>');
+    if (e.category) out.push('<span class="chip">'+esc(e.category)+'</span>');
+    return out.join('');
+  }
+
+  function decisionSelect(e){
+    const v = e.decision || 'undecided';
+    const opt = (k,l) => '<option value="'+k+'"'+(v===k?' selected':'')+'>'+l+'</option>';
+    return '<select class="decision" data-id="'+esc(e.id)+'" data-v="'+esc(v)+'" aria-label="Are we going?"'+(state.readOnly?' disabled':'')+'>'+
+      opt('undecided','Undecided')+opt('going','Going')+opt('maybe','Maybe')+opt('pass','Pass')+'</select>';
+  }
+
+  function renderAgenda(list){
+    if (!list.length) return '<div class="empty">No events match. Try clearing the filters or turning on “Show past”.</div>';
+    const groups = new Map();
+    list.forEach(e => { const d = parse(e.startDate); const k = d.getFullYear()+'-'+pad(d.getMonth()); if(!groups.has(k)) groups.set(k,{label:MON[d.getMonth()]+' '+d.getFullYear(),items:[]}); groups.get(k).items.push(e); });
+    let html = '';
+    groups.forEach(g => {
+      html += '<section class="month-group"><div class="eyebrow">'+esc(g.label)+'</div>';
+      g.items.forEach(e => {
+        const d = parse(e.startDate);
+        const past = daysUntil(e.endDate || e.startDate) < 0;
+        const time = fmtTime(e.startTime);
+        const meta = [e.host, [time, e.location].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
+        html += '<div class="row'+(past?' past':'')+'" role="button" tabindex="0" data-open="'+esc(e.id)+'">'+
+          '<div class="date"><span class="w">'+WD[d.getDay()]+'</span><span class="d">'+d.getDate()+'</span><span class="m">'+MON[d.getMonth()]+'</span></div>'+
+          '<div class="main"><div class="title">'+esc(e.title)+'</div><div class="meta">'+esc(meta)+'</div><div class="chips">'+chips(e)+'</div></div>'+
+          '<div class="side">'+decisionSelect(e)+'</div></div>';
+      });
+      html += '</section>';
+    });
+    return html;
+  }
+
+  function renderMonth(list){
+    const m = state.month;
+    const first = new Date(m.getFullYear(), m.getMonth(), 1);
+    const start = new Date(first.getFullYear(), first.getMonth(), 1 - first.getDay());
+    const byDay = {};
+    list.forEach(e => {
+      const s = parse(e.startDate), en = parse(e.endDate) || s;
+      for (let d = new Date(s), i = 0; d <= en && i < 14; d.setDate(d.getDate()+1), i++) { const k = iso(d); (byDay[k] = byDay[k] || []).push(e); }
+    });
+    list.forEach(e => { if (e.rsvpDeadline && parse(e.rsvpDeadline)) { const k = e.rsvpDeadline.slice(0,10); (byDay[k] = byDay[k] || []).push({...e, _rsvp:true}); } });
+    let html = '<div class="cal-head"><button type="button" data-nav="-1" aria-label="Previous month">←</button><h2>'+MON[m.getMonth()]+' '+m.getFullYear()+'</h2><button type="button" data-nav="1" aria-label="Next month">→</button></div>';
+    html += '<div class="cal-scroll"><div class="cal">'+WD.map(w => '<div class="dow">'+w+'</div>').join('');
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+      const k = iso(d);
+      const items = byDay[k] || [];
+      const cls = 'cell'+(d.getMonth()!==m.getMonth()?' out':'')+(k===iso(today)?' today':'');
+      html += '<div class="'+cls+'"><span class="n">'+d.getDate()+'</span>';
+      items.slice(0,3).forEach(e => { html += '<button type="button" class="pill'+(e._rsvp?' rsvp-mark':'')+'" data-open="'+esc(e.id)+'" title="'+esc((e._rsvp?'RSVP due: ':'')+e.title)+'">'+(e._rsvp?'RSVP · ':(fmtTime(e.startTime)?fmtTime(e.startTime)+' ':''))+esc(e.title)+'</button>'; });
+      if (items.length > 3) html += '<span class="more">+'+(items.length-3)+' more</span>';
+      html += '</div>';
+      if (i === 34 && new Date(start.getFullYear(), start.getMonth(), start.getDate()+35) > new Date(m.getFullYear(), m.getMonth()+1, 0)) break;
+    }
+    html += '</div></div><p class="note" style="margin-top:8px">Amber entries mark RSVP deadlines.</p>';
+    return html;
+  }
+
+  function render(){
+    $('banner').hidden = !state.example;
+    $('ro').hidden = !state.readOnly;
+    $('tab-agenda').setAttribute('aria-pressed', state.view==='agenda');
+    $('tab-month').setAttribute('aria-pressed', state.view==='month');
+    renderSummary(); renderScan();
+    const list = visible();
+    // Month view always shows past days in the grid, so it ignores the "Show past" toggle.
+    $('view').innerHTML = state.view === 'agenda' ? renderAgenda(list) : renderMonth(state.events.filter(e => parse(e.startDate) && (state.src==='all'||e.source?.type===state.src) && (state.needs==='all'||e.outreach?.mode===state.needs)));
+    if (state.openId) renderDrawer();
+  }
+
+  function renderDrawer(){
+    const e = state.events.find(x => x.id === state.openId);
+    const dr = $('drawer');
+    if (!e) { closeDrawer(); return; }
+    const when = fmtDate(e.startDate) + (e.startTime ? ', '+fmtTime(e.startTime) : '') + (e.endDate && e.endDate !== e.startDate ? ' to '+fmtDate(e.endDate) : '') + (e.endTime ? ' – '+fmtTime(e.endTime) : '') + (e.timezone ? ' ('+e.timezone+')' : '');
+    const src = e.source || {};
+    const srcLink = safeUrl(src.link), url = safeUrl(e.url), rsvpUrl = safeUrl(e.rsvpUrl);
+    let html = '<button type="button" class="close" id="d-close">Close</button>';
+    html += '<div style="display:grid;gap:6px"><div class="eyebrow">'+esc(e.category || 'Event')+(state.example?' · example':'')+'</div><h2 id="d-title" style="font-size:24px">'+esc(e.title)+'</h2>'+(e.summary?'<p class="muted">'+esc(e.summary)+'</p>':'')+'</div>';
+    html += '<dl class="facts">'+
+      '<dt>When</dt><dd>'+esc(when)+' <span class="muted">· '+esc(rel(daysUntil(e.startDate)))+'</span></dd>'+
+      (e.location?'<dt>Where</dt><dd>'+esc(e.location)+'</dd>':'')+
+      (e.host?'<dt>Host</dt><dd>'+esc(e.host)+'</dd>':'')+
+      (e.rsvpDeadline?'<dt>RSVP by</dt><dd>'+esc(fmtDate(e.rsvpDeadline))+' <span class="muted">· '+esc(rel(daysUntil(e.rsvpDeadline)))+'</span>'+(rsvpUrl?' · <a href="'+esc(rsvpUrl)+'" target="_blank" rel="noopener">RSVP link</a>':'')+'</dd>':'')+
+      (url?'<dt>Event page</dt><dd><a href="'+esc(url)+'" target="_blank" rel="noopener">'+esc(url)+'</a></dd>':'')+
+      '<dt>Heard via</dt><dd>'+esc(src.type==='slack'?'Slack':src.type==='email'?'Email':'Unknown')+(src.where?' · '+esc(src.where):'')+(src.from?' · from '+esc(src.from):'')+(srcLink?' · <a href="'+esc(srcLink)+'" target="_blank" rel="noopener">Open original</a>':'')+'</dd>'+
+      '<dt>Going?</dt><dd>'+decisionSelect(e)+'</dd>'+
+      '</dl>';
+    const o = e.outreach || {};
+    html += '<section class="section"><h2>Outreach</h2>';
+    if (o.mode === 'partner') {
+      const pl = safeUrl(o.partnerLink);
+      html += '<div class="kit-box"><h3>The partner already has a sequence</h3><p>'+esc(o.partnerNote || 'The host sent their own outreach materials.')+'</p>'+(pl?'<a href="'+esc(pl)+'" target="_blank" rel="noopener">Open partner materials</a>':'')+'</div>';
+    } else {
+      html += '<p class="note">No partner sequence found in the invite, so here is a suggested one. Placeholders are in {braces}. Nothing is sent automatically.</p>';
+    }
+    (o.steps || []).slice().sort((a,b) => String(a.sendOn||'').localeCompare(String(b.sendOn||''))).forEach((s,i) => {
+      const n = daysUntil(s.sendOn);
+      html += '<div class="step"><div class="step-head"><h3>'+esc(s.label || 'Step '+(i+1))+'</h3><span class="mono muted" style="font-size:12.5px">'+(s.sendOn?'send '+esc(fmtDate(s.sendOn))+' · '+esc(rel(n)):'')+'</span></div>'+
+        (s.audience?'<div class="note">To: '+esc(s.audience)+'</div>':'')+
+        (s.subject?'<div class="subject">'+esc(s.subject)+'</div>':'')+
+        (s.body?'<pre>'+esc(s.body)+'</pre>':'')+
+        '<button type="button" class="copy" data-copy="'+i+'">Copy email</button></div>';
+    });
+    html += '</section>';
+    dr.innerHTML = html;
+    dr._steps = (o.steps || []).slice().sort((a,b) => String(a.sendOn||'').localeCompare(String(b.sendOn||'')));
+  }
+
+  let lastFocus = null;
+  function openDrawer(id){ lastFocus = document.activeElement; state.openId = id; renderDrawer(); $('scrim').hidden = false; $('drawer').hidden = false; const c = $('d-close'); if (c) c.focus(); }
+  function closeDrawer(){ state.openId = null; $('scrim').hidden = true; $('drawer').hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+
+  async function setDecision(id, v){
+    const e = state.events.find(x => x.id === id);
+    if (!e || e.decision === v) return;
+    if (state.example || !state.db) { e.decision = v; render(); return; }
+    const prev = e.decision; e.decision = v; render();
+    try { await state.db.doc('events/'+id).update({decision: v, decisionAt: new Date().toISOString()}); }
+    catch(err) { e.decision = prev; if (err && (err.code === 'invalid_argument' || err.code === 'not_granted')) state.readOnly = true; render(); }
+  }
+
+  document.addEventListener('click', ev => {
+    const t = ev.target;
+    if (t.closest('select')) return;
+    const nav = t.closest('[data-nav]');
+    if (nav) { const m = state.month; state.month = new Date(m.getFullYear(), m.getMonth()+Number(nav.dataset.nav), 1); render(); return; }
+    const cp = t.closest('[data-copy]');
+    if (cp) { const s = $('drawer')._steps[Number(cp.dataset.copy)]; const text = (s.subject?'Subject: '+s.subject+'\n\n':'')+(s.body||'');
+      const ok = () => { cp.textContent = 'Copied'; cp.classList.add('done'); setTimeout(() => { cp.textContent = 'Copy email'; cp.classList.remove('done'); }, 1600); };
+      const fallback = () => { const pre = cp.parentElement.querySelector('pre'); if (pre) { const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); cp.textContent = 'Selected, press Ctrl/Cmd+C'; } };
+      try { navigator.clipboard.writeText(text).then(ok, fallback); } catch(e) { fallback(); }
+      return; }
+    if (t.id === 'd-close' || t.id === 'scrim') { closeDrawer(); return; }
+    const op = t.closest('[data-open]');
+    if (op) openDrawer(op.dataset.open);
+  });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && state.openId) closeDrawer();
+    if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches && ev.target.matches('.row[data-open]')) { ev.preventDefault(); openDrawer(ev.target.dataset.open); }
+  });
+  document.addEventListener('change', ev => {
+    const t = ev.target;
+    if (t.classList.contains('decision')) setDecision(t.dataset.id, t.value);
+  });
+  $('tab-agenda').onclick = () => { state.view = 'agenda'; try{localStorage.setItem('il-view','agenda')}catch(e){} render(); };
+  $('tab-month').onclick = () => { state.view = 'month'; try{localStorage.setItem('il-view','month')}catch(e){} render(); };
+  $('q').oninput = e => { state.q = e.target.value; render(); };
+  $('src').onchange = e => { state.src = e.target.value; render(); };
+  $('needs').onchange = e => { state.needs = e.target.value; render(); };
+  $('past').onchange = e => { state.past = e.target.checked; render(); };
+
+  render();
+
+  (async () => {
+    const db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+    if (!db) return;
+    state.db = db;
+    db.collection('events').onSnapshot(snap => {
+      if (snap.empty) { state.events = EXAMPLES.slice(); state.example = true; }
+      else { state.events = snap.docs.map(d => ({ ...d.data(), id: d.id })); state.example = false; }
+      render();
+    }, () => {});
+    db.doc('meta/lastRun').onSnapshot(s => { state.meta = s.exists ? s.data() : null; renderScan(); }, () => {});
+  })();
+})();
+</script>

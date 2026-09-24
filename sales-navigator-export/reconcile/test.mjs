@@ -172,4 +172,25 @@ assert.deepEqual(M.buildLookupQueries(['Retired', 'Self-employed', 'Acme']).skip
   assert.equal(r.rows[3].sf_account_name, 'Connection Inc.');
   assert.notEqual(r.rows[4].match_tier, 'confirmed', 'prefix rule needs a word boundary or compact prefix, not "harcourtside"');
 }
+assert.deepEqual(M.splitPersonName('Jane Q. Doe, MBA (she/her)'), { first: 'Jane Q.', last: 'Doe' });
+assert.deepEqual(M.splitPersonName('Robert Smith Jr.'), { first: 'Robert', last: 'Smith Jr.' });
+assert.deepEqual(M.splitPersonName('Madonna'), { first: '', last: 'Madonna' });
+assert.deepEqual(M.splitLocation('Boston, Massachusetts, United States'), { city: 'Boston', state: 'Massachusetts', country: 'United States' });
+assert.deepEqual(M.splitLocation('Greater Toronto Area'), { city: 'Greater Toronto Area', state: '', country: '' });
+{
+  const rec = [
+    { name: 'Jane Doe', title: 'VP', location: 'Boston, Massachusetts, United States', sf_account_id: '001A', sf_account_name: 'Acme', account_is_mine: 'Yes', sf_contact_exists: 'No', in_crm: 'No', profile_url: 'u1' },
+    { name: 'Jane Doe', title: 'VP', location: '', sf_account_id: '001A', sf_account_name: 'Acme', account_is_mine: 'Yes', sf_contact_exists: 'No', in_crm: 'No', profile_url: 'u1b' },
+    { name: 'John Roe', sf_account_id: '001B', sf_account_name: 'Globex', account_is_mine: 'No', sf_account_owner: 'Pat Lee', sf_contact_exists: 'No', in_crm: 'No' },
+    { name: 'Ann Poe', sf_account_id: '001A', sf_account_name: 'Acme', account_is_mine: 'Yes', sf_contact_exists: 'Yes', sf_contact_owner: 'Ethan', in_crm: 'No' },
+    { name: 'Bob Loe', sf_account_id: '001A', sf_account_name: 'Acme', account_is_mine: 'Yes', sf_contact_exists: 'No', in_crm: 'Yes' },
+    { name: 'Cy Moe', sf_account_id: '', account_is_mine: '', sf_contact_exists: 'No', in_crm: 'No' },
+  ];
+  const ci = M.buildContactImport(rec, { listName: 'L' });
+  assert.deepEqual(ci.counts, { total: 6, toCreate: 1, notMine: 1, noAccount: 1, existing: 1, inCrm: 1, noName: 0, duplicateInList: 1 });
+  assert.equal(ci.rows[0].LastName, 'Doe');
+  assert.equal(ci.rows[0].MailingState, 'Massachusetts');
+  assert.equal(ci.rows[0].AccountId, '001A');
+  assert.match(M.contactImportPrompt(1, 'L'), /1 people/);
+}
 console.log('all reconcile tests passed');

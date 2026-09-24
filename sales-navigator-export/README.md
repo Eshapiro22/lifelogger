@@ -220,6 +220,30 @@ won't catch "Harcourtside"). The right-hand side is the account's name or Id. Co
 never land in "needs review", and the page remembers the list between runs. Low-confidence
 matches now report `account_is_mine = Unverified` rather than a misleading No.
 
+### Adding the missing leads to Salesforce
+
+After a reconciliation, step 5 on the page (**Add the missing leads to Salesforce**) builds a
+Contact import file: one row per lead at an account you own that isn't in Salesforce yet, with
+`FirstName`, `LastName`, `Title`, `AccountId`, `LeadSource`, `Description`, mailing city/state/
+country and the Sales Navigator URL. Leads already found as contacts, leads LinkedIn flags as
+"In CRM", leads at other people's accounts and duplicates within the list are left out and
+listed in a separate skipped file with the reason.
+
+The extension does not write to Salesforce itself (that needs a Connected App). Two ways to
+load the file:
+
+- **A Claude with your Salesforce connector**: click *Copy prompt for Claude*, attach the CSV.
+  The prompt asks it to create one Contact per row under the given AccountId with you as owner,
+  skip name-on-account duplicates, and return the created Ids.
+- **Salesforce Data Import Wizard** (Setup → Data Import Wizard → Accounts and Contacts → Add
+  new records, match Account by Id) or Data Loader, if your permissions allow it.
+
+Sales Navigator list rows carry **no email or phone**, so contacts are created without them.
+For email-based sequencing you'll need an enrichment step (your org's data provider, or
+Sales Navigator's per-profile contact info) after the contacts exist.
+
+Command line: `node reconcile/contact-import.mjs --reconciled reconciled.csv --list "My list"`.
+
 ### How matching works, and what to double-check
 
 Sales Navigator list rows expose the company **name** only (no website/domain), so matching is
@@ -259,7 +283,7 @@ node reconcile/test.mjs   # runs the matcher's self-test
 - `background.js` — mirrors the lead count onto the toolbar badge
 - `reconcile.html` / `reconcile.css` / `reconcile.js` — Salesforce reconciliation page
 - `reconcile/match.js` — CSV parsing, name normalisation and matching (shared by page and CLI)
-- `reconcile/cli.mjs`, `reconcile/queries.mjs`, `reconcile/test.mjs` — command-line runner, lookup-query generator, self-test
+- `reconcile/cli.mjs`, `reconcile/queries.mjs`, `reconcile/contact-import.mjs`, `reconcile/test.mjs` — command-line runner, lookup-query generator, contact-import builder, self-test
 - `icons/` — generated PNG icons
 
 ## Limits and known gaps

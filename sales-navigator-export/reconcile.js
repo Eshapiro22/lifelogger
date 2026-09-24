@@ -294,3 +294,42 @@ async function copyText(text, btn) {
 }
 $('copyPromptBtn').addEventListener('click', () => lookup && copyText(M.lookupPromptFor(lookup.queries, lookup.format), $('copyPromptBtn')));
 $('copyQueriesBtn').addEventListener('click', () => lookup && copyText(lookup.queries.join('\n\n'), $('copyQueriesBtn')));
+
+// ─── contact import ────────────────────────────────────────────────────────
+let contactImport = null;
+function downloadCsv(text, name) {
+  const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+$('impBuildBtn').addEventListener('click', () => {
+  if (!state.result) { $('impInfo').textContent = 'Run the reconciliation first.'; return; }
+  const listName = $('impListName').value.trim();
+  contactImport = M.buildContactImport(state.result.rows, {
+    listName,
+    onlyMine: $('impOnlyMine').checked,
+    skipExisting: $('impSkipExisting').checked,
+    skipInCrm: $('impSkipInCrm').checked,
+  });
+  const c = contactImport.counts;
+  $('impInfo').textContent =
+    `${c.toCreate} contacts to create. Skipped: ${c.notMine} at others' accounts, ${c.existing} already contacts, ` +
+    `${c.inCrm} shown In CRM, ${c.noAccount} without an account, ${c.duplicateInList} duplicates in this list, ${c.noName} without a name.`;
+  $('impPrompt').value = M.contactImportPrompt(c.toCreate, listName);
+  $('impPrompt').classList.remove('hidden');
+  $('impDownloadBtn').disabled = !c.toCreate;
+  $('impPromptBtn').disabled = !c.toCreate;
+  $('impSkippedBtn').disabled = !contactImport.skipped.length;
+});
+$('impDownloadBtn').addEventListener('click', () => contactImport && downloadCsv(M.toCsv(contactImport.rows, M.CONTACT_IMPORT_COLUMNS), 'contacts-to-create.csv'));
+$('impSkippedBtn').addEventListener('click', () => contactImport && downloadCsv(M.toCsv(contactImport.skipped, M.CONTACT_IMPORT_COLUMNS), 'contacts-skipped.csv'));
+$('impPromptBtn').addEventListener('click', () => contactImport && copyText($('impPrompt').value, $('impPromptBtn')));
+// Pre-fill the list name from the extension's export, if any.
+(async () => {
+  try {
+    const { snx_state: s } = await chrome.storage.local.get('snx_state');
+    if (s && s.listName && !$('impListName').value) $('impListName').value = s.listName;
+  } catch (_) {}
+})();

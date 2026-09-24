@@ -454,6 +454,7 @@
         location: lead.location || '',
         profile_url: lead[p.leadCols.profileUrl] || lead.profile_url || '',
         in_crm: lead.in_crm || '',
+        tenure: lead.tenure || '',
         sf_account_name: acct ? acct.name : '',
         sf_account_id: acct ? acct.id : '',
         sf_account_owner: acct ? acct.owner : '',
@@ -601,8 +602,107 @@
     return out;
   }
 
+  // ─── contact import (leads → Salesforce Contact rows) ───────────────────
+  const CREDENTIALS = /\b(mba|phd|ph\.d\.?|cpa|pmp|cfa|cissp|jd|j\.d\.?|md|m\.d\.?|esq|llb|llm|cpl|cscp|pe|ra|rn)\b\.?/gi;
+  /** "Jane Q. Doe, MBA (she/her)" → { first: "Jane Q.", last: "Doe" }. Salesforce requires LastName. */
+  function splitPersonName(name) {
+    let str = String(name || '').replace(/\(.*?\)/g, ' ');
+    str = str.split(',')[0];
+    str = str.replace(CREDENTIALS, ' ').replace(/\s+/g, ' ').trim();
+    const toks = str.split(' ').filter(Boolean);
+    if (!toks.length) return { first: '', last: '' };
+    if (toks.length === 1) return { first: '', last: toks[0] };
+    const suffixes = /^(jr|sr|ii|iii|iv)\.?$/i;
+    let last = toks.pop();
+    if (suffixes.test(last) && toks.length > 1) last = `${toks.pop()} ${last}`;
+    return { first: toks.join(' '), last };
+  }
+  /** "Boston, Massachusetts, United States" → city/state/country; "Greater Boston" → city only. */
+  function splitLocation(loc) {
+    const parts = String(loc || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (parts.length >= 3) return { city: parts[0], state: parts[1], country: parts.slice(2).join(', ') };
+    if (parts.length === 2) return { city: parts[0], state: parts[1], country: '' };
+    return { city: parts[0] || '', state: '', country: '' };
+  }
+
+  const CONTACT_IMPORT_COLUMNS = [
+    'FirstName', 'LastName', 'Title', 'AccountId', 'Account Name', 'LeadSource', 'Description',
+    'MailingCity', 'MailingState', 'MailingCountry', 'LinkedIn URL', 'Source list', 'Skip reason',
+  ];
+
+  /**
+   * Turn reconciled rows into Salesforce Contact import rows.
+   * @param {object[]} reconciled   rows from reconcile().rows (must have sf_account_id)
+   * @param {object} [opts]
+   * @param {boolean} [opts.onlyMine=true]        only leads on accounts you own
+   * @param {boolean} [opts.skipExisting=true]    skip leads already found as Salesforce contacts by name
+   * @param {boolean} [opts.skipInCrm=true]       skip leads LinkedIn flags as "In CRM"
+   * @param {string}  [opts.listName]             for the Description / Source list columns
+   * @param {string}  [opts.leadSource='LinkedIn Sales Navigator']
+   * @returns {{ rows: object[], skipped: object[], counts: object }}
+   */
+  function buildContactImport(reconciled, opts = {}) {
+    const o = { onlyMine: true, skipExisting: true, skipInCrm: true, leadSource: 'LinkedIn Sales Navigator', listName: '', ...opts };
+    const rows = [];
+    const skipped = [];
+    const counts = { total: reconciled.length, toCreate: 0, notMine: 0, noAccount: 0, existing: 0, inCrm: 0, noName: 0, duplicateInList: 0 };
+    const seen = new Set();
+    const today = new Date().toISOString().slice(0, 10);
+    for (const r of reconciled) {
+      const { first, last } = splitPersonName(r.name);
+      const loc = splitLocation(r.location);
+      let reason = '';
+      if (!last) reason = 'no name';
+      else if (!r.sf_account_id) reason = 'no Salesforce account';
+      else if (o.onlyMine && r.account_is_mine !== 'Yes') reason = `account owned by ${r.sf_account_owner || 'someone else'}`;
+      else if (o.skipExisting && r.sf_contact_exists === 'Yes') reason = `already a contact (${r.sf_contact_owner || 'owner unknown'})`;
+      else if (o.skipInCrm && r.in_crm === 'Yes') reason = 'LinkedIn shows In CRM';
+      const dupKey = `${first} ${last}|${r.sf_account_id}`.toLowerCase();
+      if (!reason && seen.has(dupKey)) reason = 'duplicate within this list';
+      seen.add(dupKey);
+      const row = {
+        FirstName: first,
+        LastName: last,
+        Title: r.title || '',
+        AccountId: r.sf_account_id || '',
+        'Account Name': r.sf_account_name || '',
+        LeadSource: o.leadSource,
+        Description: `Imported from Sales Navigator${o.listName ? ` "${o.listName}"` : ''} on ${today}.` +
+          (r.title ? ` Title on LinkedIn: ${r.title}.` : '') + (r.tenure ? ` ${r.tenure}.` : ''),
+        MailingCity: loc.city, MailingState: loc.state, MailingCountry: loc.country,
+        'LinkedIn URL': r.profile_url || '',
+        'Source list': o.listName,
+        'Skip reason': reason,
+      };
+      if (reason) {
+        skipped.push(row);
+        if (reason === 'no name') counts.noName++;
+        else if (reason === 'no Salesforce account') counts.noAccount++;
+        else if (reason.startsWith('account owned')) counts.notMine++;
+        else if (reason.startsWith('already')) counts.existing++;
+        else if (reason.startsWith('LinkedIn')) counts.inCrm++;
+        else counts.duplicateInList++;
+      } else {
+        rows.push(row);
+        counts.toCreate++;
+      }
+    }
+    return { rows, skipped, counts };
+  }
+
+  /** Paste-ready instruction for a Claude with a Salesforce connector. */
+  function contactImportPrompt(count, listName, fileName = 'contacts-to-create.csv') {
+    return [
+      `I'm attaching ${fileName}: ${count} people from a LinkedIn Sales Navigator${listName ? ` list "${listName}"` : ' export'} who work at accounts I own in Salesforce but do not exist there as Contacts yet.`,
+      `Please create one Contact per row in our Salesforce org, with me as the Contact Owner. Map the columns as follows: FirstName, LastName, Title, AccountId (the 18-character Id of the Account to attach to), LeadSource, Description, MailingCity, MailingState, MailingCountry. Ignore "Account Name", "Source list" and "Skip reason" (they are for humans). If our org has a custom field for LinkedIn profile URL on Contact, put "LinkedIn URL" there; otherwise append it to Description.`,
+      `Before creating each Contact, check for an existing Contact with the same first and last name on the same AccountId and skip it if found. Work in batches, and when finished give me a CSV of every row with the created Contact Id (or "skipped: <reason>"), plus totals created / skipped / failed.`,
+      `These rows have no email or phone: leave those fields blank rather than guessing.`,
+    ].join('\n');
+  }
+
   return {
     parseCsv, toCsv, csvEscape, parseOverrides,
+    splitPersonName, splitLocation, buildContactImport, contactImportPrompt, CONTACT_IMPORT_COLUMNS,
     searchTermFor, buildLookupQueries, lookupPromptFor, ACCOUNT_FIELDS,
     normalizeCompany, normalizePerson, companySimilarity, tierForScore,
     detectAccountColumns, detectContactColumns, detectLeadColumns,

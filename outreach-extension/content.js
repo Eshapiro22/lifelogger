@@ -103,6 +103,38 @@
     el.dispatchEvent(new KeyboardEvent('keyup', init));
   }
 
+  // Finds result "rows" without knowing the page's markup: each link to a
+  // prospect (/prospects/<id>) is widened to the largest ancestor that still
+  // links to only that one prospect.
+  function rowsFromProspectLinks() {
+    const idOf = a => (a.getAttribute('href') || '').match(/\/prospects\/(\d+)/)?.[1];
+    const links = [...document.querySelectorAll("a[href*='/prospects/']")].filter(a => idOf(a) && visible(a));
+    const rows = new Map();
+    for (const a of links) {
+      const id = idOf(a);
+      if (rows.has(id)) continue;
+      let row = a;
+      while (row.parentElement && row.parentElement !== document.body) {
+        const ids = new Set([...row.parentElement.querySelectorAll("a[href*='/prospects/']")].map(idOf).filter(Boolean));
+        // Stop before a prospect's "row" grows into a whole page section.
+        if (ids.size > 1 || row.parentElement.innerText.length > 600) break;
+        row = row.parentElement;
+      }
+      rows.set(id, row);
+    }
+    return [...rows.values()];
+  }
+
+  function matchingRows(step, must) {
+    const byText = r => must.every(m => clean(r.innerText).includes(m));
+    let rows = step.rows ? [...document.querySelectorAll(step.rows)].filter(visible).filter(byText) : [];
+    rows = rows.filter(r => !rows.some(o => o !== r && r.contains(o)));
+    if (!rows.length) rows = rowsFromProspectLinks().filter(byText);
+    return rows;
+  }
+
+  let lastTyped = null;
+
   async function pickResult(step) {
     const must = (step.mustContain || []).map(clean).filter(Boolean);
     const prefer = (step.prefer || []).map(clean).filter(Boolean);
@@ -110,22 +142,28 @@
     const end = Date.now() + (step.timeout || 10000);
     let rows = [];
     while (Date.now() < end) {
-      rows = [...document.querySelectorAll(step.rows)]
-        .filter(visible)
-        .filter(r => must.every(m => clean(r.innerText).includes(m)));
-      // Drop outer rows that wrap other matching rows.
-      rows = rows.filter(r => !rows.some(o => o !== r && r.contains(o)));
+      rows = matchingRows(step, must);
       if (rows.length) break;
       await sleep(300);
     }
-    if (!rows.length) throw new Error('No matching prospect found in Outreach');
+    if (!rows.length) {
+      const text = clean(document.body.innerText);
+      const facts = [
+        `page ${location.pathname}${location.search}`,
+        lastTyped ? `typed "${lastTyped.value}" into ${lastTyped.desc}` : 'nothing typed',
+        `${step.rows ? document.querySelectorAll(step.rows).length : 0} rows matched the rows selector`,
+        `${rowsFromProspectLinks().length} prospect links on page`,
+        `name ${must.every(m => text.includes(m)) ? 'IS' : 'is not'} visible on page`,
+      ];
+      throw new Error(`No matching prospect found in Outreach (${facts.join('; ')})`);
+    }
     if (rows.length > 1 && prefer.length) {
       const narrowed = rows.filter(r => prefer.some(p => clean(r.innerText).includes(p)));
       if (narrowed.length) rows = narrowed;
     }
     if (rows.length > 1) throw new Error(`Ambiguous: ${rows.length} prospects match — skipped for manual review`);
     const row = rows[0];
-    realClick((step.click && row.querySelector(step.click)) || row);
+    realClick((step.click && row.querySelector(step.click)) || row.querySelector("a[href*='/prospects/']") || row);
     return `matched: ${row.innerText.replace(/\s+/g, ' ').slice(0, 80)}`;
   }
 
@@ -144,7 +182,9 @@
         const el = await waitFind(step.target, step.timeout, true);
         if (step.clear !== false) setValue(el, '');
         setValue(el, step.value ?? '');
-        return;
+        const desc = el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('name') || el.tagName.toLowerCase();
+        lastTyped = { value: step.value ?? '', desc: `"${desc}"` };
+        return `typed into ${lastTyped.desc}`;
       }
       case 'key':
         pressKey(step.key);

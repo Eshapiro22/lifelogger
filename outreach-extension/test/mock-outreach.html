@@ -17,7 +17,7 @@ const app = document.getElementById('app');
 const path = location.pathname;
 
 if (path === '/prospects') {
-  app.innerHTML = `<input aria-label="Search prospects"><table><tbody id="rows"></tbody></table>`;
+  app.innerHTML = `<input aria-label="Search prospects"><div id="rows"></div>`;
   const input = app.querySelector('input');
   input.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
@@ -25,7 +25,7 @@ if (path === '/prospects') {
     setTimeout(() => {
       document.getElementById('rows').innerHTML = PROSPECTS
         .filter(p => p.name.toLowerCase().includes(q) || p.email === q)
-        .map(p => `<tr><td><a href="/prospects/${p.id}">${p.name}</a></td><td>${p.company}</td></tr>`).join('');
+        .map(p => `<div class="r"><div><a href="/prospects/${p.id}/overview">${p.name}</a></div><div>${p.company}</div></div>`).join('');
     }, 300);
   });
 } else if (path.startsWith('/prospects/')) {

@@ -19,13 +19,21 @@
   </div>
 
   <section>
+    <label>Mode
+      <select id="mode">
+        <option value="email">Single email step</option>
+        <option value="plan">Full Triple Touch plan (calls, VMs, emails, LinkedIn, objections)</option>
+      </select>
+    </label>
     <label>Sequence
       <select id="sequence"></select>
     </label>
-    <label>Step
-      <select id="step"></select>
-    </label>
-    <p id="step-guide" class="hint"></p>
+    <div id="step-wrap">
+      <label>Step
+        <select id="step"></select>
+      </label>
+      <p id="step-guide" class="hint"></p>
+    </div>
   </section>
 
   <section>
@@ -54,7 +62,7 @@
     <button id="grab" class="secondary">Grab selection / page text</button>
   </section>
 
-  <section>
+  <section id="history-wrap">
     <label>Earlier emails in this sequence <span class="hint">(auto-filled as you generate; edit freely)</span>
       <textarea id="history" rows="3"></textarea>
     </label>
@@ -74,6 +82,7 @@
       <button id="copy-body" class="secondary">Copy body</button>
       <button id="insert" class="secondary">Insert into page</button>
     </div>
+    <p class="hint">In Outreach, click into the email body first, then Insert.</p>
     <div id="vm-wrap" hidden>
       <label>Voicemail script (≤25s) <textarea id="out-voicemail" rows="4"></textarea></label>
       <button id="copy-vm" class="secondary">Copy voicemail</button>
@@ -84,6 +93,13 @@
     </div>
     <h2>Playbook check</h2>
     <ul id="checks"></ul>
+  </section>
+
+  <section id="plan" hidden>
+    <div class="row">
+      <button id="copy-plan" class="secondary">Copy plan as Markdown</button>
+    </div>
+    <div id="plan-out"></div>
   </section>
 
   <script type="module" src="sidepanel.js"></script>

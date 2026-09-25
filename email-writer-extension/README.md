@@ -1,6 +1,6 @@
 # Triple Touch Email Writer (Chrome extension)
 
-A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps it also writes the matching voicemail, so the voicemail names the email's subject line. It calls Claude with your own Anthropic API key.
+A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence, or a **full plan** for one contact: call opener, discovery questions, voicemails, emails, LinkedIn copy and objection responses. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps it also writes the matching voicemail, so the voicemail names the email's subject line. It calls Claude with your own Anthropic API key.
 
 ## Install (unpacked)
 
@@ -22,10 +22,19 @@ Your API key and playbook are stored only in this browser (`chrome.storage.local
 | 7 | Triple Touch #2 email + voicemail | new | Trigger / insight, one optional asset |
 | 10 | Email #4 | new | Peer proof as a short story |
 | 14 | Triple Touch #3 email + voicemail | new | "Wrong person?" referral ask |
-| 21 | Breakup | new | Permission to close the loop |
+| 21 | Breakup | reply (Day 14 thread) | Permission to close the loop |
 | any | Exec reverse-selling email | new | Bottom-up insight from colleague intel, ≤50 words |
 
-Calls, LinkedIn touches and call scripts aren't generated. The tool writes emails, plus voicemails on Triple Touch steps.
+## Full Triple Touch plan mode
+
+Switch **Mode** to *Full Triple Touch plan* to get the playbook's Section 10 output for one contact:
+- research summary
+- Triple Touch #1: call opener with problem proposition, 3 discovery questions, voicemail, email, LinkedIn note
+- every touch from Day 1 to Day 21 (calls, voicemails, emails, LinkedIn)
+- the top 3 objections for the persona, with responses
+- flags for placeholders that need real data
+
+Each email in the plan gets the same playbook checks plus Copy and Insert buttons. **Copy plan as Markdown** exports the whole plan.
 
 ## Using it
 
@@ -41,6 +50,18 @@ Calls, LinkedIn touches and call scripts aren't generated. The tool writes email
    - one ask, and at most one asset (none on early touches)
    - the email mentions the voicemail, and the voicemail is ≤25 seconds and names the subject
    - `{placeholders}` that still need data (`{{merge_fields}}` are left alone)
-4. Copy, or use **Insert into page**. Insert is best-effort and may not work in every email tool, so always review before sending.
+4. Copy, or use **Insert into page**.
+
+## Using it with Outreach
+
+The extension has permission to read and write on `*.outreach.io`, so it keeps working as you move between Outreach pages.
+
+1. Open the email step (sequence step template or one-off email) in Outreach and **click into the email body**.
+2. Click **Insert into page** in the side panel. It writes the subject into the Subject field (not for reply steps, which keep the existing thread) and replaces the body in the editor you clicked. The editor can be inside an iframe. The insert tries a paste first, which editors handle natively, then falls back to direct insertion.
+3. Review it in Outreach before saving or sending.
+
+If you're writing a reusable sequence template, enter an Outreach variable such as `{{first_name}}` as the prospect's first name. Variables in double braces are left untouched. Check the exact variable names in your Outreach instance.
+
+**Grab selection / page text** works on an Outreach prospect page too. Select the part you want (their title, notes, recent activity) before clicking.
 
 Each draft is added to **Earlier emails** and the step moves forward, so later touches change the angle. **Start a new prospect** clears the form.

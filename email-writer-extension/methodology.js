@@ -74,11 +74,11 @@ Also write the matching voicemail.`,
   {
     id: "breakup",
     day: 21,
-    label: "Day 21 — Breakup (permission to close the loop)",
-    thread: "new",
+    label: "Day 21 — Breakup (reply, permission to close the loop)",
+    thread: "reply",
     tripleTouch: false,
     assetsAllowed: false,
-    guide: `Breakup email asking permission to close the loop. Direct, professional and detached (UYSP: sell from service, not neediness). No guilt, no cheekiness, no asset.
+    guide: `Breakup email asking permission to close the loop, sent as a reply in the most recent thread (the Day 14 email), so the subject is empty. Direct, professional and detached (UYSP: sell from service, not neediness). No guilt, no cheekiness, no asset.
 - Restate the one problem in a few words, say I'll stop reaching out, and leave the door open. 2–3 sentences.`,
   },
   {
@@ -110,7 +110,7 @@ export const CTA_STYLES = {
 export function buildSystemPrompt({ senderName, senderCompany }) {
   const me = senderName || "the sender";
   const co = senderCompany || "the sender's company";
-  return `You write outbound sales emails for ${me} at ${co}, following 30 Minutes to President's Club (30MPC) and Ian Koniak's Untap Your Sales Potential (UYSP). If a PLAYBOOK is provided, it is the source of truth and overrides the defaults below.
+  return `You write outbound sales emails (and, when asked, voicemails, call scripts and LinkedIn messages) for ${me} at ${co}, following 30 Minutes to President's Club (30MPC) and Ian Koniak's Untap Your Sales Potential (UYSP). If a PLAYBOOK is provided, it is the source of truth and overrides the defaults below.
 
 Rules:
 1. Always open with the prospect's world: a trigger, observation or persona pain. Never open with ${co}, "I hope this finds you well" or "My name is". (Triple Touch emails may open with "Just left you a voicemail.")
@@ -147,6 +147,72 @@ export const OUTPUT_SCHEMA = {
   required: ["angle", "subject", "body", "voicemail", "flags"],
   additionalProperties: false,
 };
+
+// Full-sequence plan (the playbook's Section 10 output format).
+export const PLAN_GUIDE = `Build the full outbound plan for this ONE contact, following the playbook's default 3-week, 12-touch sequence (Section 3) and its output format (Section 10).
+
+Include:
+1. research_summary: the angle chosen and why (1–2 lines).
+2. triple_touch_1: the Day 1 cold call opener (permission-based, then the problem proposition), exactly 3 discovery questions, the voicemail (≤25s, names the email subject), the follow-up email, and an optional one-line LinkedIn connect note.
+3. sequence: one row per touch, in day order:
+   Day 1 Triple Touch #1 (call → VM → email, Pain A) · Day 1 LinkedIn connect · Day 3 Email #2 (reply in same thread, new angle: Pain B or story) · Day 5 call only (no VM if one was left in the last 72 hrs) · Day 7 Triple Touch #2 (trigger/insight, new thread) · Day 8 LinkedIn engage · Day 10 Email #4 (new thread, peer proof story) · Day 12 call only, referencing prior emails · Day 14 Triple Touch #3 ("wrong person?" referral ask, new thread) · Day 17 LinkedIn DM (share one relevant asset, no ask) · Day 21 breakup email (reply in the Day 14 thread).
+   Fill only the fields a touch uses; leave the others as empty strings. Replies have an empty subject.
+4. objections: the top 3 likely objections for this persona, each with a response using Acknowledge → Question → Respond → Ask.
+5. flags: every placeholder that needs real data, and anything to verify.
+
+Every touch changes the angle. Keep all the length limits.`;
+
+export const PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    research_summary: { type: "string" },
+    triple_touch_1: {
+      type: "object",
+      properties: {
+        call_opener: { type: "string", description: "Permission-based opener followed by the problem proposition." },
+        discovery_questions: { type: "array", items: { type: "string" }, description: "Exactly 3 questions." },
+        voicemail: { type: "string" },
+        email_subject: { type: "string" },
+        email_body: { type: "string" },
+        linkedin_note: { type: "string", description: "Optional one-line connect note; empty string for no note." },
+      },
+      required: ["call_opener", "discovery_questions", "voicemail", "email_subject", "email_body", "linkedin_note"],
+      additionalProperties: false,
+    },
+    sequence: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          day: { type: "integer" },
+          channel: { type: "string", description: "e.g. \"Call → VM → Email\", \"Email\", \"Call\", \"LinkedIn\"" },
+          angle: { type: "string" },
+          subject: { type: "string", description: "Email subject; empty string for replies and non-email touches." },
+          email_body: { type: "string", description: "Empty string if this touch has no email." },
+          voicemail: { type: "string", description: "Empty string if this touch has no voicemail." },
+          other_copy: { type: "string", description: "Call talk track or LinkedIn text; empty string if not used." },
+        },
+        required: ["day", "channel", "angle", "subject", "email_body", "voicemail", "other_copy"],
+        additionalProperties: false,
+      },
+    },
+    objections: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { objection: { type: "string" }, response: { type: "string" } },
+        required: ["objection", "response"],
+        additionalProperties: false,
+      },
+      description: "Top 3 for this persona.",
+    },
+    flags: { type: "array", items: { type: "string" } },
+  },
+  required: ["research_summary", "triple_touch_1", "sequence", "objections", "flags"],
+  additionalProperties: false,
+};
+
+export const stepForDay = (day) => STEPS.find((s) => s.day === day);
 
 const BANNED = [
   "hope this finds you", "hope this email finds you", "my name is", "just following up",

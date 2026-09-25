@@ -52,6 +52,8 @@ Each email in the plan gets the same playbook checks plus Copy and Insert button
    - `{placeholders}` that still need data (`{{merge_fields}}` are left alone)
 4. Copy, or use **Insert into page**.
 
+Each draft is added to **Earlier emails** and the step moves forward, so later touches change the angle. **Start a new prospect** clears the form.
+
 ## Using it with Outreach
 
 The extension has permission to read and write on `*.outreach.io`, so it keeps working as you move between Outreach pages.
@@ -63,5 +65,3 @@ The extension has permission to read and write on `*.outreach.io`, so it keeps w
 If you're writing a reusable sequence template, enter an Outreach variable such as `{{first_name}}` as the prospect's first name. Variables in double braces are left untouched. Check the exact variable names in your Outreach instance.
 
 **Grab selection / page text** works on an Outreach prospect page too. Select the part you want (their title, notes, recent activity) before clicking.
-
-Each draft is added to **Earlier emails** and the step moves forward, so later touches change the angle. **Start a new prospect** clears the form.

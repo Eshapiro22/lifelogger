@@ -2,17 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>30MPC Email Writer</title>
+  <title>Triple Touch Email Writer</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
-    <h1>30MPC Email Writer</h1>
+    <h1>Triple Touch Email Writer</h1>
     <a href="options.html" target="_blank" class="link">Settings</a>
   </header>
 
   <div id="setup-warning" class="banner" hidden>
     Add your Anthropic API key in <a href="options.html" target="_blank">Settings</a> to start.
+  </div>
+  <div id="playbook-warning" class="banner" hidden>
+    No playbook loaded. Paste yours in <a href="options.html" target="_blank">Settings</a> for persona-specific emails.
   </div>
 
   <section>
@@ -23,23 +26,29 @@
       <select id="step"></select>
     </label>
     <p id="step-guide" class="hint"></p>
-    <label class="check"><input type="checkbox" id="triple" /> Triple T: this email follows a call + voicemail</label>
   </section>
 
   <section>
     <h2>Prospect</h2>
     <div class="grid">
-      <label>First name<input id="p-name" placeholder="e.g. Jordan or {{first_name}}" /></label>
+      <label>First name<input id="p-name" placeholder="e.g. Dana or {{first_name}}" /></label>
       <label>Title<input id="p-title" /></label>
       <label>Company<input id="p-company" /></label>
+      <label>Industry<input id="p-industry" /></label>
     </div>
-    <label>Research trigger <span class="hint">(recent, specific: job post, funding, hire, podcast, post…)</span>
+    <div class="grid">
+      <label>Relationship
+        <select id="p-relationship"></select>
+      </label>
+      <label class="check"><input type="checkbox" id="p-exec" /> Executive (≤50 words)</label>
+    </div>
+    <label>Triggers <span class="hint">(earnings quote, job posts, new exec, initiative, new in role…)</span>
       <textarea id="p-trigger" rows="2"></textarea>
     </label>
-    <label>P.S. nugget <span class="hint">(optional personal detail)</span>
-      <input id="p-ps" />
+    <label>Colleague intel <span class="hint">(optional: what others at the account told you, for snowball / reverse selling)</span>
+      <textarea id="p-intel" rows="2"></textarea>
     </label>
-    <label>Page context <span class="hint">(optional — pulled from the current tab)</span>
+    <label>Page context <span class="hint">(optional, pulled from the current tab)</span>
       <textarea id="p-context" rows="3"></textarea>
     </label>
     <button id="grab" class="secondary">Grab selection / page text</button>
@@ -49,6 +58,7 @@
     <label>Earlier emails in this sequence <span class="hint">(auto-filled as you generate; edit freely)</span>
       <textarea id="history" rows="3"></textarea>
     </label>
+    <button id="reset" class="link" type="button">Start a new prospect</button>
   </section>
 
   <button id="generate" class="primary">Write email</button>
@@ -56,6 +66,7 @@
 
   <section id="result" hidden>
     <h2>Draft</h2>
+    <p id="angle" class="hint"></p>
     <label>Subject <input id="out-subject" /></label>
     <label>Body <textarea id="out-body" rows="12"></textarea></label>
     <div class="row">
@@ -63,8 +74,15 @@
       <button id="copy-body" class="secondary">Copy body</button>
       <button id="insert" class="secondary">Insert into page</button>
     </div>
-    <p id="rationale" class="hint"></p>
-    <h2>30MPC check</h2>
+    <div id="vm-wrap" hidden>
+      <label>Voicemail script (≤25s) <textarea id="out-voicemail" rows="4"></textarea></label>
+      <button id="copy-vm" class="secondary">Copy voicemail</button>
+    </div>
+    <div id="flags-wrap" hidden>
+      <h2>Flags</h2>
+      <ul id="flags"></ul>
+    </div>
+    <h2>Playbook check</h2>
     <ul id="checks"></ul>
   </section>
 

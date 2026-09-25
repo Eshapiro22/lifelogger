@@ -1,168 +1,240 @@
-// 30MPC-style sequence map and writing rules.
-//
-// Sources (30 Minutes to President's Club, public posts/newsletters):
-//  - "How to structure your cold email follow-up" (LinkedIn): three phases —
-//    opening touches (same subject), switch the problem (new subject),
-//    breakup (new subject: "are you the right person" then break-up).
-//  - "The Perfect Outbound Sequence Template": Day-1 email is the powerhouse;
-//    bumps are one sentence, sent as a reply so the original stays visible;
-//    no cheeky/unprofessional breakups.
-//  - "4 Questions to Write Painfully Triggering Cold Emails": trigger the
-//    problem like a movie scene, a "Notice" line with the minimum detail on
-//    the solution, a humanizing P.S.
-//  - "4 Data-Backed Subject Lines": all-lowercase subject lines (proper nouns
-//    excepted), look internal, no marketing gimmicks.
-//  - 3x3 rule: crispy problem, what you do, quick interest-based ask.
-//
-// "Triple T": the exact 30MPC definition could not be verified from this
-// environment. The default text below treats it as the "triple" touch
-// (call + voicemail + email within minutes). Edit it in Settings to match
-// your course notes; whatever you save there is sent to the model verbatim.
+// Email steps and writing rules for a Triple Touch outbound sequence, following
+// 30 Minutes to President's Club (30MPC) and Ian Koniak's Untap Your Sales
+// Potential (UYSP). Company-specific content (persona pains, proof, positioning)
+// belongs in the Playbook field in Settings, not in this file.
 
-export const DEFAULT_TRIPLE_T = `Triple touch: when I call and leave a voicemail, the email goes out within ~90 seconds of the voicemail. The email should read as the written companion to that voicemail — briefly reference that I just called / left a voicemail, repeat the single core problem, and keep the same ask. Recency + frequency + relevancy.`;
+export const DEFAULT_TRIPLE_T = `Triple Touch: a call, a voicemail and an email to the same person within ~5 minutes, each pointing to the next. The voicemail (≤25 seconds, ~60 words) names the email's subject line out loud and says the sender's name twice, with no product pitch. The email goes out right after the voicemail, opens by saying I just left a voicemail, and uses a subject line that references it.`;
 
 export const STEPS = [
   {
-    id: "e1",
-    label: "Email 1 — Tailored opener (problem #1)",
-    phase: "Opening touches",
-    subject: "new",
-    kind: "opener",
-    guide: `The powerhouse email. Structure:
-1) Trigger/observation line that proves research (a specific, recent trigger about the person or company — not flattery).
-2) Paint the #1 problem like a movie scene so it hits close to home ("dangerously specific"). Sell the hole, not the drill.
-3) "Notice" line: the minimum detail about how we solve it, with a credible proof point if provided.
-4) Low-friction, interest-based yes/no CTA (do NOT ask for 30 minutes or a calendar slot).
-5) Optional P.S. with one more personal nugget so they know a human wrote it.
-Under 100 words (body excluding P.S. and signature), ~3-4 short skimmable sentences.`,
+    id: "tt1",
+    day: 1,
+    label: "Day 1 — Triple Touch #1 email (Pain A)",
+    thread: "new",
+    tripleTouch: true,
+    assetsAllowed: false,
+    guide: `Triple Touch #1 follow-up email, sent right after the voicemail.
+- Subject references the voicemail ("voicemail", "{first} – just called") or is the exact subject named in the voicemail. 1–4 words.
+- Open with "Just left you a voicemail." then a one-sentence observation/trigger about THEM.
+- Problem proposition: what that trigger usually creates for this persona, Pain A (and optionally Pain B), in the buyer's own words.
+- One line of credibility: one customer, one number (from proof points only).
+- Interest-based CTA ("Worth a conversation to see if this is on your radar?").
+- No attachments or links.
+Also write the matching voicemail.`,
   },
   {
     id: "e2",
-    label: "Email 2 — Bump (bubble up #1)",
-    phase: "Opening touches",
-    subject: "reply",
-    kind: "bump",
-    guide: `A bump sent as a REPLY to Email 1 so the original stays visible. One sentence (two max). Bubble the thread back to the top. Can reframe the ask or add a single new relevance hook. No "just following up", no guilt.`,
+    day: 3,
+    label: "Day 3 — Email #2 (reply, new angle: Pain B or story)",
+    thread: "reply",
+    tripleTouch: false,
+    assetsAllowed: false,
+    guide: `Reply in the same thread as the Day 1 email, so the subject is empty.
+- A NEW angle: Pain B, or a short customer story. Never "just following up" or "bumping this".
+- 2–4 short sentences. One idea, one interest-based ask. No attachments.`,
   },
   {
-    id: "e3",
-    label: "Email 3 — Bump (bubble up #1 again)",
-    phase: "Opening touches",
-    subject: "reply",
-    kind: "bump",
-    guide: `Second bump, still a reply on the same thread. One to two sentences. Different angle from Email 2 (e.g., a "thoughts?" style check or a tiny proof point). Never repeat Email 2's wording.`,
+    id: "tt2",
+    day: 7,
+    label: "Day 7 — Triple Touch #2 email (trigger / insight)",
+    thread: "new",
+    tripleTouch: true,
+    assetsAllowed: true,
+    guide: `Triple Touch #2 follow-up email, new thread, sent right after the voicemail.
+- Subject references the voicemail or names the insight. 1–4 words.
+- Mentions the voicemail. Angle: a trigger or insight (earnings quote, job post, initiative, new exec). Use only triggers from the input.
+- Problem proposition tied to the trigger, then an interest-based CTA.
+- At most one asset, offered rather than attached ("Want me to send it over?").
+Also write the matching voicemail.`,
   },
   {
     id: "e4",
-    label: "Email 4 — Switch the problem (problem #2)",
-    phase: "Switch the problem",
-    subject: "new",
-    kind: "opener",
-    guide: `New thread with a NEW subject line. Lead with the SECOND biggest problem we solve for this persona, painted specifically. Same structure as Email 1 (observation → problem → notice → interest CTA), under 100 words. Do not reference previous emails.`,
+    day: 10,
+    label: "Day 10 — Email #4 (new thread, peer proof)",
+    thread: "new",
+    tripleTouch: false,
+    assetsAllowed: true,
+    guide: `New thread with a new subject. Peer proof: "How {similar company} handled {pain}".
+- Tell it as a 3–5 sentence story: setup (who they were), conflict (the problem and what was at stake), turning point (what changed), resolution (a measurable outcome), lesson (why it matters to this prospect).
+- Proof must come from the proof points. If none are given, use {customer proof} placeholders and flag them.
+- At most one asset, offered ("Want me to send the 1-pager?"). Interest-based CTA.`,
   },
   {
-    id: "e5",
-    label: "Email 5 — Bump (bubble up #2)",
-    phase: "Switch the problem",
-    subject: "reply",
-    kind: "bump",
-    guide: `Reply-bump on the Email 4 thread. One to two sentences, bubbles problem #2 back up.`,
+    id: "tt3",
+    day: 14,
+    label: "Day 14 — Triple Touch #3 email (wrong person?)",
+    thread: "new",
+    tripleTouch: true,
+    assetsAllowed: false,
+    guide: `Triple Touch #3 follow-up email, sent right after the voicemail. Mentions the voicemail.
+- Referral ask: am I reaching the wrong person? Name the problem area in a few words and ask who owns it. Make it easy to point me elsewhere.
+- 2–3 sentences. No asset.
+Also write the matching voicemail.`,
   },
   {
-    id: "e6",
-    label: "Email 6 — Are you the right person?",
-    phase: "Breakup",
-    subject: "new",
-    kind: "right-person",
-    guide: `New subject. Short, direct, professional: ask whether they own <problem area> or who does. Make it easy to point you elsewhere. Two to three sentences.`,
+    id: "breakup",
+    day: 21,
+    label: "Day 21 — Breakup (permission to close the loop)",
+    thread: "new",
+    tripleTouch: false,
+    assetsAllowed: false,
+    guide: `Breakup email asking permission to close the loop. Direct, professional and detached (UYSP: sell from service, not neediness). No guilt, no cheekiness, no asset.
+- Restate the one problem in a few words, say I'll stop reaching out, and leave the door open. 2–3 sentences.`,
   },
   {
-    id: "e7",
-    label: "Email 7 — Professional break-up",
-    phase: "Breakup",
-    subject: "new",
-    kind: "breakup",
-    guide: `New subject. Direct but professional break-up: acknowledge you'll stop reaching out, restate the one problem in a few words, leave the door open. No cheeky "1-2-3" multiple-choice, no guilt trips, no "did you fall off a cliff". Two to three sentences.`,
+    id: "exec",
+    day: null,
+    label: "Anytime — Exec reverse-selling email (bottom-up insight)",
+    thread: "new",
+    tripleTouch: false,
+    assetsAllowed: false,
+    exec: true,
+    guide: `Reverse selling (UYSP) to an executive who hasn't responded. Use what practitioners on their team told me (from the "Colleague intel" input only).
+- Shape: "Spoke with a few folks on your {team}. They mentioned {specific issue}. Estimated {cost}. Worth 20 minutes to share what we heard?"
+- 2–3 sentences, ≤50 words. Insight about their business, not features. If there's no colleague intel, use placeholders and flag them.`,
   },
 ];
 
-export const CTA_STYLES = {
-  interest: "Interest-based yes/no (e.g., \"worth exploring?\" / \"open to learning more?\")",
-  offer: "Offer-based (offer a resource, teardown, or benchmark — no meeting ask)",
-  thoughts: "\"Thoughts?\"-style soft question",
+export const RELATIONSHIPS = {
+  "net-new": "Net-new logo",
+  customer: "Existing customer (expansion)",
+  "closed-lost": "Closed-lost before",
+  competitor: "Uses a competitor",
 };
 
-export const SYSTEM_PROMPT = `You write B2B outbound sales emails in the style taught by 30 Minutes to President's Club (30MPC).
+export const CTA_STYLES = {
+  interest: "Interest-based yes/no (e.g., \"Worth exploring?\" / \"Open to a look?\")",
+  offer: "Offer-based (offer to send one short asset; no meeting ask)",
+};
 
-Non-negotiable rules:
-- Problem-first, not product-first. Describe the prospect's pain so specifically it feels like you saw it happen last Tuesday. "Don't sell the drill, sell the hole."
-- Cold openers: under 100 words in the body, ~3-4 short, punchy, skimmable sentences. Bumps: 1-2 sentences.
-- Subject lines: all lowercase except proper nouns, 1-4 words, look like an internal email from a colleague. No clickbait, no emojis, no "quick question", no punctuation gimmicks.
-- CTA: low-friction interest- or offer-based. Never ask for a specific block of time or send a calendar link in cold emails.
-- Write like a human peer: plain words, contractions, no buzzwords ("synergy", "leverage", "revolutionize", "cutting-edge", "game-changer"), no "I hope this email finds you well", no "my name is", no "just following up/checking in/circling back".
-- Never invent facts about the prospect, their company, customers, or numbers. Only use research and proof points supplied in the input. If a field is missing, write around it rather than fabricating.
-- Personalization must connect to the problem; don't compliment for its own sake.
-- Output must be ready to paste. No placeholders like [Name] unless the user supplied a merge-field style (e.g., {{first_name}}), in which case keep their merge fields exactly.
+export function buildSystemPrompt({ senderName, senderCompany }) {
+  const me = senderName || "the sender";
+  const co = senderCompany || "the sender's company";
+  return `You write outbound sales emails for ${me} at ${co}, following 30 Minutes to President's Club (30MPC) and Ian Koniak's Untap Your Sales Potential (UYSP). If a PLAYBOOK is provided, it is the source of truth and overrides the defaults below.
 
-Return JSON only matching the provided schema.`;
+Rules:
+1. Always open with the prospect's world: a trigger, observation or persona pain. Never open with ${co}, "I hope this finds you well" or "My name is". (Triple Touch emails may open with "Just left you a voicemail.")
+2. First touches use the problem proposition: 2–3 pains in the buyer's own words, ending in a question that lets them pick.
+3. Lengths: cold email ≤90 words; executive email ≤50 words; voicemail ≤25 seconds (~60 words).
+4. Interest-based CTAs ("Worth exploring?"). Never ask for a specific time slot or send a calendar link unless the prospect already showed interest.
+5. Change the angle on every touch. Never write "just following up", "circling back", "checking in" or "bumping this".
+6. Link Triple Touch assets: the voicemail names the email subject line out loud, and the email mentions the voicemail.
+7. One idea, one ask, at most one asset per message. Offer assets ("Want me to send it over?") rather than attaching them.
+8. Plain language. Avoid "synergy", "leverage", "revolutionize", "cutting-edge", "end-to-end", "transform your business", "I'd love to", "quick call".
+9. Don't invent facts. Customer names, statistics and triggers must come from the input or the playbook. If you need one that isn't provided, write a placeholder like {customer proof} and list it in flags.
+10. Tone: confident, helpful, a little casual. Write like a peer who has seen the problem before, not a vendor asking for time. "You/your" should outnumber "I/we/${co}".
+11. Subject lines: 1–4 words, lowercase feel (acronyms and proper nouns may stay capitalized), internal-looking, no clickbait.
+12. Keep any merge fields the user supplied (e.g. {{first_name}}) exactly as given.
+
+Before answering, run the playbook's tests: swap test (could this go to any company?), "so what" test, phone test (readable without scrolling), me/we count.
+
+Return JSON only, matching the provided schema.`;
+}
 
 export const OUTPUT_SCHEMA = {
   type: "object",
   properties: {
-    subject: {
-      type: "string",
-      description: "Subject line. Empty string if this step is a reply-bump on the existing thread.",
+    angle: { type: "string", description: "Research summary: the angle chosen and why, in 1–2 lines." },
+    subject: { type: "string", description: "Subject line. Empty string when the step replies in the existing thread." },
+    body: { type: "string", description: "Email body with greeting and a short sign-off using the sender's first name." },
+    voicemail: { type: "string", description: "The matching ≤25-second voicemail script for Triple Touch steps. Empty string otherwise." },
+    flags: {
+      type: "array",
+      items: { type: "string" },
+      description: "Placeholders needing real data, or anything the rep should verify before sending.",
     },
-    body: { type: "string", description: "Email body including greeting, P.S. if used, and a short sign-off with the sender's first name." },
-    rationale: { type: "string", description: "One or two sentences on which 30MPC principles this draft applies." },
   },
-  required: ["subject", "body", "rationale"],
+  required: ["angle", "subject", "body", "voicemail", "flags"],
   additionalProperties: false,
 };
 
-// Local, deterministic compliance checks shown under the draft.
 const BANNED = [
   "hope this finds you", "hope this email finds you", "my name is", "just following up",
-  "just checking in", "circling back", "touching base", "synergy", "revolutionize",
-  "game-changer", "game changer", "cutting-edge", "best-in-class", "15 minutes",
-  "30 minutes", "calendly", "hop on a call", "quick question",
+  "following up on", "circling back", "checking in", "touching base", "bumping this",
+  "top of your inbox", "synergy", "leverage", "revolutionize", "cutting-edge", "cutting edge",
+  "end-to-end", "end to end", "transform your business", "i'd love to", "quick call",
+  "game-changer", "calendly", "quick question",
 ];
 
-export function checkCompliance(step, subject, body) {
+const words = (s) => s.trim().split(/\s+/).filter(Boolean);
+
+// Local, deterministic checks against the playbook's Section 9 rules.
+// Returns { issues, warnings, passes }.
+export function checkCompliance(step, { subject, body, voicemail, exec, senderCompany }) {
   const issues = [];
+  const warnings = [];
   const passes = [];
-  const mainBody = body.split(/\n\s*p\.?s\.?/i)[0];
-  const words = mainBody.trim().split(/\s+/).filter(Boolean).length;
-  const sentences = mainBody.split(/[.!?]+\s/).filter((s) => s.trim().length > 3).length;
+  const lower = `${subject} ${body}`.toLowerCase();
 
-  if (step.kind === "bump") {
-    if (sentences <= 3 && words <= 45) passes.push(`Bump is short (${words} words)`);
-    else issues.push(`Bump should be 1-2 sentences — currently ~${words} words`);
-  } else if (words < 100) passes.push(`Under 100 words (${words})`);
-  else issues.push(`Over 100 words (${words}) — trim`);
+  // Length (excluding the greeting line and the sign-off name).
+  const lines = body.split("\n").map((l) => l.trim()).filter(Boolean);
+  const content = lines.filter((l, i) => !(i === 0 && /^(hi|hey|hello)\b/i.test(l) && words(l).length <= 3));
+  if (content.length > 1 && words(content.at(-1)).length <= 2) content.pop();
+  const n = words(content.join(" ")).length;
+  const limit = exec || step.exec ? 50 : 90;
+  if (n <= limit) passes.push(`${n} words (limit ${limit})`);
+  else issues.push(`${n} words, over the ${limit}-word limit. Trim it.`);
 
-  if (step.subject === "reply") {
-    if (!subject) passes.push("Sent as a reply on the existing thread");
-    else issues.push("Bump steps should reply on the existing thread (no new subject)");
-  } else if (subject) {
-    const letters = subject.replace(/[^A-Za-z]/g, "");
-    const upper = subject.split(/\s+/).filter((w) => /^[A-Z]/.test(w));
-    if (upper.length === 0) passes.push("Subject is lowercase");
-    else issues.push(`Subject has capitals (${upper.join(", ")}) — fine only if proper nouns`);
-    const n = subject.trim().split(/\s+/).length;
-    if (n <= 4) passes.push(`Subject is short (${n} words)`);
-    else issues.push(`Subject is ${n} words — aim for 1-4`);
-    if (!letters) issues.push("Subject is empty");
+  // Thread / subject.
+  if (step.thread === "reply") {
+    if (!subject) passes.push("Replies in the existing thread");
+    else issues.push("This step replies in the same thread, so leave the subject empty");
+  } else if (!subject) {
+    issues.push("This step starts a new thread and needs a subject line");
   } else {
-    issues.push("This step needs a new subject line");
+    const sw = words(subject);
+    if (sw.length <= 4) passes.push(`Subject is ${sw.length} word${sw.length > 1 ? "s" : ""}`);
+    else issues.push(`Subject is ${sw.length} words. Aim for 1–4.`);
+    const caps = sw.filter((w) => /^[A-Z][a-z]/.test(w) && !/^\{/.test(w));
+    if (caps.length) warnings.push(`Subject capitals (${caps.join(", ")}): OK only for proper nouns`);
+    else passes.push("Subject has a lowercase feel");
   }
 
-  const lower = (subject + " " + body).toLowerCase();
+  // Opening line (rule 1).
+  const first = content[0] || "";
+  const co = (senderCompany || "").toLowerCase();
+  if (/^(i'm|i am|my name|we |we're|our )/i.test(first) || (co && first.toLowerCase().startsWith(co))) {
+    issues.push("Opens with you or your company. Open with the prospect's world.");
+  } else passes.push("Opens with the prospect's world");
+
+  // Banned phrases (rules 5 and 8).
   const hits = BANNED.filter((b) => lower.includes(b));
   if (hits.length) issues.push(`Avoid: ${hits.map((h) => `"${h}"`).join(", ")}`);
   else passes.push("No banned phrases");
 
-  if (/\[[A-Za-z _]+\]/.test(body)) issues.push("Contains an unfilled [placeholder]");
+  // Me/we count (rule 10).
+  const you = (lower.match(/\b(you|your|you're|yours)\b/g) || []).length;
+  const meRe = new RegExp(`\\b(i|i'm|i've|me|my|we|we're|our|us${co ? "|" + co.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : ""})\\b`, "g");
+  const me = (body.toLowerCase().match(meRe) || []).length;
+  if (you >= me) passes.push(`You/your (${you}) ≥ I/we (${me})`);
+  else warnings.push(`I/we (${me}) outnumber you/your (${you})`);
 
-  return { issues, passes };
+  // One ask (rule 7).
+  const q = (body.match(/\?/g) || []).length;
+  if (q > 2) warnings.push(`${q} questions. Aim for one ask.`);
+
+  // Assets (rule 7 + content library).
+  const urls = (body.match(/https?:\/\/\S+/g) || []).length;
+  if (urls > 1) issues.push(`${urls} links. One asset max.`);
+  else if (urls && !step.assetsAllowed) issues.push("Early touches and breakups shouldn't include assets or links");
+
+  // Triple Touch linking (rule 6).
+  if (step.tripleTouch) {
+    if (/voicemail|just called|just tried you/i.test(body)) passes.push("Email mentions the voicemail");
+    else issues.push("Triple Touch email should mention the voicemail");
+    if (voicemail) {
+      const vw = words(voicemail).length;
+      if (vw <= 65) passes.push(`Voicemail is ~${vw} words (≤25s)`);
+      else issues.push(`Voicemail is ${vw} words, likely over 25 seconds`);
+      if (subject && voicemail.toLowerCase().includes(subject.toLowerCase().replace(/[{}]/g, "").trim()))
+        passes.push("Voicemail names the email subject");
+      else warnings.push("Voicemail should say the email's subject line out loud");
+    } else issues.push("Missing the matching voicemail");
+  }
+
+  // Placeholders (rule 9) — {{merge_fields}} are fine, {single braces} need data.
+  const ph = [...new Set(body.match(/(?<!\{)\{[^{}]+\}(?!\})/g) || [])];
+  if (ph.length) warnings.push(`Needs real data before sending: ${ph.join(", ")}`);
+
+  return { issues, warnings, passes };
 }

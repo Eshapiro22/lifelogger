@@ -7,6 +7,7 @@
   --accent-fg: #ffffff;
   --good: #047857;
   --bad: #b91c1c;
+  --warn: #b45309;
   --banner: #fef3c7;
 }
 @media (prefers-color-scheme: dark) {
@@ -19,6 +20,7 @@
     --accent-fg: #111827;
     --good: #34d399;
     --bad: #f87171;
+    --warn: #fbbf24;
     --banner: #3f3a1d;
   }
 }
@@ -57,4 +59,6 @@ button.secondary { background: transparent; color: var(--fg); border: 1px solid 
 ul#checks { list-style: none; padding: 0; margin: 0; }
 li.good { color: var(--good); }
 li.bad { color: var(--bad); }
+li.warn { color: var(--warn); }
+ul#flags { list-style: none; padding: 0; margin: 0; }
 fieldset.seq { border: 1px solid var(--border); border-radius: 8px; margin: 8px 0; padding: 8px 10px; }

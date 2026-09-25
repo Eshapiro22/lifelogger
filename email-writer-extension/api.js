@@ -1,9 +1,19 @@
-import { SYSTEM_PROMPT, OUTPUT_SCHEMA } from "./methodology.js";
+import { OUTPUT_SCHEMA } from "./methodology.js";
 
 // Calls the Claude Messages API directly over HTTP. The extension ships with no
 // build step, so the npm SDK can't be imported here. The API key is stored in
 // chrome.storage.local on this machine only and sent solely to api.anthropic.com.
-export async function generateEmail({ apiKey, model, userPrompt }) {
+export async function generateEmail({ apiKey, model, systemPrompt, playbook, userPrompt }) {
+  // The playbook is long and identical across calls, so it goes last in the
+  // system prompt with a cache breakpoint (reused while you work a list).
+  const system = [{ type: "text", text: systemPrompt }];
+  if (playbook?.trim()) {
+    system.push({
+      type: "text",
+      text: `PLAYBOOK (source of truth)\n\n${playbook.trim()}`,
+      cache_control: { type: "ephemeral" },
+    });
+  }
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -23,7 +33,7 @@ export async function generateEmail({ apiKey, model, userPrompt }) {
         effort: "medium",
         format: { type: "json_schema", schema: OUTPUT_SCHEMA },
       },
-      system: SYSTEM_PROMPT,
+      system,
       messages: [{ role: "user", content: userPrompt }],
     }),
   });

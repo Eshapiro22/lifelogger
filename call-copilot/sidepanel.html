@@ -16,6 +16,16 @@
   <!-- Nooks dials up to 5 at once: one slot per line -->
   <nav id="slots" class="slots"></nav>
 
+  <section class="card" id="nooksCard">
+    <div class="row"><h2>Nooks</h2><span id="nooksStatus" class="muted small">Not connected</span></div>
+    <div id="nooksConnect" class="row">
+      <input id="nooksUrl" placeholder="Paste your Nooks URL from the address bar">
+      <button id="nooksConnectBtn">Connect</button>
+    </div>
+    <p class="muted small">Status that means "picked up" (tap to toggle): <span id="statusChips" class="chips"></span></p>
+    <ul id="nooksRows" class="results"></ul>
+  </section>
+
   <section class="card">
     <input id="search" type="search" placeholder="Who picked up? Name, company, or phone" autocomplete="off">
     <ul id="results" class="results"></ul>

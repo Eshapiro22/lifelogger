@@ -19,7 +19,12 @@ const store = {
 const blankStats = () => Object.fromEntries(PLAYBOOK.openers.map((o) => [o.id, Object.fromEntries(OUTCOMES.map((k) => [k, 0]))]));
 
 let state = {
-  settings: { rep: "Ethan", org: "UiPath", mode: "auto", threshold: 3 },
+  settings: {
+    rep: "Ethan", org: "UiPath", mode: "auto", threshold: 3,
+    nooksOrigin: "",
+    // Guesses: Nooks' real "picked up" label is unknown until you see it. Toggle chips in the panel.
+    connectedStatuses: ["connected", "in call", "on call", "live", "answered", "talking", "in progress"],
+  },
   prospects: [],
   slots: Array(SLOT_COUNT).fill(null),
   activeSlot: 0,
@@ -120,7 +125,8 @@ function render() {
     `<button data-slot="${i}" class="${i === state.activeSlot ? "active" : ""}" title="Line ${i + 1} (key ${i + 1})">${i + 1} · ${esc(s ? s.first || s.company : "empty")}</button>`).join("");
 
   $("prospectSummary").innerHTML = p
-    ? `${esc([p.first, p.last].filter(Boolean).join(" "))} — ${esc(p.title || "no title")} @ ${esc(p.company || "?")}`
+    ? `${esc([p.first, p.last].filter(Boolean).join(" "))} — ${esc(p.title || "no title")} @ ${esc(p.company || "?")}` +
+      (p.sequence ? `<br><span class="context">${esc(p.sequence)}${p.step ? ` · ${esc(p.step)}` : ""}</span>` : "")
     : "No prospect loaded (scripts use placeholders)";
   document.querySelectorAll("[data-f]").forEach((el) => {
     if (document.activeElement !== el) el.value = p?.[el.dataset.f] ?? "";
@@ -151,6 +157,7 @@ function render() {
     (String(i) === openKey ? `<p class="say">${fill(o.text, t)}</p>` : "")).join("");
 
   renderScoreboard();
+  renderNooks();
 }
 
 function renderScoreboard() {
@@ -378,6 +385,133 @@ function wire() {
   });
 }
 
+// ---------- Nooks page reader ----------
+let nooksRows = [];
+let nooksError = "";
+const seenStatuses = new Set();
+const lastStatus = new Map(); // phone digits -> status
+
+const digitsOf = (s) => String(s ?? "").replace(/\D/g, "");
+const normStatus = (s) => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+const isConnected = (status) => state.settings.connectedStatuses.includes(normStatus(status));
+
+function sequenceTouch(sequence = "") {
+  const s = sequence.toLowerCase();
+  return (PLAYBOOK.sequenceTouches ?? []).find((t) => s.includes(t.match))?.say ?? "";
+}
+
+function prospectFromRow(row) {
+  const parts = (row.name ?? "").split(/\s+/).filter(Boolean);
+  const nooksPersona = /no persona/i.test(row.persona ?? "") ? "" : row.persona ?? "";
+  return {
+    first: parts.shift() ?? "", last: parts.join(" "),
+    title: row.title ?? "", company: row.account ?? "", industry: "",
+    phone: row.phone ?? "", sequence: row.sequence ?? "", step: row.step ?? "",
+    trigger: "", lastTouch: sequenceTouch(row.sequence), proof: "",
+    persona: guessPersona(nooksPersona) || guessPersona(row.title),
+    nooksStatus: row.status ?? "",
+  };
+}
+
+function onNooksRows(msg) {
+  if (!msg.ok) {
+    // Other frames on the page report "no headers"; only surface it if nothing has worked yet.
+    if (!nooksRows.length) { nooksError = msg.reason; renderNooks(); }
+    return;
+  }
+  nooksError = "";
+  nooksRows = msg.rows.map(prospectFromRow);
+
+  // Keep imported/edited details (trigger, proof, industry) and refresh what Nooks knows.
+  for (const p of nooksRows) {
+    const d = digitsOf(p.phone);
+    const existing = state.prospects.find((q) => digitsOf(q.phone) === d);
+    if (existing) {
+      for (const [k, v] of Object.entries(p)) if (v && !existing[k]) existing[k] = v;
+      existing.nooksStatus = p.nooksStatus;
+      existing.sequence = p.sequence; existing.step = p.step;
+    } else state.prospects.push(p);
+  }
+
+  // Someone just picked up: status changed into a "connected" label.
+  for (const p of nooksRows) {
+    const d = digitsOf(p.phone);
+    const status = normStatus(p.nooksStatus);
+    if (status) seenStatuses.add(status);
+    const before = lastStatus.get(d);
+    lastStatus.set(d, status);
+    if (isConnected(status) && before !== status) {
+      const match = state.prospects.find((q) => digitsOf(q.phone) === d) ?? p;
+      loadIntoSlot(match);
+      toast(`Picked up: ${match.first} ${match.last} (${match.company})`);
+    }
+  }
+  save();
+  renderNooks();
+}
+
+function renderNooks() {
+  if (!$("nooksCard")) return;
+  const origin = state.settings.nooksOrigin;
+  $("nooksStatus").textContent = nooksError ? nooksError
+    : nooksRows.length ? `Reading ${nooksRows.length} rows` : origin ? `Connected to ${new URL(origin).host}. Waiting for the dialer list…` : "Not connected";
+  $("nooksConnect").style.display = origin && !nooksError ? "none" : "";
+  const chips = new Set([...seenStatuses, ...state.settings.connectedStatuses.filter((s) => seenStatuses.has(s))]);
+  $("statusChips").innerHTML = chips.size
+    ? [...chips].map((s) => `<button data-status="${esc(s)}" class="${isConnected(s) ? "on" : ""}">${esc(s)}</button>`).join("")
+    : `<span class="muted">none seen yet</span>`;
+  $("nooksRows").innerHTML = nooksRows.slice(0, 15).map((p, i) =>
+    `<li data-nooks="${i}" class="${isConnected(p.nooksStatus) ? "connected" : ""}"><span class="status">${esc(p.nooksStatus || "–")}</span>${esc(`${p.first} ${p.last}`)} <span class="muted">— ${esc(p.title)} @ ${esc(p.company)}</span></li>`).join("");
+}
+
+async function connectNooks() {
+  let origin;
+  try { origin = new URL($("nooksUrl").value.trim() || state.settings.nooksOrigin).origin; }
+  catch { nooksError = "Paste the full Nooks URL, starting with https://"; renderNooks(); return; }
+  const pattern = `${origin}/*`;
+  const granted = await chrome.permissions.request({ origins: [pattern] });
+  if (!granted) { nooksError = "Permission declined, so the panel can't read Nooks."; renderNooks(); return; }
+
+  await chrome.scripting.unregisterContentScripts({ ids: ["nooks"] }).catch(() => {});
+  await chrome.scripting.registerContentScripts([{ id: "nooks", matches: [pattern], js: ["nooks-scraper.js"], runAt: "document_idle", allFrames: true }]);
+  state.settings.nooksOrigin = origin;
+  nooksError = "";
+  save();
+  await injectIntoOpenTabs();
+  renderNooks();
+}
+
+// Registered scripts only run on future page loads, so inject into Nooks tabs that are already open.
+async function injectIntoOpenTabs() {
+  const origin = state.settings.nooksOrigin;
+  if (!origin || !globalThis.chrome?.tabs) return;
+  const tabs = await chrome.tabs.query({ url: `${origin}/*` }).catch(() => []);
+  for (const tab of tabs) {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: ["nooks-scraper.js"] }).catch(() => {});
+    chrome.tabs.sendMessage(tab.id, { type: "nooks-rescan" }).catch(() => {});
+  }
+}
+
+function wireNooks() {
+  if (!globalThis.chrome?.runtime?.onMessage) return;
+  chrome.runtime.onMessage.addListener((msg) => { if (msg?.type === "nooks-rows") onNooksRows(msg); });
+  $("nooksConnectBtn").addEventListener("click", connectNooks);
+  $("statusChips").addEventListener("click", (e) => {
+    const s = e.target.closest("[data-status]")?.dataset.status;
+    if (!s) return;
+    const list = state.settings.connectedStatuses;
+    state.settings.connectedStatuses = list.includes(s) ? list.filter((x) => x !== s) : [...list, s];
+    save(); renderNooks();
+  });
+  $("nooksRows").addEventListener("click", (e) => {
+    const i = e.target.closest("[data-nooks]")?.dataset.nooks;
+    if (i == null) return;
+    const p = nooksRows[Number(i)];
+    loadIntoSlot(state.prospects.find((q) => digitsOf(q.phone) === digitsOf(p.phone)) ?? p);
+  });
+  injectIntoOpenTabs();
+}
+
 function newFromQuery() {
   const [first, ...rest] = $("search").value.trim().split(/\s+/);
   loadIntoSlot({ first, last: rest.join(" "), title: "", company: "", industry: "", trigger: "", lastTouch: "", proof: "", persona: "" });
@@ -392,5 +526,6 @@ function newFromQuery() {
     if (state.openerIdx >= PLAYBOOK.openers.length) state.openerIdx = 0;
   }
   wire();
+  wireNooks();
   render();
 })();

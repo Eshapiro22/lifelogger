@@ -10,6 +10,16 @@ A Chrome side-panel extension that sits next to Nooks while you power dial. When
 
 Some company-managed laptops block unpacked extensions. If so, IT would need to allow it.
 
+## Reading Nooks automatically
+
+1. Copy the URL from your Nooks tab's address bar and paste it into the **Nooks** card in the panel. Click **Connect** and approve Chrome's permission prompt, which covers that site only.
+2. The panel reads the dialer list (Name, Phone, Persona, Title, Account, Sequence) and adds every row to your prospect list.
+3. **The first time someone picks up**, look at the status chips in the Nooks card. Tap the chip for the label Nooks shows on a live call (for example "on call") so it turns green. From then on, whoever picks up loads into the panel automatically, with persona and sequence filled in.
+
+How it works: it goes by the column headers and where text sits on screen, not by Nooks' internal code, so it should survive most redesigns. It will break if Nooks renames the **Name** or **Phone** headers; update `HEADERS` in `nooks-scraper.js` if that happens. You can always click any row in the Nooks card to load it by hand.
+
+Sequence names like "CT - WEBINAR LOCK" become "the webinar invite" for the tie-back opener. Edit `sequenceTouches` in `playbook.js` to add more.
+
 ## Daily use
 
 1. **⚙ Settings → Import** a CSV exported from your Outreach sequence. Headers are matched loosely (First Name, Title, Company, Phone, and so on); the import note shows what was mapped. Optional columns: `Trigger`, `Last Touch` (email subject / LinkedIn topic), `Proof`, `Persona` (`cio`, `finops`, `coe`, `qa`, `bizline`). See `sample-prospects.csv`.
@@ -40,4 +50,4 @@ Everything you say lives in `playbook.js`: personas, pains (write them in the bu
 
 ## Data
 
-Everything is stored locally in the browser (`chrome.storage.local`). Nothing is sent anywhere. Export the call log as CSV from Settings.
+Everything is stored locally in the browser (`chrome.storage.local`). Nothing is sent anywhere. The Nooks reader only reads the page; it never clicks or changes anything in Nooks. Export the call log as CSV from Settings.

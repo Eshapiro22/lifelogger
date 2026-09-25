@@ -50,3 +50,8 @@ th:first-child, td:first-child { text-align: left; }
 tr.current td:first-child { color: var(--accent); font-weight: 600; }
 dialog { border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); width: min(420px, 94vw); }
 dialog::backdrop { background: rgba(0,0,0,.35); }
+.chips button { font-size: 11px; padding: 1px 7px; margin: 2px 2px 0 0; border-radius: 10px; }
+.chips button.on { border-color: var(--good); color: var(--good); font-weight: 600; }
+.results li .status { display: inline-block; min-width: 64px; font-size: 11px; color: var(--muted); }
+.results li.connected { background: color-mix(in srgb, var(--good) 15%, transparent); }
+.context { font-weight: 400; color: var(--muted); font-size: 11px; }

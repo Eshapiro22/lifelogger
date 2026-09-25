@@ -8,7 +8,7 @@ const PLAYBOOK = {
     cio: {
       label: "CIO / CTO / CDO",
       plural: "IT and data leaders",
-      titleKeywords: ["cio", "cto", "cdo", "chief information", "chief technology", "chief data", "chief digital", "vp it", "vp of it", "head of it", "technology"],
+      titleKeywords: ["cio", "cto", "cdo", "chief information", "chief technology", "chief data", "chief digital", "vp it", "vp of it", "head of it", "technology", "information technology", "information security", "enterprise applications", "knowledge", " ai ", "innovation"],
       pains: [
         "AI projects that look great in a pilot but never make it to production",
         "nobody's quite sure who governs the agents and bots already running",
@@ -24,7 +24,7 @@ const PLAYBOOK = {
     finops: {
       label: "VP/Dir Finance Ops, Shared Services",
       plural: "finance ops leaders",
-      titleKeywords: ["finance", "accounts payable", "ap ", "controller", "shared services", "accounting", "procure", "treasury", "cfo"],
+      titleKeywords: ["finance", "accounts payable", "ap ", "controller", "shared services", "accounting", "procure", "treasury", "cfo", "financial"],
       pains: [
         "invoice volume is growing faster than the team",
         "exceptions like PO mismatches and missing receipts are eating the team's week",
@@ -40,7 +40,7 @@ const PLAYBOOK = {
     coe: {
       label: "Head of Automation / CoE Lead",
       plural: "automation CoE leads",
-      titleKeywords: ["automation", "coe", "center of excellence", "rpa", "intelligent", "process excellence", "transformation"],
+      titleKeywords: ["automation", "coe", "center of excellence", "rpa", "intelligent", "process excellence", "transformation", "continuous improvement"],
       pains: [
         "bots breaking every time an app or screen changes",
         "leadership asking for 'agentic' when you're still proving ROI on RPA",
@@ -116,6 +116,14 @@ const PLAYBOOK = {
       text: "Hey {first}, {rep} with {org}. The reason I'm calling:",
       skipsPermission: true,
     },
+  ],
+
+  // Nooks shows the Outreach sequence name (e.g. "CT - WEBINAR LOCK"). Map keywords in it to
+  // something you can say out loud; this fills {lastTouch} for the tie-back opener.
+  sequenceTouches: [
+    { match: "webinar", say: "the webinar invite" },
+    { match: "event", say: "the event invite" },
+    { match: "whitepaper", say: "the whitepaper" },
   ],
 
   meetingAsk:

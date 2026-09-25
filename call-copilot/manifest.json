@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Call Copilot",
+  "version": "0.1.0",
+  "description": "Side-panel call track for power dialing: rotating openers, problem propositions, and objection handling.",
+  "permissions": ["sidePanel", "storage"],
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "action": { "default_title": "Open Call Copilot" }
+}

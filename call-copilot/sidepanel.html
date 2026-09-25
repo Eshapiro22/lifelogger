@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Call Copilot</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="bar">
+    <strong>Call Copilot</strong>
+    <span id="today" class="muted"></span>
+    <button id="settingsBtn" class="ghost" title="Settings">⚙</button>
+  </header>
+
+  <!-- Nooks dials up to 5 at once: one slot per line -->
+  <nav id="slots" class="slots"></nav>
+
+  <section class="card">
+    <input id="search" type="search" placeholder="Who picked up? Name, company, or phone" autocomplete="off">
+    <ul id="results" class="results"></ul>
+    <details id="prospectEdit">
+      <summary id="prospectSummary">No prospect loaded</summary>
+      <div class="grid">
+        <label>First<input data-f="first"></label>
+        <label>Last<input data-f="last"></label>
+        <label>Title<input data-f="title"></label>
+        <label>Company<input data-f="company"></label>
+        <label>Industry<input data-f="industry"></label>
+        <label>Persona<select data-f="persona" id="personaSelect"></select></label>
+        <label class="wide">Trigger / observation<input data-f="trigger" placeholder="e.g. you're hiring 4 AP specialists"></label>
+        <label class="wide">Last touch (email subject / LinkedIn topic)<input data-f="lastTouch"></label>
+        <label class="wide">Approved proof point<input data-f="proof" placeholder="Leave blank if none approved"></label>
+      </div>
+    </details>
+  </section>
+
+  <section class="card script">
+    <div class="row">
+      <h2>1 · Opener</h2>
+      <select id="openerSelect"></select>
+      <button id="nextOpener" class="ghost" title="Next opener (N)">↻</button>
+    </div>
+    <p id="openerText" class="say"></p>
+    <p id="rotationNote" class="muted small"></p>
+
+    <div class="row">
+      <h2>2 · Problem proposition</h2>
+      <button id="swapPains" class="ghost" title="Swap pains (P)">⇄ pains</button>
+    </div>
+    <p id="propText" class="say"></p>
+
+    <h2>3 · Discovery</h2>
+    <ul id="discovery" class="say list"></ul>
+
+    <h2>4 · Meeting ask</h2>
+    <p id="askText" class="say"></p>
+  </section>
+
+  <section class="card">
+    <h2>Log outcome <span class="muted small">(keys: H / G / C / M / X)</span></h2>
+    <div class="outcomes">
+      <button data-outcome="hangup" class="bad">Hung up</button>
+      <button data-outcome="earned">Got 30s</button>
+      <button data-outcome="conversation">Conversation</button>
+      <button data-outcome="meeting" class="good">Meeting!</button>
+      <button data-outcome="optout" class="ghost">Opt-out</button>
+    </div>
+    <p id="toast" class="muted small"></p>
+  </section>
+
+  <section class="card">
+    <h2>Objections</h2>
+    <div id="objections" class="objections"></div>
+  </section>
+
+  <section class="card">
+    <h2>Opener scoreboard</h2>
+    <table id="scoreboard"></table>
+    <p id="daily" class="muted small"></p>
+  </section>
+
+  <dialog id="settings">
+    <form method="dialog" class="grid">
+      <h2 class="wide">Settings</h2>
+      <label>Your name<input id="setRep"></label>
+      <label>Company<input id="setOrg"></label>
+      <label>Rotation
+        <select id="setMode">
+          <option value="auto">Auto: switch after hang-up streak</option>
+          <option value="roundrobin">Round-robin every call</option>
+          <option value="manual">Manual</option>
+        </select>
+      </label>
+      <label>Hang-ups before switching<input id="setThreshold" type="number" min="1" max="10"></label>
+      <label class="wide">Import prospects (CSV export from Outreach)
+        <input id="csvFile" type="file" accept=".csv,text/csv">
+      </label>
+      <p id="importNote" class="wide muted small"></p>
+      <div class="wide row">
+        <button type="button" id="exportLog">Export call log CSV</button>
+        <button type="button" id="resetStats" class="bad">Reset scoreboard</button>
+        <button value="close">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="playbook.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

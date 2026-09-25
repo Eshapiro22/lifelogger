@@ -1,0 +1,60 @@
+:root {
+  --bg: #ffffff;
+  --fg: #1f2937;
+  --muted: #6b7280;
+  --border: #d1d5db;
+  --accent: #4f46e5;
+  --accent-fg: #ffffff;
+  --good: #047857;
+  --bad: #b91c1c;
+  --banner: #fef3c7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111827;
+    --fg: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #374151;
+    --accent: #818cf8;
+    --accent-fg: #111827;
+    --good: #34d399;
+    --bad: #f87171;
+    --banner: #3f3a1d;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 12px 14px 24px;
+  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+body.options { max-width: 720px; margin: 0 auto; }
+header { display: flex; justify-content: space-between; align-items: baseline; }
+h1 { font-size: 16px; margin: 0 0 8px; }
+h2 { font-size: 13px; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+section { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+label { display: block; margin: 6px 0; font-weight: 600; }
+label.check { font-weight: 400; display: flex; gap: 6px; align-items: center; }
+input:not([type=checkbox]), textarea, select {
+  display: block; width: 100%; margin-top: 3px; padding: 6px 8px;
+  font: inherit; font-weight: 400; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 6px;
+}
+textarea { resize: vertical; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0 8px; }
+.hint { font-weight: 400; color: var(--muted); font-size: 12px; margin: 2px 0; }
+button { font: inherit; cursor: pointer; border-radius: 6px; padding: 7px 12px; }
+button.primary { width: 100%; margin-top: 12px; background: var(--accent); color: var(--accent-fg); border: 0; font-weight: 600; }
+button.primary:disabled { opacity: .6; cursor: wait; }
+button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+.link, button.link { color: var(--accent); background: none; border: 0; padding: 0; text-decoration: underline; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.status { min-height: 1em; color: var(--muted); }
+.status.error { color: var(--bad); }
+.banner { background: var(--banner); padding: 8px; border-radius: 6px; }
+ul#checks { list-style: none; padding: 0; margin: 0; }
+li.good { color: var(--good); }
+li.bad { color: var(--bad); }
+fieldset.seq { border: 1px solid var(--border); border-radius: 8px; margin: 8px 0; padding: 8px 10px; }

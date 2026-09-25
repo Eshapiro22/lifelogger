@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>30MPC Email Writer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>30MPC Email Writer</h1>
+    <a href="options.html" target="_blank" class="link">Settings</a>
+  </header>
+
+  <div id="setup-warning" class="banner" hidden>
+    Add your Anthropic API key in <a href="options.html" target="_blank">Settings</a> to start.
+  </div>
+
+  <section>
+    <label>Sequence
+      <select id="sequence"></select>
+    </label>
+    <label>Step
+      <select id="step"></select>
+    </label>
+    <p id="step-guide" class="hint"></p>
+    <label class="check"><input type="checkbox" id="triple" /> Triple T: this email follows a call + voicemail</label>
+  </section>
+
+  <section>
+    <h2>Prospect</h2>
+    <div class="grid">
+      <label>First name<input id="p-name" placeholder="e.g. Jordan or {{first_name}}" /></label>
+      <label>Title<input id="p-title" /></label>
+      <label>Company<input id="p-company" /></label>
+    </div>
+    <label>Research trigger <span class="hint">(recent, specific: job post, funding, hire, podcast, post…)</span>
+      <textarea id="p-trigger" rows="2"></textarea>
+    </label>
+    <label>P.S. nugget <span class="hint">(optional personal detail)</span>
+      <input id="p-ps" />
+    </label>
+    <label>Page context <span class="hint">(optional — pulled from the current tab)</span>
+      <textarea id="p-context" rows="3"></textarea>
+    </label>
+    <button id="grab" class="secondary">Grab selection / page text</button>
+  </section>
+
+  <section>
+    <label>Earlier emails in this sequence <span class="hint">(auto-filled as you generate; edit freely)</span>
+      <textarea id="history" rows="3"></textarea>
+    </label>
+  </section>
+
+  <button id="generate" class="primary">Write email</button>
+  <p id="status" class="status"></p>
+
+  <section id="result" hidden>
+    <h2>Draft</h2>
+    <label>Subject <input id="out-subject" /></label>
+    <label>Body <textarea id="out-body" rows="12"></textarea></label>
+    <div class="row">
+      <button id="copy-subject" class="secondary">Copy subject</button>
+      <button id="copy-body" class="secondary">Copy body</button>
+      <button id="insert" class="secondary">Insert into page</button>
+    </div>
+    <p id="rationale" class="hint"></p>
+    <h2>30MPC check</h2>
+    <ul id="checks"></ul>
+  </section>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

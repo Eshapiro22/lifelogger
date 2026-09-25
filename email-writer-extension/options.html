@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>30MPC Email Writer — Settings</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="options">
+  <header><h1>Settings</h1></header>
+
+  <section>
+    <h2>API</h2>
+    <label>Anthropic API key <span class="hint">(stored only in this browser)</span>
+      <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..." />
+    </label>
+    <label>Model
+      <select id="model">
+        <option value="claude-opus-5">Claude Opus 5 (default)</option>
+        <option value="claude-sonnet-5">Claude Sonnet 5 (cheaper)</option>
+        <option value="claude-haiku-4-5">Claude Haiku 4.5 (cheapest)</option>
+      </select>
+    </label>
+  </section>
+
+  <section>
+    <h2>You</h2>
+    <div class="grid">
+      <label>Your first name<input id="senderName" /></label>
+      <label>Your company<input id="senderCompany" /></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Triple T definition</h2>
+    <p class="hint">Sent to the model whenever the "Triple T" box is checked. Replace with the exact wording from your 30MPC course notes if it differs.</p>
+    <textarea id="tripleT" rows="5"></textarea>
+    <label>Extra house rules <span class="hint">(optional, applied to every email)</span>
+      <textarea id="extraRules" rows="3" placeholder="e.g. never mention pricing; sign off with 'Best,'"></textarea>
+    </label>
+  </section>
+
+  <section>
+    <h2>Sequences</h2>
+    <p class="hint">One entry per sequence you run. Problems should be "dangerously specific" — describe the painful moment, not the product.</p>
+    <div id="sequences"></div>
+    <button id="add-seq" class="secondary">+ Add sequence</button>
+  </section>
+
+  <button id="save" class="primary">Save</button>
+  <p id="status" class="status"></p>
+
+  <template id="seq-tpl">
+    <fieldset class="seq">
+      <label>Sequence name<input data-k="name" /></label>
+      <label>Target persona<input data-k="persona" /></label>
+      <label>Problem #1 (Emails 1–3)<textarea data-k="problem1" rows="2"></textarea></label>
+      <label>Problem #2 (Emails 4–5)<textarea data-k="problem2" rows="2"></textarea></label>
+      <label>How you solve it (Notice line)<textarea data-k="solution" rows="2"></textarea></label>
+      <label>Proof points <span class="hint">(real customers/numbers only)</span><textarea data-k="proof" rows="2"></textarea></label>
+      <label>CTA style
+        <select data-k="cta">
+          <option value="interest">Interest-based yes/no</option>
+          <option value="offer">Offer-based (resource, no meeting ask)</option>
+          <option value="thoughts">"Thoughts?" soft question</option>
+        </select>
+      </label>
+      <button class="link remove" type="button">Remove sequence</button>
+    </fieldset>
+  </template>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

@@ -19,6 +19,11 @@
   </div>
 
   <section>
+    <button id="auto-run" class="primary">Write for this Outreach task</button>
+    <p class="hint">On the prospect's email task in Outreach: reads the task, has Claude write the email, and pastes it back into the task. It never sends.</p>
+  </section>
+
+  <section>
     <label>Mode
       <select id="mode">
         <option value="email">Single email step</option>
@@ -38,11 +43,13 @@
 
   <section>
     <h2>Prospect</h2>
+    <button id="import" class="secondary">Import from Outreach task</button>
     <div class="grid">
       <label>First name<input id="p-name" placeholder="e.g. Dana or {{first_name}}" /></label>
       <label>Title<input id="p-title" /></label>
       <label>Company<input id="p-company" /></label>
       <label>Industry<input id="p-industry" /></label>
+      <label>Email<input id="p-email" type="email" /></label>
     </div>
     <div class="grid">
       <label>Relationship
@@ -60,6 +67,18 @@
       <textarea id="p-context" rows="3"></textarea>
     </label>
     <button id="grab" class="secondary">Grab selection / page text</button>
+  </section>
+
+  <section id="ot-wrap" hidden>
+    <h2>From Outreach</h2>
+    <label>Detected <input id="ot-summary" readonly /></label>
+    <label>Existing subject in the task <input id="ot-subject" /></label>
+    <label>Existing email in the task <span class="hint">(Claude rewrites this to the playbook)</span>
+      <textarea id="ot-body" rows="3"></textarea>
+    </label>
+    <label>Task page text <span class="hint">(sent to Claude so it can find details and earlier emails)</span>
+      <textarea id="ot-text" rows="3"></textarea>
+    </label>
   </section>
 
   <section id="history-wrap">

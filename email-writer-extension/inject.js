@@ -144,3 +144,69 @@ export function readClaudeReply() {
   const blocks = [...document.querySelectorAll("pre")].map((el) => el.innerText).reverse();
   return [...blocks, document.body.innerText];
 }
+
+// Outreach task page: collects labeled prospect fields, mailto links, the
+// email being composed (subject + body) and the visible text of this frame.
+export function readOutreachTask() {
+  const visible = (el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  };
+  const LABELS = {
+    name: /^(name|full name|prospect|prospect name|contact)$/i,
+    title: /^(title|job title|position|role)$/i,
+    company: /^(company|account|account name|organization)$/i,
+    email: /^(email|email address|to|recipient)$/i,
+  };
+  const labels = {};
+  for (const el of document.querySelectorAll("dt, th, label, span, div, p, h4, h5, h6, strong")) {
+    if (el.children.length > 1 || !visible(el)) continue;
+    const own = (el.textContent || "").trim().replace(/:$/, "");
+    if (!own || own.length > 20) continue;
+    for (const [key, re] of Object.entries(LABELS)) {
+      if (labels[key] || !re.test(own)) continue;
+      let value = el.nextElementSibling?.innerText || "";
+      if (!value.trim()) value = (el.parentElement?.innerText || "").replace(el.textContent, "");
+      value = value.trim().split("\n")[0].trim();
+      if (value && value.length <= 120) labels[key] = value;
+    }
+  }
+  const mailtos = [...document.querySelectorAll('a[href^="mailto:"]')]
+    .map((a) => decodeURIComponent(a.getAttribute("href").slice(7).split("?")[0]))
+    .filter(Boolean);
+
+  const isSubject = (el) =>
+    /subject/i.test([el.name, el.placeholder, el.id, el.getAttribute("aria-label"), el.getAttribute("data-testid")].join(" "));
+  const subjectEl = [...document.querySelectorAll("input")].find((el) => visible(el) && isSubject(el));
+  const editors = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')]
+    .filter((el) => visible(el) && !isSubject(el) && !el.parentElement?.closest('[contenteditable="true"]'));
+  const area = (el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height;
+  const editor = editors.sort((a, b) => area(b) - area(a))[0];
+
+  return {
+    isTop: window === window.top,
+    url: location.href,
+    labels,
+    mailtos,
+    subject: subjectEl?.value || "",
+    body: editor ? (editor.tagName === "TEXTAREA" ? editor.value : editor.innerText) : "",
+    bodyArea: editor ? area(editor) : 0,
+    text: (document.body?.innerText || "").slice(0, 12000),
+  };
+}
+
+// claude.ai: sends the message that pasteIntoClaude put in the box.
+export function submitClaude() {
+  const btn = [...document.querySelectorAll("button")].find(
+    (b) => /send/i.test(b.getAttribute("aria-label") || "") && !b.disabled
+  );
+  if (btn) {
+    btn.click();
+    return true;
+  }
+  const box = document.querySelector('[contenteditable="true"]') || document.querySelector("textarea");
+  if (!box) return false;
+  box.focus();
+  box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+  return true;
+}

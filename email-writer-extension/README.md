@@ -71,6 +71,20 @@ Each draft is added to **Earlier emails** and the step moves forward, so later t
 
 The extension has permission to read and write on `*.outreach.io`, so it keeps working as you move between Outreach pages.
 
+### One click: Write for this Outreach task
+
+Open the prospect's email task in Outreach and click **Write for this Outreach task** at the top of the panel:
+
+1. **Import.** It reads the task and fills in the prospect's name, title, company and email, the step, and the email already in the task. It uses labels, `mailto:` links, "Name <email>" lines and "Day N" text. The raw page text goes to Claude too, so it can fill gaps and see earlier emails sent.
+2. **Write.** It opens Claude, pastes the prompt and sends it. The prompt asks Claude to rewrite the task's existing email to the playbook. Turn off **Send the prompt automatically** in Settings if you'd rather press Enter yourself. With the API engine, this step runs inside the panel instead.
+3. **Paste back.** When Claude finishes, it switches back to the Outreach tab and puts the subject and body into the task. Reply steps keep the existing subject. **It never clicks Send in Outreach.** Review, then send yourself.
+
+**Import from Outreach task** (in the Prospect section) does only step 1, so you can check or edit the fields before writing. Everything it finds is shown under **From Outreach**.
+
+Outreach's page layout isn't documented and can change, so the import is a best guess. Check the detected fields, especially the step: it uses the first "Day N" on the page.
+
+### Manual insert
+
 1. Open the email step (sequence step template or one-off email) in Outreach and **click into the email body**.
 2. Click **Insert into page** in the side panel. It writes the subject into the Subject field (not for reply steps, which keep the existing thread) and replaces the body in the editor you clicked. The editor can be inside an iframe. The insert tries a paste first, which editors handle natively, then falls back to direct insertion.
 3. Review it in Outreach before saving or sending.

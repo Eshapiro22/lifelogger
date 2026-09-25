@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Triple Touch Email Writer",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Writes subject lines and bodies for each email step of an outbound sequence, following 30MPC's Triple Touch and Untap Your Sales Potential.",
   "permissions": ["sidePanel", "storage", "activeTab", "scripting", "clipboardRead"],
   "host_permissions": ["https://api.anthropic.com/*", "https://*.outreach.io/*", "https://claude.ai/*"],

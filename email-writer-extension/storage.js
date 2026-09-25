@@ -4,6 +4,7 @@ export const DEFAULT_SETTINGS = {
   engine: "claudeai",
   claudeUrl: "https://claude.ai/new",
   includePlaybook: true,
+  autoSend: true,
   apiKey: "",
   model: "claude-opus-5",
   senderName: "",

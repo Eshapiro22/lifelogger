@@ -4,7 +4,8 @@ import {
 } from "./methodology.js";
 import { loadSettings } from "./storage.js";
 import { callClaude } from "./api.js";
-import { probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, readClaudeReply } from "./inject.js";
+import { probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, submitClaude, readClaudeReply, readOutreachTask } from "./inject.js";
+import { parseTask } from "./outreach.js";
 import { buildClaudeTabPrompt, extractJson } from "./claudetab.js";
 
 const $ = (id) => document.getElementById(id);
@@ -15,9 +16,10 @@ let pending; // request waiting on a reply from the Claude tab: { kind, stepId, 
 
 const FORM_IDS = [
   "mode", "sequence", "step", "p-name", "p-title", "p-company", "p-industry", "p-relationship",
-  "p-exec", "p-trigger", "p-intel", "p-context", "history",
+  "p-exec", "p-trigger", "p-intel", "p-context", "p-email", "ot-summary", "ot-subject", "ot-body", "ot-text", "history",
 ];
-const PROSPECT_IDS = FORM_IDS.filter((id) => id.startsWith("p-") || id === "history");
+const PROSPECT_IDS = FORM_IDS.filter((id) => /^(p|ot)-/.test(id) || id === "history");
+let outreachTabId; // the Outreach task tab to write back into
 
 async function renderSettings() {
   settings = await loadSettings();
@@ -43,6 +45,7 @@ async function init() {
   if (draft) for (const [k, v] of Object.entries(draft)) if ($(k)) setVal($(k), v);
   ({ pending } = await chrome.storage.session.get("pending").catch(() => ({})));
   $("reply-wrap").hidden = !pending;
+  $("ot-wrap").hidden = !$("ot-text").value;
 
   showMode();
   showGuide();
@@ -59,6 +62,8 @@ async function init() {
   );
   $("reset").addEventListener("click", onReset);
   $("fetch-reply").addEventListener("click", onFetchReply);
+  $("auto-run").addEventListener("click", onAutoRun);
+  $("import").addEventListener("click", onImport);
   $("paste-reply").addEventListener("click", onPasteReply);
   $("copy-subject").addEventListener("click", () => copy($("out-subject").value, "Subject copied"));
   $("copy-body").addEventListener("click", () => copy($("out-body").value, "Body copied"));
@@ -127,7 +132,11 @@ function contextBlock({ exec, assets }) {
     `Executive: ${exec ? "yes, so keep emails ≤50 words" : "no"}`,
     field("Triggers", $("p-trigger").value),
     field("Colleague intel (for snowball / reverse selling)", $("p-intel").value),
+    field("Email address", $("p-email").value),
     field("Extra page context (may be noisy; use only relevant facts)", $("p-context").value.slice(0, 4000)),
+    $("ot-text").value.trim()
+      ? `\nOUTREACH TASK PAGE (raw text from the Outreach task; may include prospect details, the sequence step and earlier emails sent. Use it to fill gaps in the fields above and treat emails already sent as history. Ignore navigation and UI text.)\n${$("ot-text").value.slice(0, 12000)}`
+      : ``,
     ``,
     `TRIPLE TOUCH\n${settings.tripleT}\n`,
     settings.extraRules?.trim() ? `ADDITIONAL HOUSE RULES\n${settings.extraRules.trim()}\n` : ``,
@@ -145,6 +154,10 @@ function buildEmailPrompt() {
     contextBlock({ exec: $("p-exec").checked || step.exec, assets: step.assetsAllowed }),
     `EARLIER EMAILS TO THIS PROSPECT (change the angle; don't repeat their wording)`,
     $("history").value.trim() || "(none)",
+    ``,
+    $("ot-body").value.trim() || $("ot-subject").value.trim()
+      ? `EXISTING EMAIL IN THIS OUTREACH STEP (rewrite it to follow the playbook; keep anything specific and true; keep Outreach variables like {{first_name}} exactly as written)\nSubject: ${$("ot-subject").value.trim() || "(none)"}\n${$("ot-body").value.trim()}`
+      : ``,
     ``,
     step.thread === "reply"
       ? `This step replies in the existing thread, so return subject as an empty string.`
@@ -170,7 +183,7 @@ async function run(schema, userPrompt, label) {
 
 // No-API-key path: open Claude in a new tab with the full prompt pasted into
 // the message box. You press Enter, then pull the reply back with the button.
-async function openInClaude(kind, schema, userPrompt) {
+async function openInClaude(kind, schema, userPrompt, { autoSend = false } = {}) {
   const text = buildClaudeTabPrompt({
     systemPrompt: buildSystemPrompt(settings),
     playbook: settings.includePlaybook === false ? "" : settings.playbook,
@@ -190,14 +203,42 @@ async function openInClaude(kind, schema, userPrompt) {
     try {
       const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] });
       if (result) {
+        if (autoSend) {
+          await new Promise((r) => setTimeout(r, 400));
+          const [{ result: sent }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: submitClaude });
+          if (sent) return { tabId: tab.id, sent: true };
+        }
         setStatus("Prompt is in Claude. Press Enter there. When Claude finishes, click “Get reply from Claude tab”.");
-        return;
+        return { tabId: tab.id, sent: false };
       }
     } catch {
       // Tab still loading or not on claude.ai yet (e.g. a login page).
     }
   }
   setStatus("Couldn't paste automatically. The prompt is on your clipboard: paste it into Claude (Ctrl/Cmd+V) and send.", true);
+  return { tabId: tab.id, sent: false };
+}
+
+// Polls the Claude tab until a complete reply of the right shape appears and
+// stops changing (Claude has finished writing).
+async function waitForClaudeReply(tabId, kind, timeoutMs = 240000) {
+  let last = "";
+  const until = Date.now() + timeoutMs;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const [{ result }] = await chrome.scripting.executeScript({ target: { tabId }, func: readClaudeReply });
+      const obj = (result || []).map(extractJson).find((o) => replyFits(o, kind));
+      if (obj) {
+        const key = JSON.stringify(obj);
+        if (key === last) return obj;
+        last = key;
+      }
+    } catch {
+      // tab busy or navigating; keep waiting
+    }
+  }
+  throw new Error("Claude didn't finish within 4 minutes. When it's done, click “Get reply from Claude tab”.");
 }
 
 // The page also shows the prompt (with its schema), so only accept a reply
@@ -315,6 +356,7 @@ function onReset() {
   $("step").value = STEPS[0].id;
   $("result").hidden = true;
   $("plan").hidden = true;
+  $("ot-wrap").hidden = true;
   draftStep = undefined;
   lastPlan = undefined;
   showGuide();
@@ -456,9 +498,9 @@ async function onGrab() {
 // Probes every frame (Outreach's editor may sit in an iframe), then writes the
 // subject into the frame that has a subject field and the body into the frame
 // whose editor you last clicked into, falling back to the largest editor.
-async function insertEmail(subject, body) {
+async function insertEmail(subject, body, targetTabId) {
   try {
-    const tabId = await activeTabId();
+    const tabId = targetTabId ?? (await activeTabId());
     const probes = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: probeFrame });
     const ok = probes.filter((p) => p.result);
     const bodyFrame =
@@ -485,8 +527,92 @@ async function insertEmail(subject, body) {
       const missing = subject && !done.includes("subject") ? " No subject field found; paste it manually." : "";
       setStatus(`Inserted ${done.join(" + ")}. Review before saving or sending.${missing}`, Boolean(missing));
     }
+    return done.includes("body");
   } catch (err) {
     setStatus(`Couldn't insert (${err.message}). Use the Copy buttons.`, true);
+    return false;
+  }
+}
+
+// ---- Outreach task import + one-click flow ----
+
+async function importOutreachTask() {
+  const tabId = await activeTabId();
+  const tab = await chrome.tabs.get(tabId);
+  if (!/^https:\/\/[^/]*outreach\.io\//.test(tab.url || "")) {
+    throw new Error("Open the prospect's email task in Outreach first, then click this again.");
+  }
+  const frames = (await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: readOutreachTask }))
+    .map((r) => r.result)
+    .filter(Boolean);
+  const t = parseTask(frames, { senderCompany: settings.senderCompany });
+  outreachTabId = tabId;
+
+  const setIf = (id, v) => v && ($(id).value = v);
+  setIf("p-name", t.firstName);
+  setIf("p-title", t.title);
+  setIf("p-company", t.company);
+  setIf("p-email", t.email);
+  if (/\bchief\b|\bc[a-z]{1,2}o\b/i.test($("p-title").value)) $("p-exec").checked = true;
+  if (t.stepId) $("step").value = t.stepId;
+  $("mode").value = "email";
+  $("ot-subject").value = t.subject;
+  $("ot-body").value = t.body;
+  $("ot-text").value = t.text;
+  const found = [
+    t.fullName && `name: ${t.fullName}`,
+    t.email && `email: ${t.email}`,
+    t.title && `title: ${t.title}`,
+    t.company && `company: ${t.company}${t.companyGuessed ? " (guessed from email domain)" : ""}`,
+    t.outreachStep,
+    t.stepReason ? `step: ${t.stepReason}` : "step: not detected, using the one selected",
+    t.body ? "existing email found" : "no existing email",
+  ].filter(Boolean);
+  $("ot-summary").value = found.join(" · ");
+  $("ot-wrap").hidden = false;
+  showMode();
+  showGuide();
+  saveDraft();
+  return t;
+}
+
+async function onImport() {
+  try {
+    await importOutreachTask();
+    setStatus("Imported from Outreach. Check the fields, then write the email.");
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+// One click: import the task → Claude writes it → paste back into the task.
+async function onAutoRun() {
+  const btn = $("auto-run");
+  btn.disabled = true;
+  try {
+    setStatus("Reading the Outreach task…");
+    await importOutreachTask();
+    const target = outreachTabId;
+    let out;
+    if (useClaudeTab()) {
+      setStatus("Opening Claude and sending the prompt…");
+      const { tabId, sent } = await openInClaude("email", OUTPUT_SCHEMA, buildEmailPrompt(), { autoSend: settings.autoSend !== false });
+      setStatus(sent ? "Claude is writing…" : "Press Enter in the Claude tab. Waiting for Claude's reply…");
+      out = await waitForClaudeReply(tabId, "email");
+      pending.lastApplied = JSON.stringify(out);
+      chrome.storage.session.set({ pending }).catch(() => {});
+    } else {
+      out = await run(OUTPUT_SCHEMA, buildEmailPrompt(), "Claude is writing…");
+    }
+    applyEmail({ angle: "", subject: "", voicemail: "", flags: [], ...out });
+    await chrome.tabs.update(target, { active: true });
+    const subject = draftStep.thread === "reply" ? "" : out.subject;
+    const ok = await insertEmail(subject, out.body, target);
+    if (ok) setStatus(`Done: the email is in the Outreach task. Review it there before sending.${draftStep.tripleTouch ? " The voicemail script is in the panel." : ""}`);
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    btn.disabled = false;
   }
 }
 

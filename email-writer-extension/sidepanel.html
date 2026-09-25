@@ -15,7 +15,7 @@
     Add your Anthropic API key in <a href="options.html" target="_blank">Settings</a> to start.
   </div>
   <div id="playbook-warning" class="banner" hidden>
-    No playbook loaded. Paste yours in <a href="options.html" target="_blank">Settings</a> for persona-specific emails.
+    No playbook loaded. Paste yours in <a href="options.html" target="_blank">Settings</a> (or keep it in your Claude Project) for persona-specific emails.
   </div>
 
   <section>
@@ -71,6 +71,15 @@
 
   <button id="generate" class="primary">Write email</button>
   <p id="status" class="status"></p>
+
+  <section id="reply-wrap" hidden>
+    <h2>Claude's reply</h2>
+    <button id="fetch-reply" class="primary">Get reply from Claude tab</button>
+    <label>Or paste the reply here <span class="hint">(leave empty to read your clipboard)</span>
+      <textarea id="reply-text" rows="3"></textarea>
+    </label>
+    <button id="paste-reply" class="secondary">Load pasted reply</button>
+  </section>
 
   <section id="result" hidden>
     <h2>Draft</h2>

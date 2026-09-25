@@ -1,15 +1,28 @@
 # Triple Touch Email Writer (Chrome extension)
 
-A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence, or a **full plan** for one contact: call opener, discovery questions, voicemails, emails, LinkedIn copy and objection responses. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps it also writes the matching voicemail, so the voicemail names the email's subject line. It calls Claude with your own Anthropic API key.
+A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence, or a **full plan** for one contact: call opener, discovery questions, voicemails, emails, LinkedIn copy and objection responses. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps it also writes the matching voicemail, so the voicemail names the email's subject line. It runs through your normal Claude login in a browser tab (no API key), or through an Anthropic API key if you prefer.
 
 ## Install (unpacked)
 
 1. Open `chrome://extensions` and turn on **Developer mode**.
 2. Click **Load unpacked** and select this `email-writer-extension/` folder.
 3. Click the extension icon to open the side panel, then open **Settings**:
-   - paste your Anthropic API key
+   - pick the **engine** (see below). The default needs no API key.
    - paste your **playbook** (persona tracks, pains, proof, rules). It goes to the model as system context on every email and overrides the built-in defaults.
    - add one entry per sequence you run: persona track, Pain A, Pain B, what you do about it, approved proof points, and an optional mid-sequence asset
+
+## Engines: with or without an API key
+
+**Claude tab (default, no API key).** Clicking **Write email in Claude** builds the full prompt (rules, playbook, step, prospect), opens Claude in a new tab and pastes the prompt into the message box. It does not send it.
+1. Press **Enter** in the Claude tab.
+2. When Claude finishes, click **Get reply from Claude tab** in the side panel. The draft loads with the playbook checks and Insert, just like the API path.
+3. If Claude replied in the wrong format or you tweaked the reply, copy it and use **Load pasted reply** instead.
+
+If the automatic paste fails (for example, you're on a login page), the prompt is already on your clipboard: paste it with Ctrl/Cmd+V and send.
+
+**Tip: use a Claude Project.** Create a Project, put your playbook in its instructions, set **Claude URL** in Settings to the Project's link, and untick **Include my playbook in each prompt**. The prompts get much shorter.
+
+**Anthropic API key.** Runs inside the panel with no extra tab. You pay per use on your API account.
 
 Your API key and playbook are stored only in this browser (`chrome.storage.local`). They are never committed to this repo.
 

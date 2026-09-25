@@ -4,12 +4,14 @@ import {
 } from "./methodology.js";
 import { loadSettings } from "./storage.js";
 import { callClaude } from "./api.js";
-import { probeFrame, fillSubject, fillBody, readPage } from "./inject.js";
+import { probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, readClaudeReply } from "./inject.js";
+import { buildClaudeTabPrompt, extractJson } from "./claudetab.js";
 
 const $ = (id) => document.getElementById(id);
 let settings;
 let draftStep; // step that produced the current draft
 let lastPlan; // most recent full plan, for Markdown export
+let pending; // request waiting on a reply from the Claude tab: { kind, stepId, tabId }
 
 const FORM_IDS = [
   "mode", "sequence", "step", "p-name", "p-title", "p-company", "p-industry", "p-relationship",
@@ -19,8 +21,9 @@ const PROSPECT_IDS = FORM_IDS.filter((id) => id.startsWith("p-") || id === "hist
 
 async function renderSettings() {
   settings = await loadSettings();
-  $("setup-warning").hidden = Boolean(settings.apiKey);
-  $("playbook-warning").hidden = !settings.apiKey || Boolean(settings.playbook?.trim());
+  $("setup-warning").hidden = useClaudeTab() || Boolean(settings.apiKey);
+  $("playbook-warning").hidden = Boolean(settings.playbook?.trim()) || (!useClaudeTab() && !settings.apiKey);
+  if ($("mode").value) showMode();
   const selected = $("sequence").value;
   $("sequence").innerHTML = settings.sequences
     .map((s) => `<option value="${s.id}">${escapeHtml(s.name)}</option>`)
@@ -38,6 +41,8 @@ async function init() {
   // Restore the in-progress form so closing the panel doesn't lose it.
   const { draft } = await chrome.storage.session.get("draft").catch(() => ({}));
   if (draft) for (const [k, v] of Object.entries(draft)) if ($(k)) setVal($(k), v);
+  ({ pending } = await chrome.storage.session.get("pending").catch(() => ({})));
+  $("reply-wrap").hidden = !pending;
 
   showMode();
   showGuide();
@@ -53,6 +58,8 @@ async function init() {
     insertEmail(draftStep?.thread === "reply" ? "" : $("out-subject").value, $("out-body").value)
   );
   $("reset").addEventListener("click", onReset);
+  $("fetch-reply").addEventListener("click", onFetchReply);
+  $("paste-reply").addEventListener("click", onPasteReply);
   $("copy-subject").addEventListener("click", () => copy($("out-subject").value, "Subject copied"));
   $("copy-body").addEventListener("click", () => copy($("out-body").value, "Body copied"));
   $("copy-vm").addEventListener("click", () => copy($("out-voicemail").value, "Voicemail copied"));
@@ -75,7 +82,8 @@ function showMode() {
   const plan = $("mode").value === "plan";
   $("step-wrap").hidden = plan;
   $("history-wrap").hidden = plan;
-  $("generate").textContent = plan ? "Build full plan" : "Write email";
+  const via = useClaudeTab() ? " in Claude" : "";
+  $("generate").textContent = (plan ? "Build full plan" : "Write email") + via;
   $("result").hidden = plan || !draftStep;
   $("plan").hidden = !plan || !lastPlan;
 }
@@ -145,8 +153,10 @@ function buildEmailPrompt() {
   ].join("\n");
 }
 
+const useClaudeTab = () => settings.engine !== "api";
+
 async function run(schema, userPrompt, label) {
-  if (!settings.apiKey) throw new Error("Add your API key in Settings first.");
+  if (!settings.apiKey) throw new Error("Add your API key in Settings, or switch to the Claude tab engine.");
   setStatus(label);
   return callClaude({
     apiKey: settings.apiKey,
@@ -158,12 +168,98 @@ async function run(schema, userPrompt, label) {
   });
 }
 
+// No-API-key path: open Claude in a new tab with the full prompt pasted into
+// the message box. You press Enter, then pull the reply back with the button.
+async function openInClaude(kind, schema, userPrompt) {
+  const text = buildClaudeTabPrompt({
+    systemPrompt: buildSystemPrompt(settings),
+    playbook: settings.includePlaybook === false ? "" : settings.playbook,
+    userPrompt,
+    schema,
+  });
+  await navigator.clipboard.writeText(text).catch(() => {});
+  const tab = await chrome.tabs.create({ url: settings.claudeUrl || "https://claude.ai/new" });
+  pending = { kind, stepId: $("step").value, tabId: tab.id };
+  chrome.storage.session.set({ pending }).catch(() => {});
+  $("reply-wrap").hidden = false;
+  setStatus("Opening Claude…");
+
+  // The message box renders after the page loads, so retry for ~20 seconds.
+  for (let i = 0; i < 40; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+    try {
+      const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] });
+      if (result) {
+        setStatus("Prompt is in Claude. Press Enter there. When Claude finishes, click “Get reply from Claude tab”.");
+        return;
+      }
+    } catch {
+      // Tab still loading or not on claude.ai yet (e.g. a login page).
+    }
+  }
+  setStatus("Couldn't paste automatically. The prompt is on your clipboard: paste it into Claude (Ctrl/Cmd+V) and send.", true);
+}
+
+// The page also shows the prompt (with its schema), so only accept a reply
+// shaped like the thing we asked for.
+const replyFits = (obj, kind) =>
+  kind === "plan"
+    ? Array.isArray(obj?.sequence) && typeof obj?.triple_touch_1 === "object" && !obj.properties
+    : typeof obj?.body === "string";
+
+function applyReply(obj) {
+  if (!pending) throw new Error("Nothing is waiting on a reply. Click the button to open Claude first.");
+  if (!replyFits(obj, pending.kind)) {
+    throw new Error(`That reply isn't ${pending.kind === "plan" ? "a full plan" : "an email draft"}. Check you copied the right message.`);
+  }
+  // Pulling the same reply twice shouldn't add it to the history twice. A
+  // revised reply from the same tab (e.g. "make it shorter") loads normally.
+  const key = JSON.stringify(obj);
+  if (key === pending.lastApplied) {
+    setStatus("That reply is already loaded.");
+    return;
+  }
+  pending.lastApplied = key;
+  chrome.storage.session.set({ pending }).catch(() => {});
+  if (pending.kind === "plan") {
+    applyPlan(obj);
+  } else {
+    $("step").value = pending.stepId;
+    applyEmail({ angle: "", subject: "", voicemail: "", flags: [], ...obj });
+  }
+  setStatus("Loaded Claude's reply.");
+}
+
+async function onFetchReply() {
+  try {
+    if (!pending?.tabId) throw new Error("Open Claude from the panel first.");
+    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: pending.tabId }, func: readClaudeReply });
+    const obj = (result || []).map(extractJson).find((o) => replyFits(o, pending.kind));
+    if (!obj) throw new Error("No finished reply found yet. Wait for Claude to finish, or copy the reply and use Paste.");
+    applyReply(obj);
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+async function onPasteReply() {
+  try {
+    const text = $("reply-text").value.trim() || (await navigator.clipboard.readText());
+    const obj = extractJson(text);
+    if (!obj) throw new Error("Couldn't find the JSON in that text. Copy Claude's whole reply and try again.");
+    applyReply(obj);
+    $("reply-text").value = "";
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
 async function withButton(fn) {
   const btn = $("generate");
   btn.disabled = true;
   try {
     await fn();
-    setStatus("");
+    if (!useClaudeTab()) setStatus("");
   } catch (err) {
     setStatus(err.message, true);
   } finally {
@@ -172,30 +268,35 @@ async function withButton(fn) {
 }
 
 function onGenerate() {
-  return withButton(async () => {
-    const out = await run(OUTPUT_SCHEMA, buildEmailPrompt(), "Writing…");
-    draftStep = currentStep();
-    $("angle").textContent = out.angle ? `Angle: ${out.angle}` : "";
-    $("out-subject").value = out.subject || "";
-    $("out-body").value = out.body || "";
-    $("out-voicemail").value = out.voicemail || "";
-    $("vm-wrap").hidden = !draftStep.tripleTouch;
-    const flags = out.flags || [];
-    $("flags").innerHTML = flags.map((f) => `<li class="warn">⚑ ${escapeHtml(f)}</li>`).join("");
-    $("flags-wrap").hidden = !flags.length;
-    $("result").hidden = false;
-    runChecks();
-    appendHistory(out);
-  });
+  if (useClaudeTab()) return withButton(() => openInClaude("email", OUTPUT_SCHEMA, buildEmailPrompt()));
+  return withButton(async () => applyEmail(await run(OUTPUT_SCHEMA, buildEmailPrompt(), "Writing…")));
+}
+
+function applyEmail(out) {
+  draftStep = currentStep();
+  $("angle").textContent = out.angle ? `Angle: ${out.angle}` : "";
+  $("out-subject").value = out.subject || "";
+  $("out-body").value = out.body || "";
+  $("out-voicemail").value = out.voicemail || "";
+  $("vm-wrap").hidden = !draftStep.tripleTouch;
+  const flags = out.flags || [];
+  $("flags").innerHTML = flags.map((f) => `<li class="warn">⚑ ${escapeHtml(f)}</li>`).join("");
+  $("flags-wrap").hidden = !flags.length;
+  $("result").hidden = false;
+  runChecks();
+  appendHistory(out);
 }
 
 function onPlan() {
-  return withButton(async () => {
-    const prompt = [PLAN_GUIDE, ``, contextBlock({ exec: $("p-exec").checked, assets: true })].join("\n");
-    lastPlan = await run(PLAN_SCHEMA, prompt, "Building the full plan (this can take a minute)…");
-    renderPlan(lastPlan);
-    $("plan").hidden = false;
-  });
+  const prompt = [PLAN_GUIDE, ``, contextBlock({ exec: $("p-exec").checked, assets: true })].join("\n");
+  if (useClaudeTab()) return withButton(() => openInClaude("plan", PLAN_SCHEMA, prompt));
+  return withButton(async () => applyPlan(await run(PLAN_SCHEMA, prompt, "Building the full plan (this can take a minute)…")));
+}
+
+function applyPlan(plan) {
+  lastPlan = plan;
+  renderPlan(plan);
+  $("plan").hidden = false;
 }
 
 function appendHistory(out) {

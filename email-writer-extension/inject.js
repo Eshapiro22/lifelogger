@@ -117,3 +117,30 @@ export function readPage() {
   const sel = window.getSelection()?.toString().trim();
   return sel || document.body.innerText.slice(0, 6000);
 }
+
+// claude.ai: puts the prompt into the message box without sending it.
+export function pasteIntoClaude(text) {
+  const box =
+    document.querySelector('div[contenteditable="true"].ProseMirror') ||
+    document.querySelector('[contenteditable="true"][role="textbox"]') ||
+    document.querySelector('div[contenteditable="true"]') ||
+    document.querySelector("textarea");
+  if (!box) return false;
+  box.focus();
+  if (box.tagName === "TEXTAREA") {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(box, text);
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+  } else {
+    document.execCommand("insertText", false, text);
+  }
+  const content = box.tagName === "TEXTAREA" ? box.value : box.innerText;
+  return content.trim().length > 0;
+}
+
+// claude.ai: returns candidate reply texts, newest first. Code blocks come
+// first, then the page text as a fallback; the panel parses the first one
+// that holds a JSON object.
+export function readClaudeReply() {
+  const blocks = [...document.querySelectorAll("pre")].map((el) => el.innerText).reverse();
+  return [...blocks, document.body.innerText];
+}

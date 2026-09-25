@@ -1,6 +1,9 @@
 import { DEFAULT_TRIPLE_T } from "./methodology.js";
 
 export const DEFAULT_SETTINGS = {
+  engine: "claudeai",
+  claudeUrl: "https://claude.ai/new",
+  includePlaybook: true,
   apiKey: "",
   model: "claude-opus-5",
   senderName: "",

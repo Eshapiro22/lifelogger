@@ -9,7 +9,21 @@
   <header><h1>Settings</h1></header>
 
   <section>
-    <h2>API</h2>
+    <h2>How to run Claude</h2>
+    <label>Engine
+      <select id="engine">
+        <option value="claudeai">Claude tab: use my Claude login, no API key (default)</option>
+        <option value="api">Anthropic API key: runs inside the panel</option>
+      </select>
+    </label>
+    <label>Claude URL <span class="hint">(use a Project link to keep your playbook in the Project's instructions)</span>
+      <input id="claudeUrl" placeholder="https://claude.ai/new" />
+    </label>
+    <label class="check"><input type="checkbox" id="includePlaybook" /> Include my playbook in each prompt (turn off if your Claude Project already has it)</label>
+  </section>
+
+  <section>
+    <h2>API <span class="hint">(only for the API key engine)</span></h2>
     <label>Anthropic API key <span class="hint">(stored only in this browser)</span>
       <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..." />
     </label>

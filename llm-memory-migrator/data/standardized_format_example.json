@@ -1,0 +1,47 @@
+{
+  "_comment": "This file shows the standardized internal format produced by transformer.py. All platforms' data is normalized to this schema before import.",
+  "schema_version": "1.0",
+  "source_platform": "openai",
+  "target_platform": "anthropic",
+  "data_type": "chat_history",
+  "exported_at": "2024-04-01T12:00:00+00:00",
+  "record_count": 2,
+  "records": [
+    {
+      "id": "conv_openai_001",
+      "title": "Python Async Patterns",
+      "timestamp": "2024-04-01T08:00:00+00:00",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Can you explain asyncio event loops?"
+        },
+        {
+          "role": "assistant",
+          "content": "Sure! An asyncio event loop is the core of every async application in Python..."
+        }
+      ]
+    },
+    {
+      "id": "conv_openai_002",
+      "title": "Real Estate Investment Tips",
+      "timestamp": "2024-04-02T08:00:00+00:00",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What are the best strategies for STR investing?"
+        },
+        {
+          "role": "assistant",
+          "content": "Short-term rental investing involves several key considerations..."
+        }
+      ]
+    }
+  ],
+  "_notes": {
+    "chat_history_record_fields": ["id", "title", "timestamp", "messages"],
+    "message_roles": ["user", "assistant"],
+    "user_instructions_record_fields": ["system_prompt", "about_user", "response_preferences", "source_platform", "enabled"],
+    "response_style_record_fields": ["id", "name", "description", "active", "source_platform"]
+  }
+}

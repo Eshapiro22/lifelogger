@@ -1,0 +1,28 @@
+# LLM Memory Migration Tool – Python Dependencies
+# ================================================
+# Install with: pip install -r requirements.txt
+
+# HTTP client (needed for real API calls in future integrations)
+requests>=2.31.0
+
+# CLI argument parsing – argparse is stdlib, but click is more ergonomic for future growth
+# Uncomment if you want to migrate CLI to click:
+# click>=8.1.0
+
+# Data validation (useful when real API responses need schema enforcement)
+# pydantic>=2.5.0
+
+# OpenAI SDK (for real OpenAI API integration)
+# openai>=1.14.0
+
+# Anthropic SDK (for real Claude API integration)
+# anthropic>=0.18.0
+
+# Google Generative AI SDK (for real Gemini API integration)
+# google-generativeai>=0.4.0
+
+# Testing
+pytest>=7.4.0
+
+# Pretty terminal output (optional quality-of-life enhancement)
+# rich>=13.7.0

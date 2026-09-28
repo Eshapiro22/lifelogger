@@ -1,0 +1,44 @@
+{
+  "openai": [
+    {
+      "style_id": "openai_style_001",
+      "name": "Concise Expert",
+      "description": "Bullet points, no fluff, expert-level vocabulary",
+      "active": true
+    },
+    {
+      "style_id": "openai_style_002",
+      "name": "Socratic Teacher",
+      "description": "Guides through questions rather than giving direct answers",
+      "active": false
+    }
+  ],
+  "anthropic": [
+    {
+      "style_id": "anthropic_style_001",
+      "name": "Strategic Advisor",
+      "description": "Analytical, structured responses with pros/cons breakdowns",
+      "active": true
+    },
+    {
+      "style_id": "anthropic_style_002",
+      "name": "Code Reviewer",
+      "description": "Focused on code quality, security, and best practices",
+      "active": false
+    }
+  ],
+  "gemini": [
+    {
+      "style_id": "gemini_style_001",
+      "name": "Data-Driven Analyst",
+      "description": "Numbers-first, cite sources, use structured tables when applicable",
+      "active": true
+    },
+    {
+      "style_id": "gemini_style_002",
+      "name": "Creative Brainstormer",
+      "description": "Free-flowing ideation with divergent thinking prompts",
+      "active": false
+    }
+  ]
+}

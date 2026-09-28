@@ -1,0 +1,116 @@
+{
+  "openai": [
+    {
+      "id": "conv_openai_001",
+      "title": "Python Async Patterns",
+      "create_time": 1711929600.0,
+      "update_time": 1711933200.0,
+      "mapping": {
+        "msg_001": {
+          "message": {
+            "author": { "role": "user" },
+            "content": { "parts": ["Can you explain asyncio event loops?"] }
+          }
+        },
+        "msg_002": {
+          "message": {
+            "author": { "role": "assistant" },
+            "content": {
+              "parts": ["Sure! An asyncio event loop is the core of every async application in Python..."]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "conv_openai_002",
+      "title": "Real Estate Investment Tips",
+      "create_time": 1712016000.0,
+      "update_time": 1712019600.0,
+      "mapping": {
+        "msg_003": {
+          "message": {
+            "author": { "role": "user" },
+            "content": { "parts": ["What are the best strategies for STR investing?"] }
+          }
+        },
+        "msg_004": {
+          "message": {
+            "author": { "role": "assistant" },
+            "content": {
+              "parts": ["Short-term rental investing involves several key considerations including location, occupancy rates, and platform fees..."]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "anthropic": [
+    {
+      "conversation_id": "conv_anthropic_001",
+      "name": "Startup SaaS Ideas",
+      "created_at": "2024-04-01T10:00:00Z",
+      "updated_at": "2024-04-01T11:00:00Z",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What SaaS ideas have the highest growth potential in 2024?"
+        },
+        {
+          "role": "assistant",
+          "content": "Here are several high-potential SaaS verticals for 2024: AI-powered workflow automation, vertical-specific CRMs, and developer tooling..."
+        }
+      ]
+    },
+    {
+      "conversation_id": "conv_anthropic_002",
+      "name": "Code Review: Flight Arbitrage",
+      "created_at": "2024-04-02T09:00:00Z",
+      "updated_at": "2024-04-02T09:45:00Z",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Please review my FastAPI backend for the flight arbitrage tool."
+        },
+        {
+          "role": "assistant",
+          "content": "I've reviewed the code. Overall structure is solid. Key suggestions: add input validation with Pydantic models, implement rate limiting, and add async caching for repeated fare lookups..."
+        }
+      ]
+    }
+  ],
+  "gemini": [
+    {
+      "conversation_id": "conv_gemini_001",
+      "display_name": "Trading Bot Architecture",
+      "create_time": "2024-04-01T08:00:00Z",
+      "update_time": "2024-04-01T09:00:00Z",
+      "contents": [
+        {
+          "role": "user",
+          "parts": [{ "text": "Design a trading bot architecture using Python." }]
+        },
+        {
+          "role": "model",
+          "parts": [{ "text": "Here's a recommended architecture for a Python trading bot: data ingestion layer, signal generation engine, risk management module, and execution layer..." }]
+        }
+      ]
+    },
+    {
+      "conversation_id": "conv_gemini_002",
+      "display_name": "Foreclosure Property Analysis",
+      "create_time": "2024-04-02T14:00:00Z",
+      "update_time": "2024-04-02T14:30:00Z",
+      "contents": [
+        {
+          "role": "user",
+          "parts": [{ "text": "How do I analyze foreclosure properties for STR potential?" }]
+        },
+        {
+          "role": "model",
+          "parts": [{ "text": "Analyzing foreclosure properties for short-term rental involves: market demand analysis, ARV estimation, renovation cost modeling, and projected nightly rate research..." }]
+        }
+      ]
+    }
+  ]
+}

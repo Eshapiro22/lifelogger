@@ -1,0 +1,6 @@
+# Runtime deal config (may contain a specific target property) — commit only the example
+config/deal.json
+
+# Generated analysis outputs (workpapers, decision, pipeline state)
+analysis/*/
+!analysis/.gitkeep

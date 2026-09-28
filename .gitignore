@@ -1,0 +1,6 @@
+# Read-only reference clone (has its own .git) — do not commit into this repo
+/cre-ref/
+
+# Working copy of str-deal-analyzer agents, registered at repo root so the Task tool
+# can resolve them. Canonical source lives in str-deal-analyzer/.claude/agents/.
+/.claude/agents/

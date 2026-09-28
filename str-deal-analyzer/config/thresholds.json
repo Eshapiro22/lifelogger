@@ -1,0 +1,88 @@
+{
+  "_comment": "Buy box — machine-readable mirror of .claude/skills/str-underwriting/SKILL.md. Keep the two in sync. The underwriting agent and orchestrator read this to score a deal.",
+  "version": "1.0",
+  "strategy": "cash-flow-str",
+  "returns": {
+    "cashOnCashYear1": { "floor": 0.10, "target": 0.12, "gating": true, "basis": "year1-ramped-pretax" },
+    "cashOnCashStabilized": { "target": 0.12, "gating": false },
+    "dscr": { "floor": 1.10, "hardDealbreakerBelow": 0.90, "gating": true }
+  },
+  "revenue": {
+    "source": "comp-derived",
+    "underwritingOccupancyHaircut": 0.90,
+    "adrPolicy": "comp-seasonal-median-no-premium",
+    "year1": "new-listing-ramp",
+    "downside": { "occupancyFactor": 0.80, "adrDelta": -0.10 },
+    "upside": { "occupancyFactor": 1.00, "adrDelta": 0.00 },
+    "verdictCase": "base"
+  },
+  "breakEven": {
+    "requireCushionPoints": 10,
+    "conditionalBelowPoints": 10,
+    "failIfBreakEvenGteMarketOccupancy": true
+  },
+  "opex": {
+    "expectedRatioRange": [0.35, 0.55],
+    "rejectProFormaBelowRatio": 0.25
+  },
+  "flood": {
+    "acceptedFemaZones": ["X", "X (shaded)", "0.2 PCT ANNUAL CHANCE FLOOD HAZARD"],
+    "hardDealbreakerZones": ["A", "AE", "AH", "AO", "AR", "A99", "V", "VE"],
+    "policy": "reject-any-SFHA"
+  },
+  "tax": {
+    "underwritingBasis": "pre-tax",
+    "costSegregation": {
+      "model": true,
+      "buildingBasisReclassPctRange": [0.20, 0.30],
+      "reclassLives": [5, 7, 15]
+    },
+    "bonusDepreciationPct": null,
+    "bonusDepreciationNote": "Legislation-dependent — set the current-year federal bonus % before quoting. Null forces an explicit confirmation.",
+    "treatment": "after-tax-upside-only",
+    "gating": false,
+    "shortTermRentalLoopholeNote": "If avg guest stay <= 7 days and host materially participates, losses may be non-passive. Investor/CPA determination, not an underwriting input."
+  },
+  "furnishingCapEx": {
+    "mustBeInCashBasis": true,
+    "unfundedIsConditional": true
+  },
+  "riskWeights": {
+    "regulatoryPermitting": 0.25,
+    "revenueDemand": 0.20,
+    "financial": 0.18,
+    "physicalReadiness": 0.08,
+    "marketLocation": 0.12,
+    "titleOwnership": 0.05,
+    "insuranceLiability": 0.05,
+    "operationalMgmt": 0.05,
+    "environmental": 0.02
+  },
+  "overallScoreThresholds": {
+    "proceed": 25,
+    "proceedWithMitigations": 40,
+    "proceedWithCaution": 55,
+    "noGoAbove": 55
+  },
+  "hardDealbreakers": [
+    "STR prohibited by ordinance at the address",
+    "STR banned by HOA/condo CC&Rs",
+    "Primary-residence-only requirement with no investment-operation path",
+    "Permit unobtainable (moratorium / non-transferable / no path)",
+    "Property in a FEMA Special Flood Hazard Area (A/AE/AH/AO/AR/A99/V/VE)",
+    "DSCR < 0.90x with no viable restructure",
+    "No STR insurance obtainable at any reasonable cost",
+    "Unresolvable title dispute or property in tax foreclosure"
+  ],
+  "buyBoxFail": [
+    "Year-1 cash-on-cash < 10.0%",
+    "DSCR < 1.10x (but >= 0.90x)",
+    "Break-even occupancy >= comp market occupancy"
+  ],
+  "softDealbreakers": [
+    "Break-even cushion < 10 percentage points",
+    "Furnishing + deferred-maintenance CapEx not funded",
+    "Fewer than 3 usable revenue comps",
+    "Single-driver demand or pending STR-restriction legislation within the hold"
+  ]
+}

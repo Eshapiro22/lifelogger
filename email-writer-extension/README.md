@@ -1,6 +1,6 @@
 # Triple Touch Email Writer (Chrome extension)
 
-A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence, or a **full plan** for one contact: call opener, discovery questions, voicemails, emails, LinkedIn copy and objection responses. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps it also writes the matching voicemail, so the voicemail names the email's subject line. It runs through your normal Claude login in a browser tab (no API key), or through an Anthropic API key if you prefer.
+A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence, or a **full plan** for one contact: call opener, discovery questions, voicemails, emails, LinkedIn copy and objection responses. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps the email follows what happened on the call (voicemail left, power-dialer call with no voicemail, or no call), and a voicemail script is ready in case you leave one. When no approved proof fits, Claude looks up a real, public customer story that matches the prospect and links the source. It runs through your normal Claude login in a browser tab (no API key), or through an Anthropic API key if you prefer.
 
 ## Install (unpacked)
 
@@ -30,13 +30,17 @@ Your API key and playbook are stored only in this browser (`chrome.storage.local
 
 | Day | Step | Thread | Angle |
 |---|---|---|---|
-| 1 | Triple Touch #1 email + voicemail | new | Problem proposition, Pain A |
+| 1 | Triple Touch #1 email (+ voicemail script) | new | Problem proposition, Pain A |
 | 3 | Email #2 | reply | New angle: Pain B or a customer story |
-| 7 | Triple Touch #2 email + voicemail | new | Trigger / insight, one optional asset |
+| 7 | Triple Touch #2 email (+ voicemail script) | new | Trigger / insight, one optional asset |
 | 10 | Email #4 | new | Peer proof as a short story |
-| 14 | Triple Touch #3 email + voicemail | new | "Wrong person?" referral ask |
+| 14 | Triple Touch #3 email (+ voicemail script) | new | "Wrong person?" referral ask |
 | 21 | Breakup | reply (Day 14 thread) | Permission to close the loop |
 | any | Exec reverse-selling email | new | Bottom-up insight from colleague intel, ≤50 words |
+
+**Call outcome** (Triple Touch steps): *Called, no voicemail* (default, for power dialers) opens with "Tried you by phone just now." and never mentions a voicemail. *Called and left a voicemail* opens with "Just left you a voicemail." and the voicemail names the subject. *No call* writes a plain cold email. The playbook check flags an email that mentions a voicemail you didn't leave.
+
+**Real customer proof.** With **Find a real customer story** on (Settings), Claude uses an approved proof point when one fits; otherwise it looks up a public customer story that matches the prospect's industry or persona, uses only facts from that source, and returns the URL (shown under the draft as **Proof source**). With no verified match, it leaves `{customer proof}` and flags it. In a Claude tab this needs **web search turned on in Claude**; with the API engine it uses Claude's web search tool.
 
 ## Full Triple Touch plan mode
 
@@ -71,6 +75,16 @@ Each draft is added to **Earlier emails** and the step moves forward, so later t
 
 The extension has permission to read and write on `*.outreach.io`, so it keeps working as you move between Outreach pages.
 
+### Your task list: write everyone due at once
+
+On your Outreach home or task list, click **Write for this Outreach task** (or **Import from Outreach task**). It finds every prospect row on the page (name, title, account, "Step #N of <sequence>") and lists them under **Prospects on this Outreach page**:
+- **Use this prospect** loads one person into the form, clearing the previous prospect.
+- **Write all** has one Claude chat write the email for everyone, with a different pain and customer story per person at the same account. The drafts appear under **Drafts for this account**.
+
+Then open each person's task and click **Write for this Outreach task**: it drops in the draft already written for that person, without opening Claude again.
+
+**Step map (Settings → Sequences).** Outreach numbers every step (calls, LinkedIn, emails), so tell the extension which Outreach step is which email, e.g. `1:tt1, 3:e2, 6:tt2, 8:e4, 10:tt3, 12:breakup`. Step 1 defaults to the Day 1 email. Set **Outreach sequence name** (e.g. "30MPC Sequence") so the right sequence is picked automatically.
+
 ### One click: Write for this Outreach task
 
 Open the prospect's email task in Outreach and click **Write for this Outreach task** at the top of the panel:
@@ -81,7 +95,7 @@ Open the prospect's email task in Outreach and click **Write for this Outreach t
 
 **Import from Outreach task** (in the Prospect section) does only step 1, so you can check or edit the fields before writing. Everything it finds is shown under **From Outreach**.
 
-Outreach's page layout isn't documented and can change, so the import is a best guess. Check the detected fields, especially the step: it uses the first "Day N" on the page.
+Outreach's page layout isn't documented and can change. The import reads the links Outreach puts on every task row (prospect, account, sequence step) and falls back to labels and text. Check the **Detected** line, especially the step.
 
 ### Manual insert
 

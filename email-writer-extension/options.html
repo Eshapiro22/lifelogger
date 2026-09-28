@@ -20,6 +20,7 @@
       <input id="claudeUrl" placeholder="https://claude.ai/new" />
     </label>
     <label class="check"><input type="checkbox" id="autoSend" /> Send the prompt automatically in Claude (for "Write for this Outreach task")</label>
+    <label class="check"><input type="checkbox" id="findProof" /> Have Claude find a real, public customer story when no approved proof fits (web search; in a Claude tab, turn on web search in Claude)</label>
     <label class="check"><input type="checkbox" id="includePlaybook" /> Include my playbook in each prompt (turn off if your Claude Project already has it)</label>
   </section>
 
@@ -53,7 +54,7 @@
 
   <section>
     <h2>Triple Touch definition</h2>
-    <p class="hint">Used on Triple Touch steps (Day 1, 7, 14). Your playbook's Section 2 takes precedence if pasted above.</p>
+    <p class="hint">Used on Triple Touch steps (Day 1, 7, 14). The voicemail is optional: pick the call outcome per email in the panel.</p>
     <textarea id="tripleT" rows="4"></textarea>
     <label>Extra house rules <span class="hint">(optional, applied to every email)</span>
       <textarea id="extraRules" rows="3" placeholder="e.g. never mention pricing; sign off with 'Best,'"></textarea>
@@ -79,6 +80,8 @@
       <label>What you do about it <span class="hint">(name the product late, if at all)</span><textarea data-k="solution" rows="2"></textarea></label>
       <label>Approved proof points <span class="hint">(real customers/numbers only)</span><textarea data-k="proof" rows="2"></textarea></label>
       <label>Mid-sequence asset <span class="hint">(optional, e.g. a customer 1-pager title + link)</span><input data-k="asset" /></label>
+      <label>Outreach sequence name <span class="hint">(as shown in Outreach, e.g. "30MPC Sequence")</span><input data-k="outreachName" /></label>
+      <label>Outreach step map <span class="hint">(which Outreach step is which email, e.g. "1:tt1, 3:e2, 6:tt2, 8:e4, 10:tt3, 12:breakup"; step 1 defaults to tt1)</span><input data-k="outreachSteps" placeholder="1:tt1, 3:e2, 6:tt2, 8:e4, 10:tt3, 12:breakup" /></label>
       <label>CTA style
         <select data-k="cta">
           <option value="interest">Interest-based yes/no</option>

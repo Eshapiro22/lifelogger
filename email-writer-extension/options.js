@@ -18,6 +18,7 @@ async function init() {
   SIMPLE.forEach((k) => ($(k).value = s[k] ?? ""));
   $("includePlaybook").checked = s.includePlaybook !== false;
   $("autoSend").checked = s.autoSend !== false;
+  $("findProof").checked = s.findProof !== false;
   s.sequences.forEach(addSequence);
   $("add-seq").addEventListener("click", () => addSequence({ name: "New sequence" }));
   $("save").addEventListener("click", save);
@@ -34,7 +35,7 @@ async function save() {
     return;
   }
   const settings = Object.fromEntries(SIMPLE.map((k) => [k, $(k).value.trim()]));
-  await saveSettings({ ...settings, includePlaybook: $("includePlaybook").checked, autoSend: $("autoSend").checked, sequences });
+  await saveSettings({ ...settings, includePlaybook: $("includePlaybook").checked, autoSend: $("autoSend").checked, findProof: $("findProof").checked, sequences });
   $("status").textContent = "Saved.";
 }
 

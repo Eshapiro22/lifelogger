@@ -14,13 +14,28 @@
   <div id="setup-warning" class="banner" hidden>
     Add your Anthropic API key in <a href="options.html" target="_blank">Settings</a> to start.
   </div>
+  <div id="sender-warning" class="banner" hidden>
+    Add your name and company in <a href="options.html" target="_blank">Settings</a> so emails are signed and positioned correctly.
+  </div>
   <div id="playbook-warning" class="banner" hidden>
     No playbook loaded. Paste yours in <a href="options.html" target="_blank">Settings</a> (or keep it in your Claude Project) for persona-specific emails.
   </div>
 
   <section>
     <button id="auto-run" class="primary">Write for this Outreach task</button>
-    <p class="hint">On the prospect's email task in Outreach: reads the task, has Claude write the email, and pastes it back into the task. It never sends.</p>
+    <p class="hint">On a prospect's email task in Outreach: reads the task, has Claude write the email, and pastes it into the task. It never sends. On your task list, it finds everyone due so you can write them all at once.</p>
+  </section>
+
+  <section id="rows-wrap" hidden>
+    <h2>Prospects on this Outreach page</h2>
+    <button id="write-all" class="primary">Write all</button>
+    <p class="hint">One Claude chat writes a different angle for each person. Then open each task and click the top button to drop theirs in.</p>
+    <div id="rows"></div>
+  </section>
+
+  <section id="batch-wrap" hidden>
+    <h2>Drafts for this account</h2>
+    <div id="batch"></div>
   </section>
 
   <section>
@@ -38,6 +53,9 @@
         <select id="step"></select>
       </label>
       <p id="step-guide" class="hint"></p>
+      <label id="outcome-wrap">Call outcome
+        <select id="call-outcome"></select>
+      </label>
     </div>
   </section>
 
@@ -115,6 +133,7 @@
       <label>Voicemail script (≤25s) <textarea id="out-voicemail" rows="4"></textarea></label>
       <button id="copy-vm" class="secondary">Copy voicemail</button>
     </div>
+    <p id="proof" class="hint"></p>
     <div id="flags-wrap" hidden>
       <h2>Flags</h2>
       <ul id="flags"></ul>

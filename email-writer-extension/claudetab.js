@@ -16,20 +16,43 @@ export function buildClaudeTabPrompt({ systemPrompt, playbook, userPrompt, schem
 
 // Accepts a whole reply (or a code block) and returns the parsed object, or null.
 export function extractJson(text) {
-  if (!text) return null;
-  const candidates = [];
-  const fence = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)].map((m) => m[1]);
-  candidates.push(...fence.reverse());
-  const first = text.indexOf("{");
-  const last = text.lastIndexOf("}");
-  if (first !== -1 && last > first) candidates.push(text.slice(first, last + 1));
-  for (const c of candidates) {
+  return extractAllJson(text)[0] || null;
+}
+
+// Every top-level JSON object found in the text, newest (last) first. Tries
+// fenced blocks first, then scans for balanced {...} spans, so it works on a
+// code block, a copied reply, or the whole text of the Claude page.
+export function extractAllJson(text) {
+  if (!text) return [];
+  const found = [];
+  const tryParse = (c) => {
     try {
       const obj = JSON.parse(c.trim());
-      if (obj && typeof obj === "object" && !Array.isArray(obj)) return obj;
+      if (obj && typeof obj === "object" && !Array.isArray(obj)) found.push(obj);
     } catch {
-      // try the next candidate
+      // not JSON
+    }
+  };
+  for (const m of [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/g)].reverse()) tryParse(m[1]);
+  const spans = [];
+  let depth = 0, start = -1, inStr = false, esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+      continue;
+    }
+    if (ch === '"' && depth > 0) inStr = true;
+    else if (ch === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (ch === "}" && depth > 0) {
+      depth--;
+      if (depth === 0) spans.push(text.slice(start, i + 1));
     }
   }
-  return null;
+  for (const span of spans.reverse()) tryParse(span);
+  return found;
 }

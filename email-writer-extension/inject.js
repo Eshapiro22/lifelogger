@@ -141,7 +141,7 @@ export function pasteIntoClaude(text) {
 // first, then the page text as a fallback; the panel parses the first one
 // that holds a JSON object.
 export function readClaudeReply() {
-  const blocks = [...document.querySelectorAll("pre")].map((el) => el.innerText).reverse();
+  const blocks = [...document.querySelectorAll("pre, code")].map((el) => el.innerText).reverse();
   return [...blocks, document.body.innerText];
 }
 
@@ -153,7 +153,7 @@ export function readOutreachTask() {
     return r.width > 0 && r.height > 0;
   };
   const LABELS = {
-    name: /^(name|full name|prospect|prospect name|contact)$/i,
+    name: /^(name|full name|prospect name)$/i,
     title: /^(title|job title|position|role)$/i,
     company: /^(company|account|account name|organization)$/i,
     email: /^(email|email address|to|recipient)$/i,
@@ -168,6 +168,8 @@ export function readOutreachTask() {
       let value = el.nextElementSibling?.innerText || "";
       if (!value.trim()) value = (el.parentElement?.innerText || "").replace(el.textContent, "");
       value = value.trim().split("\n")[0].trim();
+      // Skip table headers and other labels picked up as values.
+      if (/^(local time|due|title|company|account|email|name|contact|step)$/i.test(value)) continue;
       if (value && value.length <= 120) labels[key] = value;
     }
   }
@@ -183,9 +185,38 @@ export function readOutreachTask() {
   const area = (el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height;
   const editor = editors.sort((a, b) => area(b) - area(a))[0];
 
+  // Task rows: each prospect link, grown to the largest ancestor that still
+  // belongs to only that prospect (the row), with its account and step links.
+  const pid = (href) => (href.match(/\/prospects\/(\d+)/) || [])[1];
+  const rows = [];
+  const seen = new Set();
+  for (const a of document.querySelectorAll('a[href*="/prospects/"]')) {
+    const id = pid(a.getAttribute("href") || "");
+    const name = (a.innerText || "").trim();
+    if (!id || !name || /^step\b/i.test(name) || /\/sequences\//.test(a.getAttribute("href")) || seen.has(id) || !visible(a)) continue;
+    let row = a;
+    for (let i = 0; i < 10 && row.parentElement; i++) {
+      const ids = new Set([...row.parentElement.querySelectorAll('a[href*="/prospects/"]')].map((x) => pid(x.getAttribute("href") || "")).filter(Boolean));
+      if (ids.size > 1) break;
+      row = row.parentElement;
+    }
+    seen.add(id);
+    const account = row.querySelector('a[href*="/accounts/"]');
+    const seqLinks = [...row.querySelectorAll('a[href*="/sequences/"]')].map((x) => (x.innerText || "").trim());
+    rows.push({
+      fullName: name,
+      company: (account?.innerText || "").trim(),
+      stepText: seqLinks.find((t) => /^step\b/i.test(t)) || "",
+      sequence: seqLinks.find((t) => t && !/^step\b/i.test(t)) || "",
+      mailto: [...row.querySelectorAll('a[href^="mailto:"]')].map((m) => m.getAttribute("href").slice(7).split("?")[0])[0] || "",
+      text: (row.innerText || "").trim().slice(0, 1500),
+    });
+  }
+
   return {
     isTop: window === window.top,
     url: location.href,
+    rows,
     labels,
     mailtos,
     subject: subjectEl?.value || "",

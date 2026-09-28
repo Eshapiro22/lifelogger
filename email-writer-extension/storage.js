@@ -5,6 +5,7 @@ export const DEFAULT_SETTINGS = {
   claudeUrl: "https://claude.ai/new",
   includePlaybook: true,
   autoSend: true,
+  findProof: true,
   apiKey: "",
   model: "claude-opus-5",
   senderName: "",
@@ -27,9 +28,15 @@ export const DEFAULT_SETTINGS = {
   ],
 };
 
+// Earlier versions saved a Triple Touch definition that always assumed a
+// voicemail; swap it for the current default unless the user edited it.
+const OLD_TRIPLE_T_PREFIX = "Triple Touch: a call, a voicemail and an email to the same person within ~5 minutes";
+
 export async function loadSettings() {
   const stored = await chrome.storage.local.get("settings");
-  return { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
+  const settings = { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
+  if (settings.tripleT?.startsWith(OLD_TRIPLE_T_PREFIX)) settings.tripleT = DEFAULT_TRIPLE_T;
+  return settings;
 }
 
 export async function saveSettings(settings) {

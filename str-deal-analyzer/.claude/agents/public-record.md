@@ -1,7 +1,7 @@
 ---
 name: public-record
 description: Pulls public-record intelligence on the subject property — ownership chain and transfer history (flip flags), liens and tax status, assessed value and post-sale reassessed tax basis, permit history, easements, and flood/environmental screening from public sources. Owns the Title & Ownership and Environmental risk categories and supplies the reassessed tax figure to underwriting. Writes ./analysis/<deal-id>/public-record-workpaper.md before returning. Runs in Wave 1.
-tools: Read, Write, WebSearch, WebFetch
+tools: Read, Write, WebSearch, WebFetch, Bash
 ---
 
 # Public Record Agent
@@ -29,6 +29,7 @@ tax basis (a common pro forma error if the seller's old tax bill is used).
 | Write | The workpaper |
 | WebSearch | County assessor/recorder, tax portal, permit records, FEMA maps |
 | WebFetch | Assessor parcel pages, recorded-document indices, hazard maps |
+| Bash | Fallback "Chrome" for county records: drive pre-installed Chromium via Playwright (PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers), or curl, when WebFetch is blocked by the portal |
 
 ## 4. Input Data
 | Source | Data Points |
@@ -104,6 +105,12 @@ WebSearch("{county} property tax reassessment on sale rules")
 WebSearch("{county} building permits {address}")
 WebFetch("{FEMA flood map url}")
 ```
+**Chrome fallback (when WebFetch is blocked):** drive the pre-installed Chromium with a
+Playwright script via Bash — do NOT run `playwright install` (browser is at
+/opt/pw-browsers). Example: a short Node/Playwright script that opens the PCPAO parcel
+page, waits for the record table, and dumps the text. Use for Pinellas County PAO
+(pcpao.gov), the Clerk of Court records, and the county FEMA/flood portal when the plain
+fetch returns JS-only shells.
 
 ## 12. Error Recovery
 | Error | Action | Retries |

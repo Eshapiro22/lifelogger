@@ -204,6 +204,7 @@ export function readOutreachTask() {
     const account = row.querySelector('a[href*="/accounts/"]');
     const seqLinks = [...row.querySelectorAll('a[href*="/sequences/"]')].map((x) => (x.innerText || "").trim());
     rows.push({
+      url: a.href,
       fullName: name,
       company: (account?.innerText || "").trim(),
       stepText: seqLinks.find((t) => /^step\b/i.test(t)) || "",
@@ -240,4 +241,31 @@ export function submitClaude() {
   box.focus();
   box.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
   return true;
+}
+
+// Any page: the visible text of this frame (for reading a prospect's history).
+export function readFrameText() {
+  return { isTop: window === window.top, url: location.href, text: (document.body?.innerText || "").slice(0, 20000) };
+}
+
+// Outreach prospect page: opens the tab that lists past activity, if there is one.
+export function openActivityTab() {
+  const want = /^(activity|activities|emails?|history|timeline|engagement|mailings)$/i;
+  const el = [...document.querySelectorAll('a, button, [role="tab"]')].find(
+    (e) => want.test((e.innerText || "").trim()) && e.getBoundingClientRect().width > 0
+  );
+  if (!el) return false;
+  el.click();
+  return true;
+}
+
+// claude.ai: what's still sitting in the message box (empty once sent).
+export function claudeComposerText() {
+  const box =
+    document.querySelector('div[contenteditable="true"].ProseMirror') ||
+    document.querySelector('[contenteditable="true"][role="textbox"]') ||
+    document.querySelector('div[contenteditable="true"]') ||
+    document.querySelector("textarea");
+  if (!box) return null;
+  return (box.tagName === "TEXTAREA" ? box.value : box.innerText).trim();
 }

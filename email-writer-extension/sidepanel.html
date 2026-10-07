@@ -12,7 +12,7 @@
   </header>
 
   <div id="setup-warning" class="banner" hidden>
-    Add your Anthropic API key in <a href="options.html" target="_blank">Settings</a> to start.
+    Add your Anthropic API key in <a href="options.html" target="_blank">Settings</a>, or switch the engine to your Claude tab (no key needed).
   </div>
   <div id="sender-warning" class="banner" hidden>
     Add your name and company in <a href="options.html" target="_blank">Settings</a> so emails are signed and positioned correctly.
@@ -21,133 +21,146 @@
     No playbook loaded. Paste yours in <a href="options.html" target="_blank">Settings</a> (or keep it in your Claude Project) for persona-specific emails.
   </div>
 
-  <section>
-    <button id="auto-run" class="primary">Write for this Outreach task</button>
-    <p class="hint">On a prospect's email task in Outreach: reads the task, has Claude write the email, and pastes it into the task. It never sends. On your task list, it finds everyone due so you can write them all at once.</p>
+  <!-- One click: Outreach → past emails → Claude → email -->
+  <section class="run">
+    <button id="auto-run" class="primary big">Write email for this Outreach prospect</button>
+    <label>Call outcome
+      <select id="call-outcome"></select>
+    </label>
+    <p class="hint">Open the prospect (or their email task) in Outreach, then click. It reads the prospect and what you've already sent them, has Claude write the email, and puts it in the task if one is open. It never sends.</p>
+    <ol id="progress" hidden></ol>
   </section>
 
-  <section id="rows-wrap" hidden>
-    <h2>Prospects on this Outreach page</h2>
-    <button id="write-all" class="primary">Write all</button>
-    <p class="hint">One Claude chat writes a different angle for each person. Then open each task and click the top button to drop theirs in.</p>
-    <div id="rows"></div>
-  </section>
-
-  <section id="batch-wrap" hidden>
-    <h2>Drafts for this account</h2>
-    <div id="batch"></div>
-  </section>
-
-  <section>
-    <label>Mode
-      <select id="mode">
-        <option value="email">Single email step</option>
-        <option value="plan">Full Triple Touch plan (calls, VMs, emails, LinkedIn, objections)</option>
-      </select>
-    </label>
-    <label>Sequence
-      <select id="sequence"></select>
-    </label>
-    <div id="step-wrap">
-      <label>Step
-        <select id="step"></select>
-      </label>
-      <p id="step-guide" class="hint"></p>
-      <label id="outcome-wrap">Call outcome
-        <select id="call-outcome"></select>
-      </label>
-    </div>
-  </section>
-
-  <section>
-    <h2>Prospect</h2>
-    <button id="import" class="secondary">Import from Outreach task</button>
-    <div class="grid">
-      <label>First name<input id="p-name" placeholder="e.g. Dana or {{first_name}}" /></label>
-      <label>Title<input id="p-title" /></label>
-      <label>Company<input id="p-company" /></label>
-      <label>Industry<input id="p-industry" /></label>
-      <label>Email<input id="p-email" type="email" /></label>
-    </div>
-    <div class="grid">
-      <label>Relationship
-        <select id="p-relationship"></select>
-      </label>
-      <label class="check"><input type="checkbox" id="p-exec" /> Executive (≤50 words)</label>
-    </div>
-    <label>Triggers <span class="hint">(earnings quote, job posts, new exec, initiative, new in role…)</span>
-      <textarea id="p-trigger" rows="2"></textarea>
-    </label>
-    <label>Colleague intel <span class="hint">(optional: what others at the account told you, for snowball / reverse selling)</span>
-      <textarea id="p-intel" rows="2"></textarea>
-    </label>
-    <label>Page context <span class="hint">(optional, pulled from the current tab)</span>
-      <textarea id="p-context" rows="3"></textarea>
-    </label>
-    <button id="grab" class="secondary">Grab selection / page text</button>
-  </section>
-
-  <section id="ot-wrap" hidden>
-    <h2>From Outreach</h2>
-    <label>Detected <input id="ot-summary" readonly /></label>
-    <label>Existing subject in the task <input id="ot-subject" /></label>
-    <label>Existing email in the task <span class="hint">(Claude rewrites this to the playbook)</span>
-      <textarea id="ot-body" rows="3"></textarea>
-    </label>
-    <label>Task page text <span class="hint">(sent to Claude so it can find details and earlier emails)</span>
-      <textarea id="ot-text" rows="3"></textarea>
-    </label>
-  </section>
-
-  <section id="history-wrap">
-    <label>Earlier emails in this sequence <span class="hint">(auto-filled as you generate; edit freely)</span>
-      <textarea id="history" rows="3"></textarea>
-    </label>
-    <button id="reset" class="link" type="button">Start a new prospect</button>
-  </section>
-
-  <button id="generate" class="primary">Write email</button>
   <p id="status" class="status"></p>
 
-  <section id="reply-wrap" hidden>
-    <h2>Claude's reply</h2>
-    <button id="fetch-reply" class="primary">Get reply from Claude tab</button>
-    <label>Or paste the reply here <span class="hint">(leave empty to read your clipboard)</span>
-      <textarea id="reply-text" rows="3"></textarea>
-    </label>
-    <button id="paste-reply" class="secondary">Load pasted reply</button>
-  </section>
-
   <section id="result" hidden>
-    <h2>Draft</h2>
+    <h2>Your email</h2>
     <p id="angle" class="hint"></p>
     <label>Subject <input id="out-subject" /></label>
     <label>Body <textarea id="out-body" rows="12"></textarea></label>
     <div class="row">
       <button id="copy-subject" class="secondary">Copy subject</button>
       <button id="copy-body" class="secondary">Copy body</button>
-      <button id="insert" class="secondary">Insert into page</button>
-    </div>
-    <p class="hint">In Outreach, click into the email body first, then Insert.</p>
-    <div id="vm-wrap" hidden>
-      <label>Voicemail script (≤25s) <textarea id="out-voicemail" rows="4"></textarea></label>
-      <button id="copy-vm" class="secondary">Copy voicemail</button>
+      <button id="insert" class="secondary">Insert into Outreach</button>
     </div>
     <p id="proof" class="hint"></p>
     <div id="flags-wrap" hidden>
-      <h2>Flags</h2>
+      <h2>Check before sending</h2>
       <ul id="flags"></ul>
     </div>
-    <h2>Playbook check</h2>
-    <ul id="checks"></ul>
+    <div id="vm-wrap" hidden>
+      <label>Voicemail script (if you leave one) <textarea id="out-voicemail" rows="3"></textarea></label>
+      <button id="copy-vm" class="secondary">Copy voicemail</button>
+    </div>
+    <details>
+      <summary>Playbook check</summary>
+      <ul id="checks"></ul>
+    </details>
+    <details id="history-used-wrap" hidden>
+      <summary>What Claude saw from Outreach / Salesforce</summary>
+      <pre id="history-used" class="text"></pre>
+    </details>
   </section>
 
-  <section id="plan" hidden>
-    <div class="row">
-      <button id="copy-plan" class="secondary">Copy plan as Markdown</button>
-    </div>
-    <div id="plan-out"></div>
+  <section id="rows-wrap" hidden>
+    <h2>Prospects on this Outreach page</h2>
+    <button id="write-all" class="primary">Write all</button>
+    <p class="hint">Writes a different angle for each person, using what you've sent each of them before. Then open each task and click the top button to drop theirs in.</p>
+    <div id="rows"></div>
   </section>
+
+  <section id="batch-wrap" hidden>
+    <h2>Drafts written this session</h2>
+    <div id="batch"></div>
+  </section>
+
+  <section id="reply-wrap" hidden>
+    <h2>Claude's reply</h2>
+    <button id="fetch-reply" class="secondary">Get reply from Claude tab</button>
+    <label>Or paste the reply here <span class="hint">(leave empty to read your clipboard)</span>
+      <textarea id="reply-text" rows="3"></textarea>
+    </label>
+    <button id="paste-reply" class="secondary">Load pasted reply</button>
+  </section>
+
+  <details id="advanced">
+    <summary>Details &amp; manual mode</summary>
+
+    <section>
+      <label>Mode
+        <select id="mode">
+          <option value="email">Single email step</option>
+          <option value="plan">Full Triple Touch plan (calls, VMs, emails, LinkedIn, objections)</option>
+        </select>
+      </label>
+      <label>Sequence
+        <select id="sequence"></select>
+      </label>
+      <div id="step-wrap">
+        <label>Step
+          <select id="step"></select>
+        </label>
+        <p id="step-guide" class="hint"></p>
+        <span id="outcome-wrap" hidden></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Prospect</h2>
+      <button id="import" class="secondary">Import from Outreach</button>
+      <div class="grid">
+        <label>First name<input id="p-name" placeholder="e.g. Dana or {{first_name}}" /></label>
+        <label>Title<input id="p-title" /></label>
+        <label>Company<input id="p-company" /></label>
+        <label>Industry<input id="p-industry" /></label>
+        <label>Email<input id="p-email" type="email" /></label>
+      </div>
+      <div class="grid">
+        <label>Relationship
+          <select id="p-relationship"></select>
+        </label>
+        <label class="check"><input type="checkbox" id="p-exec" /> Executive (≤50 words)</label>
+      </div>
+      <label>Triggers <span class="hint">(earnings quote, job posts, new exec, initiative, new in role…)</span>
+        <textarea id="p-trigger" rows="2"></textarea>
+      </label>
+      <label>Colleague intel <span class="hint">(optional: what others at the account told you, for snowball / reverse selling)</span>
+        <textarea id="p-intel" rows="2"></textarea>
+      </label>
+      <label>Page context <span class="hint">(optional, pulled from the current tab)</span>
+        <textarea id="p-context" rows="3"></textarea>
+      </label>
+      <button id="grab" class="secondary">Grab selection / page text</button>
+    </section>
+
+    <section id="ot-wrap" hidden>
+      <h2>From Outreach</h2>
+      <label>Detected <input id="ot-summary" readonly /></label>
+      <label>Existing subject in the task <input id="ot-subject" /></label>
+      <label>Existing email in the task <span class="hint">(Claude rewrites this to the playbook)</span>
+        <textarea id="ot-body" rows="3"></textarea>
+      </label>
+      <label>Prospect history and page text <span class="hint">(sent to Claude: past emails, replies, activity)</span>
+        <textarea id="ot-text" rows="4"></textarea>
+      </label>
+    </section>
+
+    <section id="history-wrap">
+      <label>Earlier emails in this sequence <span class="hint">(auto-filled as you generate; edit freely)</span>
+        <textarea id="history" rows="3"></textarea>
+      </label>
+      <button id="reset" class="link" type="button">Start a new prospect</button>
+    </section>
+
+    <button id="generate" class="primary">Write email</button>
+
+    <section id="plan" hidden>
+      <div class="row">
+        <button id="copy-plan" class="secondary">Copy plan as Markdown</button>
+      </div>
+      <div id="plan-out"></div>
+    </section>
+  </details>
 
   <script type="module" src="sidepanel.js"></script>
 </body>

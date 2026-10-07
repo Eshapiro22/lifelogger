@@ -85,3 +85,28 @@ function safeParse(text) {
     return null;
   }
 }
+
+// Plain-text variant for the readable email format (see emailformat.js).
+export async function callClaudeText({ apiKey, model, systemPrompt, playbook, userPrompt, webSearch = false }) {
+  const system = [{ type: "text", text: systemPrompt }];
+  if (playbook?.trim()) {
+    system.push({ type: "text", text: `PLAYBOOK (source of truth)\n\n${playbook.trim()}`, cache_control: { type: "ephemeral" } });
+  }
+  const messages = [{ role: "user", content: userPrompt }];
+  const body = { model, max_tokens: 16000, fallbacks: "default", thinking: { type: "adaptive" }, output_config: { effort: "medium" }, system, messages };
+  if (webSearch) {
+    const type = model.startsWith("claude-haiku") ? "web_search_20250305" : "web_search_20260209";
+    body.tools = [{ type, name: "web_search", max_uses: 5 }];
+  }
+  for (let round = 0; round < 5; round++) {
+    const data = await post(apiKey, body);
+    if (data.stop_reason === "pause_turn") {
+      messages.push({ role: "assistant", content: data.content });
+      continue;
+    }
+    if (data.stop_reason === "refusal") throw new Error("The model declined this request. Try rephrasing the inputs.");
+    if (data.stop_reason === "max_tokens") throw new Error("Response was cut off. Try again.");
+    return (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("");
+  }
+  throw new Error("The search took too many rounds. Try again.");
+}

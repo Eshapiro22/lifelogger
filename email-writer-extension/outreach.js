@@ -35,6 +35,7 @@ function stepFromDay(text) {
 
 function fromRow(r) {
   const step = parseStep(r.stepText || r.text);
+  const url = r.url || "";
   const firstLine = (r.text.split("\n")[0] || "").trim();
   return {
     fullName: clean(r.fullName),
@@ -50,6 +51,7 @@ function fromRow(r) {
     subject: "",
     body: "",
     text: r.text,
+    url,
   };
 }
 

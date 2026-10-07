@@ -3,8 +3,12 @@ import {
   buildSystemPrompt, callOutcomeInstruction, checkCompliance, stepForDay,
 } from "./methodology.js";
 import { loadSettings } from "./storage.js";
-import { callClaude } from "./api.js";
-import { probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, submitClaude, readClaudeReply, readOutreachTask } from "./inject.js";
+import { callClaude, callClaudeText } from "./api.js";
+import { formatInstructions, parseEmails, dayFromStep } from "./emailformat.js";
+import {
+  probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, submitClaude, readClaudeReply, readOutreachTask,
+  readFrameText, openActivityTab, claudeComposerText,
+} from "./inject.js";
 import { parseTask, mapOutreachStep, matchSequence } from "./outreach.js";
 import { buildClaudeTabPrompt, extractJson, extractAllJson } from "./claudetab.js";
 
@@ -71,7 +75,7 @@ async function init() {
   );
   $("reset").addEventListener("click", onReset);
   $("fetch-reply").addEventListener("click", onFetchReply);
-  $("auto-run").addEventListener("click", onAutoRun);
+  $("auto-run").addEventListener("click", onRun);
   $("import").addEventListener("click", onImport);
   $("paste-reply").addEventListener("click", onPasteReply);
   $("copy-subject").addEventListener("click", () => copy($("out-subject").value, "Subject copied"));
@@ -290,7 +294,7 @@ function applyReply(obj) {
   if (pending.kind === "plan") {
     applyPlan(obj);
   } else if (pending.kind === "batch") {
-    applyBatch(obj, pending.stepId);
+    throw new Error("Unexpected reply type.");
   } else {
     $("step").value = pending.stepId;
     applyEmail({ angle: "", subject: "", voicemail: "", flags: [], ...obj });
@@ -302,6 +306,7 @@ async function onFetchReply() {
   try {
     if (!pending?.tabId) throw new Error("Open Claude from the panel first.");
     const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: pending.tabId }, func: readClaudeReply });
+    if (pending.kind === "run" || pending.kind === "runbatch") return applyTextReply((result || []).at(-1) || "");
     const obj = (result || []).flatMap(extractAllJson).find((o) => replyFits(o, pending.kind));
     if (!obj) throw new Error("No finished reply found yet. Wait for Claude to finish, or copy the reply and use Paste.");
     applyReply(obj);
@@ -313,6 +318,11 @@ async function onFetchReply() {
 async function onPasteReply() {
   try {
     const text = $("reply-text").value.trim() || (await navigator.clipboard.readText());
+    if (pending?.kind === "run" || pending?.kind === "runbatch") {
+      applyTextReply(text);
+      $("reply-text").value = "";
+      return;
+    }
     const obj = extractAllJson(text).find((o) => replyFits(o, pending?.kind)) || extractJson(text);
     if (!obj) throw new Error("Couldn't find the JSON in that text. Copy Claude's whole reply and try again.");
     applyReply(obj);
@@ -658,69 +668,392 @@ async function onImport() {
 
 function renderRows() {
   $("rows-wrap").hidden = pageRows.length < 2;
-  $("write-all").textContent = `Write all ${pageRows.length} (one Claude chat)`;
+  $("write-all").textContent = `Write all ${pageRows.length}`;
   $("rows").innerHTML = pageRows
     .map((r, i) => `<div class="card">
       <h3>${escapeHtml(r.fullName)}</h3>
       <p class="meta">${escapeHtml([r.title, r.company].filter(Boolean).join(" · "))}${r.stepNumber ? ` · Step ${r.stepNumber}` : ""}${r.taskType ? ` · ${escapeHtml(r.taskType)}` : ""}</p>
-      <button class="secondary" data-row="${i}">Use this prospect</button>
+      <button class="secondary" data-row="${i}">Write email</button>
     </div>`)
     .join("");
   $("rows").querySelectorAll("button[data-row]").forEach((b) =>
-    b.addEventListener("click", () => {
-      useProspect(pageRows[Number(b.dataset.row)]);
-      setStatus(`Loaded ${pageRows[Number(b.dataset.row)].fullName}. Click Write email, or open their task and use the top button.`);
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      resetProgress();
+      try {
+        await runForProspect(pageRows[Number(b.dataset.row)]);
+      } catch (err) {
+        const active = $("progress").querySelector("li.active");
+        if (active) active.className = "fail";
+        setStatus(err.message, true);
+      } finally {
+        b.disabled = false;
+      }
     })
   );
 }
 
-// ---- Several prospects at once ----
+// ---- One click: Outreach → past emails → Claude → email ----
 
-function buildBatchPrompt(rows, step) {
-  const exec = (r) => /\bchief\b|\bc[a-z]{1,2}o\b/i.test(r.title || "");
-  return [
-    `Write ${step.label} for EACH prospect below. They work at the same account, so give each one a different pain and angle that fits their role, and don't reuse the same customer proof for two people if you can avoid it.`,
-    ``,
-    `STEP GUIDE`,
-    step.guide,
-    ``,
-    sequenceBlock({ assets: step.assetsAllowed }),
-    `PROSPECTS`,
-    ...rows.map((r, i) => `${i + 1}. ${r.fullName} · ${r.title || "(title unknown)"} · ${r.company || "(company unknown)"}${r.email ? ` · ${r.email}` : ""}${exec(r) ? " · EXECUTIVE: keep the body ≤50 words" : ""}`),
-    ``,
-    field("Shared triggers or notes for this account", $("p-trigger").value),
-    ``,
-    step.thread === "reply" ? `This step replies in the existing thread, so return subject as an empty string.` : `Return a new subject line for each.`,
-    step.tripleTouch ? callOutcomeInstruction($("call-outcome").value) : ``,
-    step.tripleTouch ? `Return a voicemail script for each too (ready in case I leave one).` : `Return voicemail as an empty string.`,
-    `Return one entry per prospect in "emails", in the same order, with "prospect" set to their full name.`,
-  ].join("\n");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const isProspectUrl = (url) => /\/prospects\/\d+/.test(url || "");
+const tidy = (t, max) => (t || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
+
+const STAGES = [
+  ["outreach", "Read the prospect from Outreach"],
+  ["history", "Find what you've already sent them"],
+  ["claude", "Claude writes the email"],
+  ["insert", "Put it in the Outreach task"],
+];
+function progress(key, state, note = "") {
+  const ol = $("progress");
+  if (!ol.children.length) {
+    ol.innerHTML = STAGES.map(([k, label]) => `<li data-k="${k}">${escapeHtml(label)}<span class="note"></span></li>`).join("");
+  }
+  ol.hidden = false;
+  const li = ol.querySelector(`li[data-k="${key}"]`);
+  li.className = state;
+  li.querySelector(".note").textContent = note ? ` — ${note}` : "";
 }
+function resetProgress() {
+  $("progress").innerHTML = "";
+}
+
+async function waitTabComplete(tabId, ms = 15000) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (!tab) return;
+    if (tab.status === "complete") return;
+    await sleep(300);
+  }
+}
+
+async function tabText(tabId) {
+  const res = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: readFrameText }).catch(() => []);
+  return res.map((r) => r.result?.text || "").filter(Boolean).join("\n");
+}
+
+// Opens a page in a background tab, waits for the app to render (and opens
+// its Activity tab if it has one), reads the text, then closes the tab.
+async function readInBackground(url) {
+  const tab = await chrome.tabs.create({ url, active: false });
+  try {
+    await waitTabComplete(tab.id);
+    let text = "";
+    let last = -1;
+    for (let i = 0; i < 14; i++) {
+      await sleep(1000);
+      if (i === 2) await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: openActivityTab }).catch(() => {});
+      text = await tabText(tab.id);
+      if (i > 3 && text.length > 300 && text.length === last) break;
+      last = text.length;
+    }
+    return text;
+  } finally {
+    chrome.tabs.remove(tab.id).catch(() => {});
+  }
+}
+
+// Salesforce: any open Salesforce tab that mentions this prospect.
+async function readSalesforceTabs(p) {
+  const tabs = await chrome.tabs.query({ url: ["https://*.force.com/*", "https://*.salesforce.com/*"] }).catch(() => []);
+  const keys = [p.fullName, p.email].filter(Boolean).map((k) => k.toLowerCase());
+  const found = [];
+  for (const tab of tabs) {
+    const text = await tabText(tab.id);
+    if (keys.some((k) => text.toLowerCase().includes(k))) found.push(tidy(text, 6000));
+  }
+  return found.join("\n\n---\n\n");
+}
+
+// What we've already sent this person, from Outreach and (if open) Salesforce.
+async function gatherHistory(p) {
+  const parts = [];
+  let outreachText = "";
+  if (p.url && isOutreach(p.url)) outreachText = await readInBackground(p.url).catch(() => "");
+  if (outreachText) parts.push(`FROM OUTREACH (${p.fullName}'s prospect record and activity):\n${tidy(outreachText, 10000)}`);
+  if (p.text && p.text !== outreachText) parts.push(`FROM THE OUTREACH PAGE YOU HAD OPEN:\n${tidy(p.text, 4000)}`);
+  const sf = await readSalesforceTabs(p);
+  if (sf) parts.push(`FROM SALESFORCE (open tab):\n${sf}`);
+  return { text: parts.join("\n\n"), outreach: Boolean(outreachText), salesforce: Boolean(sf) };
+}
+
+function stepFor(p) {
+  const id = p.stepId || mapOutreachStep(currentSequence(), p.stepNumber);
+  return STEPS.find((s) => s.id === id) || null;
+}
+
+// A short, readable brief: who, where they are in the sequence, what's been
+// sent, how to make it pointed, and the reply format.
+function buildRunPrompt(p, historyText, step) {
+  const seq = currentSequence();
+  const where = step
+    ? `This is ${step.label}${p.stepNumber ? ` (Outreach: step ${p.stepNumber}${p.sequence ? ` of ${p.sequence}` : ""})` : ""}.\n${step.guide}`
+    : `Outreach shows ${p.stepNumber ? `step ${p.stepNumber}${p.sequence ? ` of ${p.sequence}` : ""}` : "no step number"}. Work out which playbook step this is from what's already been sent (Day 1 Triple Touch email, Day 3 reply, Day 7 Triple Touch, Day 10 peer proof, Day 14 Triple Touch "wrong person?", Day 21 breakup) and write that one.`;
+  const lines = [
+    `Write the next email in my outbound sequence to ${p.fullName || "this prospect"}${p.title ? `, ${p.title}` : ""}${p.company ? ` at ${p.company}` : ""}.`,
+    ``,
+    `WHERE THEY ARE IN THE SEQUENCE`,
+    where,
+    ``,
+    `CALL OUTCOME`,
+    callOutcomeInstruction($("call-outcome").value) + ` (Applies only to Triple Touch steps.)`,
+    ``,
+    `WHAT I'VE ALREADY SENT THEM`,
+    historyText
+      ? `Below is what I could read from Outreach${/SALESFORCE/.test(historyText) ? " and Salesforce" : ""}. It includes page and menu text, so ignore anything that isn't about ${p.fullName || "this person"}. Don't repeat any subject, pain, angle or customer story already used. If they replied, answer that reply instead of continuing the sequence, and say so in NOTES.\n<<<\n${historyText}\n>>>`
+      : `I couldn't read their history, so assume nothing has been sent yet unless the step says otherwise, and say so in NOTES.`,
+    p.body ? `\nThe Outreach task already has this draft, which you should replace:\nSubject: ${p.subject || "(none)"}\n${p.body}` : ``,
+    ``,
+    `MAKE IT POINTED`,
+    `- One specific observation about ${p.company || "their company"} or their role, one pain in their words, one real customer proof, one question. Under 90 words${/\bchief\b|\bc[a-z]{1,2}o\b/i.test(p.title || "") ? " (they're an executive, so under 50)" : ""}.`,
+    `- If you can search the web, take a minute to find one recent, specific trigger about ${p.company || "the company"} (news, hiring, earnings, new leaders) and use it only if you verified it.`,
+    `- Customer proof: use an approved one below if it fits; otherwise find a real, public ${settings.senderCompany || "company"} customer story that matches their industry or role and give its URL in PROOF. Never make one up.`,
+    ``,
+    `ABOUT ME`,
+    `${settings.senderName || "(name not set)"} at ${settings.senderCompany || "(company not set)"}. Sign the email with my first name.`,
+    seq.persona || seq.problem1 || seq.problem2 || seq.solution || seq.proof
+      ? [
+          ``,
+          `MY SEQUENCE NOTES`,
+          seq.persona && `Persona: ${seq.persona}`,
+          seq.problem1 && `Pain A: ${seq.problem1}`,
+          seq.problem2 && `Pain B: ${seq.problem2}`,
+          seq.solution && `What we do about it: ${seq.solution}`,
+          seq.proof && `Approved proof points: ${seq.proof}`,
+          seq.asset && `Asset I can offer (mid-sequence only): ${seq.asset}`,
+        ].filter(Boolean).join("\n")
+      : ``,
+    settings.extraRules?.trim() ? `\nHOUSE RULES\n${settings.extraRules.trim()}` : ``,
+    ``,
+    formatInstructions({ tripleTouch: !step || step.tripleTouch }),
+  ];
+  return lines.join("\n");
+}
+
+// System rules + playbook + brief, as one message for a Claude tab.
+function claudeTabMessage(brief) {
+  const rules = buildSystemPrompt(settings).replace(/\s*Return JSON only, matching the provided schema\.\s*$/, "");
+  const playbook = settings.includePlaybook === false ? "" : settings.playbook?.trim();
+  return [rules, playbook ? `\n=== MY PLAYBOOK ===\n${playbook}\n=== END PLAYBOOK ===` : "", `\n=== THIS EMAIL ===\n${brief}`].join("\n");
+}
+
+// Opens Claude, pastes the message, sends it, and confirms it went.
+async function openClaudeWith(text) {
+  await navigator.clipboard.writeText(text).catch(() => {});
+  const tab = await chrome.tabs.create({ url: settings.claudeUrl || "https://claude.ai/new" });
+  for (let i = 0; i < 40; i++) {
+    await sleep(500);
+    const [{ result: pasted } = {}] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] }).catch(() => []);
+    if (!pasted) continue;
+    if (settings.autoSend === false) return { tabId: tab.id, sent: false };
+    // Send at most twice, and only retry if the whole message is still in the box,
+    // so a slow page never gets the prompt twice.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await sleep(700);
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: submitClaude }).catch(() => {});
+      for (let w = 0; w < 8; w++) {
+        await sleep(500);
+        const [{ result: left } = {}] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: claudeComposerText }).catch(() => []);
+        if (left === "" ) return { tabId: tab.id, sent: true };
+        if (typeof left === "string" && left.length < text.length * 0.5) return { tabId: tab.id, sent: true };
+      }
+    }
+    return { tabId: tab.id, sent: false };
+  }
+  return { tabId: tab.id, sent: false, pasteFailed: true };
+}
+
+// Polls the Claude tab until `count` finished emails are on the page and stop changing.
+async function waitForEmails(tabId, count = 1, ms = 300000) {
+  let last = "";
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    await sleep(2000);
+    const [{ result } = {}] = await chrome.scripting.executeScript({ target: { tabId }, func: readClaudeReply }).catch(() => []);
+    const emails = parseEmails((result || []).at(-1) || "");
+    if (emails.length >= count) {
+      const key = JSON.stringify(emails);
+      if (key === last) return emails;
+      last = key;
+    }
+  }
+  throw new Error("Claude didn't finish within 5 minutes. When it's done, click “Get reply from Claude tab”.");
+}
+
+// Sends a brief to Claude (tab or API) and returns the parsed emails.
+async function askClaude(brief, count = 1, meta = {}) {
+  if (!useClaudeTab()) {
+    if (!settings.apiKey) throw new Error("Add your API key in Settings, or switch to the Claude tab engine.");
+    const text = await callClaudeText({
+      apiKey: settings.apiKey, model: settings.model, systemPrompt: buildSystemPrompt(settings).replace(/\s*Return JSON only, matching the provided schema\.\s*$/, ""),
+      playbook: settings.playbook, userPrompt: brief, webSearch: settings.findProof !== false,
+    });
+    const emails = parseEmails(text);
+    if (emails.length < count) throw new Error("Claude's reply wasn't in the expected format. Try again.");
+    return emails;
+  }
+  const { tabId, sent, pasteFailed } = await openClaudeWith(claudeTabMessage(brief));
+  pending = { kind: count > 1 ? "runbatch" : "run", tabId, count, ...meta };
+  chrome.storage.session.set({ pending }).catch(() => {});
+  $("reply-wrap").hidden = false;
+  progress("claude", "active",
+    pasteFailed ? "couldn't paste: the prompt is on your clipboard, paste it into Claude and send"
+      : sent ? "writing…" : "press Enter in the Claude tab");
+  return waitForEmails(tabId, count);
+}
+
+// Turns Claude's STEP line into one of our steps.
+function resolveStep(known, email) {
+  if (known) return known;
+  const day = dayFromStep(email.step);
+  if (day) return stepForDay(day) || [...STEPS].filter((s) => s.day && s.day <= day).at(-1) || STEPS[0];
+  return STEPS[0];
+}
+
+function showEmail(p, email, step, historyText) {
+  $("step").value = step.id;
+  draftStep = step;
+  const out = { ...email, subject: step.thread === "reply" ? "" : email.subject };
+  $("angle").textContent = [p.fullName, p.title, p.company].filter(Boolean).join(" · ") + ` — ${step.label}`;
+  $("out-subject").value = out.subject;
+  $("out-subject").placeholder = step.thread === "reply" ? "Replies in the existing thread (no new subject)" : "";
+  $("copy-subject").hidden = step.thread === "reply";
+  $("reply-wrap").hidden = true;
+  $("out-body").value = out.body;
+  $("out-voicemail").value = out.voicemail;
+  $("vm-wrap").hidden = !step.tripleTouch || !out.voicemail;
+  $("flags").innerHTML = (out.flags || []).map((f) => `<li class="warn">⚑ ${escapeHtml(f)}</li>`).join("");
+  $("flags-wrap").hidden = !(out.flags || []).length;
+  $("proof").innerHTML = proofHtml(out.proof_source);
+  $("history-used").textContent = historyText || "(nothing found)";
+  $("history-used-wrap").hidden = false;
+  $("result").hidden = false;
+  runChecks();
+  saveDraft();
+  return out;
+}
+
+async function hasEditor(tabId) {
+  const probes = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: probeFrame }).catch(() => []);
+  return probes.some((r) => r.result?.editorArea > 0);
+}
+
+function rememberDraft(p, out, step) {
+  batch = batch.filter((b) => !sameName(b.row.fullName, p.fullName));
+  batch.push({ row: p, out, stepId: step.id });
+  chrome.storage.session.set({ batch }).catch(() => {});
+  renderBatch();
+}
+
+// The whole flow for one prospect.
+async function runForProspect(p) {
+  useProspect(p);
+  progress("outreach", "done", [p.fullName, p.title, p.company].filter(Boolean).join(", "));
+
+  // Reuse a draft already written for this person (e.g. from "Write all").
+  const saved = batch.find((b) => sameName(b.row.fullName, p.fullName));
+  let email, step, historyText = "";
+  if (saved) {
+    progress("history", "skip", "used the draft written earlier");
+    progress("claude", "skip", "already written");
+    email = saved.out;
+    step = STEPS.find((s) => s.id === saved.stepId) || STEPS[0];
+  } else {
+    progress("history", "active", "reading Outreach" + (p.url ? "" : " (no prospect link found)") + "…");
+    const h = await gatherHistory(p);
+    historyText = h.text;
+    $("ot-text").value = historyText;
+    progress("history", h.outreach || h.salesforce ? "done" : "skip",
+      [h.outreach && "Outreach record", h.salesforce && "Salesforce tab"].filter(Boolean).join(" + ") || "nothing found; Claude will treat this as the first touch");
+    const known = stepFor(p);
+    progress("claude", "active", "opening Claude…");
+    const [first] = await askClaude(buildRunPrompt(p, historyText, known), 1, { prospect: p, stepId: known?.id || "" });
+    step = resolveStep(known, first);
+    email = first;
+    progress("claude", "done", step.label);
+  }
+  const out = showEmail(p, email, step, historyText);
+  if (!saved) rememberDraft(p, out, step);
+
+  // Back to Outreach; fill the task if its email editor is open.
+  if (outreachTabId) {
+    await chrome.tabs.update(outreachTabId, { active: true }).catch(() => {});
+    if (await hasEditor(outreachTabId)) {
+      const ok = await insertEmail(out.subject, out.body, outreachTabId);
+      progress("insert", ok ? "done" : "fail", ok ? "review it, then send" : "use Copy");
+    } else {
+      progress("insert", "skip", "no email task open; copy it, or open their task and click again");
+    }
+  }
+  setStatus("Your email is ready below.");
+}
+
+async function onRun() {
+  const btn = $("auto-run");
+  btn.disabled = true;
+  resetProgress();
+  try {
+    progress("outreach", "active", "reading…");
+    const t = await readOutreach();
+    pageRows = t.rows;
+    chrome.storage.session.set({ pageRows }).catch(() => {});
+    renderRows();
+    let p = t.single;
+    // On a prospect's own page, that page is their record.
+    const tab = await chrome.tabs.get(outreachTabId);
+    if (p && !p.url && isProspectUrl(tab.url)) p = { ...p, url: tab.url };
+    if (!p) {
+      if (t.rows.length) {
+        progress("outreach", "done", `${t.rows.length} prospects on this page`);
+        setStatus("Pick who to write to below, or write them all at once.");
+        $("rows-wrap").scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+      throw new Error("Couldn't find a prospect on this Outreach page. Open the prospect or their email task and try again.");
+    }
+    await runForProspect(p);
+  } catch (err) {
+    const active = $("progress").querySelector("li.active");
+    if (active) active.className = "fail";
+    setStatus(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---- Several prospects at once ----
 
 async function onWriteAll() {
   const btn = $("write-all");
   btn.disabled = true;
+  resetProgress();
   try {
     const rows = pageRows;
     const seq = matchSequence(settings.sequences, rows[0]?.sequence);
     if (seq) $("sequence").value = seq.id;
-    const stepId = rows[0]?.stepId || mapOutreachStep(currentSequence(), rows[0]?.stepNumber) || $("step").value;
-    $("step").value = stepId;
-    showGuide();
-    const step = currentStep();
-    const prompt = buildBatchPrompt(rows, step);
-    let out;
-    if (useClaudeTab()) {
-      const { tabId, sent } = await openInClaude("batch", BATCH_SCHEMA, prompt, { autoSend: settings.autoSend !== false });
-      setStatus(sent ? `Claude is writing ${rows.length} emails…` : "Press Enter in the Claude tab. Waiting for Claude's reply…");
-      out = await waitForClaudeReply(tabId, "batch");
-      pending.lastApplied = JSON.stringify(out);
-      chrome.storage.session.set({ pending }).catch(() => {});
-    } else {
-      out = await run(BATCH_SCHEMA, prompt, `Claude is writing ${rows.length} emails…`);
+    progress("outreach", "done", `${rows.length} prospects`);
+    const histories = [];
+    for (const [i, r] of rows.entries()) {
+      progress("history", "active", `${i + 1} of ${rows.length}: ${r.fullName}`);
+      histories.push((await gatherHistory({ ...r, text: "" })).text);
     }
-    applyBatch(out, stepId);
-    setStatus(`Wrote ${batch.length} emails. Open each person's task in Outreach and click the top button to drop theirs in.`);
+    progress("history", "done", `read ${histories.filter(Boolean).length} of ${rows.length} records`);
+    const briefs = rows.map((r, i) => `----- PERSON ${i + 1} -----\n${buildRunPrompt(r, histories[i], stepFor(r)).split("\nReply in exactly this format")[0]}`);
+    const brief = [
+      `Write one email for EACH of the ${rows.length} people below. They work at the same account, so give each a different pain, angle and customer story.`,
+      ``,
+      ...briefs,
+      ``,
+      formatInstructions({ batch: true, tripleTouch: true }),
+    ].join("\n");
+    progress("claude", "active", "opening Claude…");
+    const emails = await askClaude(brief, rows.length, { rows });
+    const saved = saveBatchEmails(rows, emails);
+    progress("claude", "done", `${saved} emails`);
+    progress("insert", "skip", "open each person's task and click the top button");
+    setStatus(`Wrote ${saved} emails. Open each person's task in Outreach and click the top button to drop theirs in.`);
   } catch (err) {
     setStatus(err.message, true);
   } finally {
@@ -728,30 +1061,50 @@ async function onWriteAll() {
   }
 }
 
-const sameName = (a, b) => (a || "").toLowerCase().replace(/\s+/g, " ").trim() === (b || "").toLowerCase().replace(/\s+/g, " ").trim();
-
-function applyBatch(obj, stepId) {
-  batch = (obj.emails || []).map((e, i) => ({
-    row: pageRows.find((r) => sameName(r.fullName, e.prospect)) || pageRows[i] || { fullName: e.prospect },
-    out: e,
-    stepId,
-  }));
-  chrome.storage.session.set({ batch }).catch(() => {});
-  renderBatch();
+// Saves one draft per person (the newest if Claude wrote more than one), and returns how many.
+function saveBatchEmails(rows, emails) {
+  let saved = 0;
+  for (const [i, r] of rows.entries()) {
+    const e = [...emails].reverse().find((x) => sameName(x.prospect, r.fullName)) || emails[i];
+    if (!e) continue;
+    const step = resolveStep(stepFor(r), e);
+    rememberDraft(r, { ...e, subject: step.thread === "reply" ? "" : e.subject }, step);
+    saved++;
+  }
+  return saved;
 }
 
+// "Get reply" / "Paste" for the plain-text format.
+function applyTextReply(text) {
+  const emails = parseEmails(text);
+  if (!emails.length) throw new Error("No finished email found yet. Wait for Claude to finish (it ends with END), or copy its whole reply and use Paste.");
+  if (pending.kind === "runbatch") {
+    setStatus(`Loaded ${saveBatchEmails(pending.rows || [], emails)} emails.`);
+    return;
+  }
+  const p = pending.prospect || {};
+  const known = STEPS.find((s) => s.id === pending.stepId) || null;
+  const email = emails.at(-1);
+  const step = resolveStep(known, email);
+  const out = showEmail(p, email, step, $("ot-text").value);
+  if (p.fullName) rememberDraft(p, out, step);
+  setStatus("Loaded Claude's reply.");
+}
+
+const sameName = (a, b) => (a || "").toLowerCase().replace(/\s+/g, " ").trim() === (b || "").toLowerCase().replace(/\s+/g, " ").trim();
+
 function renderBatch() {
-  $("batch-wrap").hidden = !batch.length;
+  // One draft is already shown above as "Your email"; list them once there are several.
+  $("batch-wrap").hidden = batch.length < 2;
   $("batch").innerHTML = batch
     .map((b, i) => {
       const step = STEPS.find((s) => s.id === b.stepId) || STEPS[0];
       const exec = /\bchief\b|\bc[a-z]{1,2}o\b/i.test(b.row.title || "");
       return `<div class="card">
         <h3>${escapeHtml(b.row.fullName)}</h3>
-        <p class="meta">${escapeHtml([b.row.title, b.row.company].filter(Boolean).join(" · "))} · ${escapeHtml(b.out.angle || "")}</p>
+        <p class="meta">${escapeHtml([b.row.title, b.row.company].filter(Boolean).join(" · "))} · ${escapeHtml(step.label)}</p>
         ${b.out.subject ? `<p class="label">Subject: ${escapeHtml(b.out.subject)}</p>` : `<p class="label">Reply in thread</p>`}
         <p class="text">${escapeHtml(b.out.body)}</p>
-        ${b.out.voicemail ? `<p class="label">Voicemail script (if you leave one)</p><p class="text">${escapeHtml(b.out.voicemail)}</p>` : ""}
         ${b.out.proof_source ? `<p class="meta">${proofHtml(b.out.proof_source)}</p>` : ""}
         ${(b.out.flags || []).length ? `<ul>${b.out.flags.map((f) => `<li class="warn">⚑ ${escapeHtml(f)}</li>`).join("")}</ul>` : ""}
         <div class="row">
@@ -759,7 +1112,7 @@ function renderBatch() {
           <button class="secondary" data-b="${i}" data-act="body">Copy body</button>
           <button class="secondary" data-b="${i}" data-act="insert">Insert into open task</button>
         </div>
-        <ul class="checks">${checksHtml(step, b.out.subject, b.out.body, b.out.voicemail, exec)}</ul>
+        <details><summary>Playbook check</summary><ul class="checks">${checksHtml(step, b.out.subject, b.out.body, b.out.voicemail, exec)}</ul></details>
       </div>`;
     })
     .join("");
@@ -768,53 +1121,9 @@ function renderBatch() {
     btn.addEventListener("click", () => {
       if (btn.dataset.act === "subj") copy(b.out.subject, "Subject copied");
       else if (btn.dataset.act === "body") copy(b.out.body, "Body copied");
-      else {
-        const step = STEPS.find((s) => s.id === b.stepId);
-        insertEmail(step?.thread === "reply" ? "" : b.out.subject, b.out.body);
-      }
+      else insertEmail(b.out.subject, b.out.body);
     });
   });
-}
-
-// One click on an open task: import → write (or reuse a draft from "Write
-// all") → paste into this task. Never sends.
-async function onAutoRun() {
-  const btn = $("auto-run");
-  btn.disabled = true;
-  try {
-    setStatus("Reading Outreach…");
-    const one = await importOutreachTask();
-    if (!one) {
-      setStatus(`Found ${pageRows.length} prospects on this page. Open one person's email task, or use "Write all" below.`);
-      return;
-    }
-    const target = outreachTabId;
-    const saved = batch.find((b) => sameName(b.row.fullName, one.fullName));
-    let out;
-    if (saved) {
-      $("step").value = saved.stepId;
-      out = saved.out;
-      setStatus(`Using the draft already written for ${one.fullName}…`);
-    } else if (useClaudeTab()) {
-      setStatus("Opening Claude and sending the prompt…");
-      const { tabId, sent } = await openInClaude("email", OUTPUT_SCHEMA, buildEmailPrompt(), { autoSend: settings.autoSend !== false });
-      setStatus(sent ? "Claude is writing…" : "Press Enter in the Claude tab. Waiting for Claude's reply…");
-      out = await waitForClaudeReply(tabId, "email");
-      pending.lastApplied = JSON.stringify(out);
-      chrome.storage.session.set({ pending }).catch(() => {});
-    } else {
-      out = await run(OUTPUT_SCHEMA, buildEmailPrompt(), "Claude is writing…");
-    }
-    applyEmail({ angle: "", subject: "", voicemail: "", proof_source: "", flags: [], ...out });
-    await chrome.tabs.update(target, { active: true });
-    const subject = draftStep.thread === "reply" ? "" : out.subject;
-    const ok = await insertEmail(subject, out.body, target);
-    if (ok) setStatus(`Done: the email is in ${one.fullName || "the prospect"}'s task. Review it there before sending.`);
-  } catch (err) {
-    setStatus(err.message, true);
-  } finally {
-    btn.disabled = false;
-  }
 }
 
 async function copy(text, msg) {

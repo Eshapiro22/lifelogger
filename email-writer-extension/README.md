@@ -1,6 +1,13 @@
 # Triple Touch Email Writer (Chrome extension)
 
-A side-panel Chrome extension that writes the **subject line and body for each email step** of a Triple Touch outbound sequence, or a **full plan** for one contact: call opener, discovery questions, voicemails, emails, LinkedIn copy and objection responses. It follows 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP). On Triple Touch steps the email follows what happened on the call (voicemail left, power-dialer call with no voicemail, or no call), and a voicemail script is ready in case you leave one. When no approved proof fits, Claude looks up a real, public customer story that matches the prospect and links the source. It runs through your normal Claude login in a browser tab (no API key), or through an Anthropic API key if you prefer.
+One click on an Outreach prospect gets you a ready-to-send email:
+
+1. **Reads the prospect from Outreach**: name, title, account, step and sequence, from the page you have open (a prospect, their email task, or your task list).
+2. **Finds what you've already sent them**: it opens their Outreach record in a background tab (including its Activity tab), reads it, then closes it. If their Salesforce contact or lead is open in another tab, it reads that too.
+3. **Has Claude write it**: it opens Claude in a new tab, sends a short brief (who they are, what's been sent, which step, your playbook), and waits. Claude replies with a plain email, not code.
+4. **Shows the email and puts it in Outreach**: the subject and body go into the task's editor if one is open (reply steps keep the existing subject). **It never sends.** Review it and send it yourself.
+
+Emails follow 30 Minutes to President's Club (30MPC) and Ian Koniak's *Untap Your Sales Potential* (UYSP): one observation, one pain, one real customer proof, one question. Claude doesn't repeat angles, subjects or customer stories you've already used, and if the prospect replied it answers the reply instead. Everything Claude saw is under **What Claude saw from Outreach / Salesforce** in the panel.
 
 ## Install (unpacked)
 
@@ -11,12 +18,20 @@ A side-panel Chrome extension that writes the **subject line and body for each e
    - paste your **playbook** (persona tracks, pains, proof, rules). It goes to the model as system context on every email and overrides the built-in defaults.
    - add one entry per sequence you run: persona track, Pain A, Pain B, what you do about it, approved proof points, and an optional mid-sequence asset
 
+## The main button
+
+Open Outreach and click **Write email for this Outreach prospect**. Set **Call outcome** first on call days (no voicemail is the default). The progress list shows each stage. When it's done:
+- The email is in the panel with Copy buttons, any notes to check, the customer-proof link, and a playbook check.
+- If the prospect's email task was open, the email is already in it.
+- On your task list, it lists everyone due. **Write email** on a row runs the flow for that person; **Write all** writes everyone in one Claude chat, using each person's history. Then open each task and click the main button: their draft drops in without asking Claude again.
+
+The step comes from Outreach ("Step #3 of 30MPC Sequence") through the step map in Settings. If a step isn't mapped, Claude works it out from what's already been sent.
+
+Everything else (manual fields, full plan mode, pasted replies) is under **Details & manual mode**.
+
 ## Engines: with or without an API key
 
-**Claude tab (default, no API key).** Clicking **Write email in Claude** builds the full prompt (rules, playbook, step, prospect), opens Claude in a new tab and pastes the prompt into the message box. It does not send it.
-1. Press **Enter** in the Claude tab.
-2. When Claude finishes, click **Get reply from Claude tab** in the side panel. The draft loads with the playbook checks and Insert, just like the API path.
-3. If Claude replied in the wrong format or you tweaked the reply, copy it and use **Load pasted reply** instead.
+**Claude tab (default, no API key).** The extension opens Claude, pastes the brief, sends it (turn off **Send the prompt automatically** to press Enter yourself), and reads the email back when Claude finishes. If it can't read the reply, click **Get reply from Claude tab**, or copy Claude's reply and use **Load pasted reply**.
 
 If the automatic paste fails (for example, you're on a login page), the prompt is already on your clipboard: paste it with Ctrl/Cmd+V and send.
 

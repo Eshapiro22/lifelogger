@@ -69,3 +69,15 @@ fieldset.seq { border: 1px solid var(--border); border-radius: 8px; margin: 8px 
 .card .text { white-space: pre-wrap; margin: 0; }
 .card ul { margin: 4px 0; padding-left: 18px; }
 .card ul.checks { list-style: none; padding: 0; font-size: 12px; }
+button.big { padding: 12px; font-size: 14px; }
+section.run { border-top: 0; }
+ol#progress { margin: 8px 0 0; padding-left: 20px; }
+ol#progress li { margin: 2px 0; }
+ol#progress li.done { color: var(--good); }
+ol#progress li.active { font-weight: 600; }
+ol#progress li.skip { color: var(--muted); }
+ol#progress li.fail { color: var(--bad); }
+details { margin-top: 8px; }
+details > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
+details#advanced { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 12px; }
+pre.text { white-space: pre-wrap; font: 12px/1.4 ui-monospace, monospace; max-height: 240px; overflow: auto; background: color-mix(in srgb, var(--border) 25%, transparent); padding: 6px; border-radius: 6px; }

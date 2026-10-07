@@ -40,7 +40,9 @@ const isPlaceholder = (v) => /^\s*<[^>]*>\s*$/.test(v || "") || /^<(the|their|a|
 const none = (v) => (/^\s*(none|n\/a|-|—|leave empty|\(none\))\s*\.?\s*$/i.test(v || "") ? "" : (v || "").trim());
 
 // Returns every finished block in the text (one per email), oldest first.
-export function parseEmails(text) {
+// lenient: also accept a last block with no END line (use only once Claude's
+// page has stopped changing, so a half-written email isn't taken).
+export function parseEmails(text, { lenient = false } = {}) {
   if (!text) return [];
   const blocks = [];
   let cur = null;
@@ -67,6 +69,13 @@ export function parseEmails(text) {
       continue;
     }
     if (cur && field) cur[field] += (cur[field] ? "\n" : "") + line;
+  }
+  if (lenient && cur && cur.EMAIL.trim()) {
+    cur._ended = true;
+    // Drop trailing page chrome such as "Copy" / "Retry" / disclaimers from the last field.
+    const chrome = /(\n\s*(copy|retry|edit|share|claude can make mistakes.*|claude is ai.*)\s*)+$/i;
+    if (field) cur[field] = cur[field].replace(chrome, "");
+    blocks.push(cur);
   }
   return blocks
     .filter((b) => b._ended && b.EMAIL.trim() && !isPlaceholder(b.EMAIL) && !isPlaceholder(b.SUBJECT))

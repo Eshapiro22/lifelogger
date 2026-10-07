@@ -10,6 +10,7 @@ import {
   readFrameText, openActivityTab, claudeComposerText,
 } from "./inject.js";
 import { parseTask, mapOutreachStep, matchSequence } from "./outreach.js";
+import { initLog, log, clearLog, logText } from "./logger.js";
 import { buildClaudeTabPrompt, extractJson, extractAllJson } from "./claudetab.js";
 
 const $ = (id) => document.getElementById(id);
@@ -41,6 +42,9 @@ async function renderSettings() {
 }
 
 async function init() {
+  await initLog();
+  window.addEventListener("error", (e) => log("error", "panel error", { message: e.message, source: `${e.filename}:${e.lineno}` }));
+  window.addEventListener("unhandledrejection", (e) => log("error", "unhandled promise rejection", { message: String(e.reason?.message || e.reason), stack: e.reason?.stack }));
   await renderSettings();
   $("step").innerHTML = STEPS.map((s) => `<option value="${s.id}">${escapeHtml(s.label)}</option>`).join("");
   $("call-outcome").innerHTML = Object.entries(CALL_OUTCOMES)
@@ -50,18 +54,32 @@ async function init() {
     .map(([v, l]) => `<option value="${v}">${escapeHtml(l)}</option>`)
     .join("");
 
-  // Restore the in-progress form so closing the panel doesn't lose it.
-  const { draft } = await chrome.storage.session.get("draft").catch(() => ({}));
-  if (draft) for (const [k, v] of Object.entries(draft)) if ($(k)) setVal($(k), v);
-  ({ pending } = await chrome.storage.session.get("pending").catch(() => ({})));
-  $("reply-wrap").hidden = !pending;
-  $("ot-wrap").hidden = !$("ot-text").value;
-  ({ batch = [], pageRows = [] } = await chrome.storage.session.get(["batch", "pageRows"]).catch(() => ({})));
-  renderRows();
-  renderBatch();
+  // Buttons first, so a problem restoring saved state can never leave them dead.
+  bindEvents();
 
-  showMode();
-  showGuide();
+  // Restore the in-progress form so closing the panel doesn't lose it.
+  try {
+    const { draft } = await chrome.storage.session.get("draft").catch(() => ({}));
+    if (draft) for (const [k, v] of Object.entries(draft)) if ($(k)) setVal($(k), v);
+    if (!STEPS.some((x) => x.id === $("step").value)) $("step").value = STEPS[0].id;
+    if (!$("call-outcome").value) $("call-outcome").value = "novm";
+    ({ pending } = await chrome.storage.session.get("pending").catch(() => ({})));
+    $("reply-wrap").hidden = !pending;
+    $("ot-wrap").hidden = !$("ot-text").value;
+    ({ batch = [], pageRows = [] } = await chrome.storage.session.get(["batch", "pageRows"]).catch(() => ({})));
+    renderRows();
+    renderBatch();
+    showMode();
+    showGuide();
+  } catch (err) {
+    log("error", "panel: couldn't restore saved state (starting fresh)", { error: err.message, stack: err.stack });
+    await chrome.storage.session.remove(["draft", "pending", "batch", "pageRows"]).catch(() => {});
+    batch = [];
+    pageRows = [];
+  }
+}
+
+function bindEvents() {
   $("mode").addEventListener("change", showMode);
   $("step").addEventListener("change", showGuide);
   $("p-title").addEventListener("change", () => {
@@ -76,6 +94,20 @@ async function init() {
   $("reset").addEventListener("click", onReset);
   $("fetch-reply").addEventListener("click", onFetchReply);
   $("auto-run").addEventListener("click", onRun);
+  $("stop-run").addEventListener("click", () => {
+    stopRequested = true;
+    setStatus("Stopping…");
+  });
+  $("open-log").addEventListener("click", () => chrome.tabs.create({ url: chrome.runtime.getURL("log.html") }));
+  $("copy-log").addEventListener("click", async () => {
+    const { version } = chrome.runtime.getManifest();
+    await initLog();
+    copy(`Email Writer log · v${version}\n${logText()}`, "Log copied");
+  });
+  $("clear-log").addEventListener("click", async () => {
+    await clearLog();
+    setStatus("Log cleared.");
+  });
   $("import").addEventListener("click", onImport);
   $("paste-reply").addEventListener("click", onPasteReply);
   $("copy-subject").addEventListener("click", () => copy($("out-subject").value, "Subject copied"));
@@ -95,7 +127,7 @@ function saveDraft() {
 const getVal = (el) => (el.type === "checkbox" ? el.checked : el.value);
 const setVal = (el, v) => (el.type === "checkbox" ? (el.checked = v) : (el.value = v));
 
-const currentStep = () => STEPS.find((s) => s.id === $("step").value);
+const currentStep = () => STEPS.find((s) => s.id === $("step").value) || STEPS[0];
 const currentSequence = () => settings.sequences.find((s) => s.id === $("sequence").value) || settings.sequences[0];
 
 function showMode() {
@@ -228,11 +260,11 @@ async function openInClaude(kind, schema, userPrompt, { autoSend = false } = {})
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 500));
     try {
-      const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] });
+      const [{ result }] = await exec({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] });
       if (result) {
         if (autoSend) {
           await new Promise((r) => setTimeout(r, 400));
-          const [{ result: sent }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: submitClaude });
+          const [{ result: sent }] = await exec({ target: { tabId: tab.id }, func: submitClaude });
           if (sent) return { tabId: tab.id, sent: true };
         }
         setStatus("Prompt is in Claude. Press Enter there. When Claude finishes, click “Get reply from Claude tab”.");
@@ -254,7 +286,7 @@ async function waitForClaudeReply(tabId, kind, timeoutMs = 240000) {
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, 2000));
     try {
-      const [{ result }] = await chrome.scripting.executeScript({ target: { tabId }, func: readClaudeReply });
+      const [{ result }] = await exec({ target: { tabId }, func: readClaudeReply });
       const obj = (result || []).flatMap(extractAllJson).find((o) => replyFits(o, kind));
       if (obj) {
         const key = JSON.stringify(obj);
@@ -305,7 +337,7 @@ function applyReply(obj) {
 async function onFetchReply() {
   try {
     if (!pending?.tabId) throw new Error("Open Claude from the panel first.");
-    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: pending.tabId }, func: readClaudeReply });
+    const [{ result }] = await exec({ target: { tabId: pending.tabId }, func: readClaudeReply });
     if (pending.kind === "run" || pending.kind === "runbatch") return applyTextReply((result || []).at(-1) || "");
     const obj = (result || []).flatMap(extractAllJson).find((o) => replyFits(o, pending.kind));
     if (!obj) throw new Error("No finished reply found yet. Wait for Claude to finish, or copy the reply and use Paste.");
@@ -538,7 +570,7 @@ async function activeTabId() {
 
 async function onGrab() {
   try {
-    const [{ result }] = await chrome.scripting.executeScript({ target: { tabId: await activeTabId() }, func: readPage });
+    const [{ result }] = await exec({ target: { tabId: await activeTabId() }, func: readPage });
     $("p-context").value = result || "";
     saveDraft();
     setStatus("Pulled text from the page. Trim anything irrelevant.");
@@ -553,7 +585,7 @@ async function onGrab() {
 async function insertEmail(subject, body, targetTabId) {
   try {
     const tabId = targetTabId ?? (await activeTabId());
-    const probes = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: probeFrame });
+    const probes = await exec({ target: { tabId, allFrames: true }, func: probeFrame });
     const ok = probes.filter((p) => p.result);
     const bodyFrame =
       ok.find((p) => p.result.focusedEditor) ||
@@ -562,13 +594,13 @@ async function insertEmail(subject, body, targetTabId) {
 
     const done = [];
     if (subject && subjFrame) {
-      const [{ result }] = await chrome.scripting.executeScript({
+      const [{ result }] = await exec({
         target: { tabId, frameIds: [subjFrame.frameId] }, func: fillSubject, args: [subject],
       });
       if (result) done.push("subject");
     }
     if (bodyFrame) {
-      const [{ result }] = await chrome.scripting.executeScript({
+      const [{ result }] = await exec({
         target: { tabId, frameIds: [bodyFrame.frameId] }, func: fillBody, args: [body],
       });
       if (result) done.push("body");
@@ -634,11 +666,20 @@ async function readOutreach() {
   const tabId = await activeTabId();
   const tab = await chrome.tabs.get(tabId);
   if (!isOutreach(tab.url)) throw new Error("Open Outreach (a task, or your task list) first, then click this again.");
-  const frames = (await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: readOutreachTask }))
+  const frames = (await exec({ target: { tabId, allFrames: true }, func: readOutreachTask }))
     .map((r) => r.result)
     .filter(Boolean);
   outreachTabId = tabId;
-  return parseTask(frames, { senderCompany: settings.senderCompany });
+  const t = parseTask(frames, { senderCompany: settings.senderCompany });
+  log("info", "outreach: read page", {
+    url: tab.url,
+    frames: frames.length,
+    rowsFound: t.rows.length,
+    rows: t.rows.map((r) => ({ name: r.fullName, title: r.title, company: r.company, step: r.stepNumber, sequence: r.sequence, link: r.url })),
+    single: t.single && { name: t.single.fullName, title: t.single.title, company: t.single.company, email: t.single.email, step: t.single.stepNumber, link: t.single.url, hasDraftInTask: Boolean(t.single.body) },
+    labels: frames.map((f) => f.labels),
+  });
+  return t;
 }
 
 // One prospect → fill the form. Several (e.g. the task list) → show a picker.
@@ -680,14 +721,16 @@ function renderRows() {
     b.addEventListener("click", async () => {
       b.disabled = true;
       resetProgress();
+      stopRequested = false;
+      $("stop-run").hidden = false;
+      logRunStart(`row: ${pageRows[Number(b.dataset.row)].fullName}`);
       try {
         await runForProspect(pageRows[Number(b.dataset.row)]);
       } catch (err) {
-        const active = $("progress").querySelector("li.active");
-        if (active) active.className = "fail";
-        setStatus(err.message, true);
+        failRun(err);
       } finally {
         b.disabled = false;
+        $("stop-run").hidden = true;
       }
     })
   );
@@ -696,6 +739,22 @@ function renderRows() {
 // ---- One click: Outreach → past emails → Claude → email ----
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// executeScript with a time limit: a frame that never finishes loading would
+// otherwise leave the call (and the whole run) hanging forever.
+function exec(opts, ms = 10000) {
+  return Promise.race([
+    chrome.scripting.executeScript(opts),
+    sleep(ms).then(() => {
+      throw new Error(`page didn't respond within ${ms / 1000}s`);
+    }),
+  ]);
+}
+
+let stopRequested = false;
+function checkStop() {
+  if (stopRequested) throw new Error("Stopped.");
+}
 const isProspectUrl = (url) => /\/prospects\/\d+/.test(url || "");
 const tidy = (t, max) => (t || "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, max);
 
@@ -730,7 +789,7 @@ async function waitTabComplete(tabId, ms = 15000) {
 }
 
 async function tabText(tabId) {
-  const res = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: readFrameText }).catch(() => []);
+  const res = await exec({ target: { tabId, allFrames: true }, func: readFrameText }).catch(() => []);
   return res.map((r) => r.result?.text || "").filter(Boolean).join("\n");
 }
 
@@ -738,17 +797,26 @@ async function tabText(tabId) {
 // its Activity tab if it has one), reads the text, then closes the tab.
 async function readInBackground(url) {
   const tab = await chrome.tabs.create({ url, active: false });
+  log("info", "history: opened background tab", { tabId: tab.id, url });
   try {
     await waitTabComplete(tab.id);
+    const loaded = await chrome.tabs.get(tab.id).catch(() => null);
+    log("info", "history: tab loaded", { url: loaded?.url, status: loaded?.status, title: loaded?.title });
     let text = "";
     let last = -1;
     for (let i = 0; i < 14; i++) {
+      checkStop();
       await sleep(1000);
-      if (i === 2) await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, func: openActivityTab }).catch(() => {});
+      if (i === 2) {
+        const clicked = await exec({ target: { tabId: tab.id, allFrames: true }, func: openActivityTab }).catch((e) => (log("warn", "history: activity click failed", { error: e.message }), []));
+        log("info", "history: activity tab click", { clicked: clicked.some((r) => r.result) });
+      }
       text = await tabText(tab.id);
+      log("info", `history: read ${i + 1}`, { chars: text.length });
       if (i > 3 && text.length > 300 && text.length === last) break;
       last = text.length;
     }
+    log("info", "history: done", { chars: text.length, start: text.slice(0, 400), end: text.slice(-400) });
     return text;
   } finally {
     chrome.tabs.remove(tab.id).catch(() => {});
@@ -762,8 +830,11 @@ async function readSalesforceTabs(p) {
   const found = [];
   for (const tab of tabs) {
     const text = await tabText(tab.id);
-    if (keys.some((k) => text.toLowerCase().includes(k))) found.push(tidy(text, 6000));
+    const match = keys.some((k) => text.toLowerCase().includes(k));
+    log("info", "salesforce: checked tab", { url: tab.url, chars: text.length, mentionsProspect: match });
+    if (match) found.push(tidy(text, 6000));
   }
+  if (!tabs.length) log("info", "salesforce: no Salesforce tabs open");
   return found.join("\n\n---\n\n");
 }
 
@@ -843,42 +914,74 @@ function claudeTabMessage(brief) {
 async function openClaudeWith(text) {
   await navigator.clipboard.writeText(text).catch(() => {});
   const tab = await chrome.tabs.create({ url: settings.claudeUrl || "https://claude.ai/new" });
+  log("info", "claude: opened tab", { tabId: tab.id, url: settings.claudeUrl || "https://claude.ai/new", promptChars: text.length });
   for (let i = 0; i < 40; i++) {
+    checkStop();
     await sleep(500);
-    const [{ result: pasted } = {}] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] }).catch(() => []);
+    const [{ result: pasted } = {}] = await exec({ target: { tabId: tab.id }, func: pasteIntoClaude, args: [text] }).catch((e) => {
+      if (i % 5 === 0) log("warn", `claude: paste attempt ${i + 1} failed`, { error: e.message });
+      return [];
+    });
     if (!pasted) continue;
+    const t = await chrome.tabs.get(tab.id).catch(() => null);
+    log("info", "claude: prompt pasted", { attempt: i + 1, url: t?.url, title: t?.title });
     if (settings.autoSend === false) return { tabId: tab.id, sent: false };
     // Send at most twice, and only retry if the whole message is still in the box,
     // so a slow page never gets the prompt twice.
     for (let attempt = 0; attempt < 2; attempt++) {
       await sleep(700);
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: submitClaude }).catch(() => {});
+      const [{ result: clicked } = {}] = await exec({ target: { tabId: tab.id }, func: submitClaude }).catch(() => []);
+      log("info", `claude: send attempt ${attempt + 1}`, { sendTriggered: Boolean(clicked) });
       for (let w = 0; w < 8; w++) {
         await sleep(500);
-        const [{ result: left } = {}] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: claudeComposerText }).catch(() => []);
-        if (left === "" ) return { tabId: tab.id, sent: true };
-        if (typeof left === "string" && left.length < text.length * 0.5) return { tabId: tab.id, sent: true };
+        const [{ result: left } = {}] = await exec({ target: { tabId: tab.id }, func: claudeComposerText }).catch(() => []);
+        if (left === "" || (typeof left === "string" && left.length < text.length * 0.5)) {
+          log("info", "claude: message sent", { leftInBox: left?.length ?? null });
+          return { tabId: tab.id, sent: true };
+        }
+        if (w === 7) log("warn", "claude: message still in the box", { leftInBox: left?.length ?? null });
       }
     }
     return { tabId: tab.id, sent: false };
   }
+  const t = await chrome.tabs.get(tab.id).catch(() => null);
+  log("error", "claude: couldn't paste after 20s", { url: t?.url, title: t?.title });
   return { tabId: tab.id, sent: false, pasteFailed: true };
 }
 
 // Polls the Claude tab until `count` finished emails are on the page and stop changing.
 async function waitForEmails(tabId, count = 1, ms = 300000) {
   let last = "";
+  let lastText = "";
+  let unchanged = 0;
   const until = Date.now() + ms;
-  while (Date.now() < until) {
+  for (let poll = 1; Date.now() < until; poll++) {
+    checkStop();
     await sleep(2000);
-    const [{ result } = {}] = await chrome.scripting.executeScript({ target: { tabId }, func: readClaudeReply }).catch(() => []);
-    const emails = parseEmails((result || []).at(-1) || "");
+    const [{ result } = {}] = await exec({ target: { tabId }, func: readClaudeReply }).catch((e) => {
+      log("warn", `claude: read ${poll} failed`, { error: e.message });
+      return [];
+    });
+    const text = (result || []).at(-1) || "";
+    unchanged = text && text === lastText ? unchanged + 1 : 0;
+    lastText = text;
+    let emails = parseEmails(text);
+    // Claude finished but skipped END: accept once the page stops changing.
+    if (emails.length < count && unchanged >= 4) emails = parseEmails(text, { lenient: true });
+    if (poll === 1 || poll % 5 === 0 || emails.length) {
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      log("info", `claude: poll ${poll}`, { url: tab?.url, pageChars: text.length, unchangedPolls: unchanged, emailsFound: emails.length, pageEnd: text.slice(-500) });
+    }
     if (emails.length >= count) {
       const key = JSON.stringify(emails);
-      if (key === last) return emails;
+      if (key === last || unchanged >= 4) {
+        log("info", "claude: reply parsed", { emails: emails.length, lenient: unchanged >= 4 });
+        return emails;
+      }
       last = key;
     }
   }
+  log("error", "claude: timed out waiting for the reply", { pageEnd: lastText.slice(-1500) });
   throw new Error("Claude didn't finish within 5 minutes. When it's done, click “Get reply from Claude tab”.");
 }
 
@@ -890,7 +993,8 @@ async function askClaude(brief, count = 1, meta = {}) {
       apiKey: settings.apiKey, model: settings.model, systemPrompt: buildSystemPrompt(settings).replace(/\s*Return JSON only, matching the provided schema\.\s*$/, ""),
       playbook: settings.playbook, userPrompt: brief, webSearch: settings.findProof !== false,
     });
-    const emails = parseEmails(text);
+    const emails = parseEmails(text).length >= count ? parseEmails(text) : parseEmails(text, { lenient: true });
+    log("info", "api: reply", { chars: text.length, emailsFound: emails.length, end: text.slice(-500) });
     if (emails.length < count) throw new Error("Claude's reply wasn't in the expected format. Try again.");
     return emails;
   }
@@ -936,7 +1040,7 @@ function showEmail(p, email, step, historyText) {
 }
 
 async function hasEditor(tabId) {
-  const probes = await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, func: probeFrame }).catch(() => []);
+  const probes = await exec({ target: { tabId, allFrames: true }, func: probeFrame }).catch(() => []);
   return probes.some((r) => r.result?.editorArea > 0);
 }
 
@@ -968,20 +1072,26 @@ async function runForProspect(p) {
     progress("history", h.outreach || h.salesforce ? "done" : "skip",
       [h.outreach && "Outreach record", h.salesforce && "Salesforce tab"].filter(Boolean).join(" + ") || "nothing found; Claude will treat this as the first touch");
     const known = stepFor(p);
+    const brief = buildRunPrompt(p, historyText, known);
+    log("info", "prompt built", { prospect: p.fullName, outreachStep: p.stepNumber, mappedStep: known?.id || "(Claude decides)", historyChars: historyText.length, briefChars: brief.length });
     progress("claude", "active", "opening Claude…");
-    const [first] = await askClaude(buildRunPrompt(p, historyText, known), 1, { prospect: p, stepId: known?.id || "" });
+    const [first] = await askClaude(brief, 1, { prospect: p, stepId: known?.id || "" });
     step = resolveStep(known, first);
     email = first;
     progress("claude", "done", step.label);
   }
   const out = showEmail(p, email, step, historyText);
+  log("info", "email ready", { prospect: p.fullName, step: step.id, subject: out.subject, bodyWords: out.body.split(/\s+/).length, notes: out.flags, proof: out.proof_source });
   if (!saved) rememberDraft(p, out, step);
 
   // Back to Outreach; fill the task if its email editor is open.
   if (outreachTabId) {
     await chrome.tabs.update(outreachTabId, { active: true }).catch(() => {});
-    if (await hasEditor(outreachTabId)) {
+    const editor = await hasEditor(outreachTabId);
+    log("info", "outreach: email editor open?", { editor });
+    if (editor) {
       const ok = await insertEmail(out.subject, out.body, outreachTabId);
+      log(ok ? "info" : "warn", "outreach: insert", { ok });
       progress("insert", ok ? "done" : "fail", ok ? "review it, then send" : "use Copy");
     } else {
       progress("insert", "skip", "no email task open; copy it, or open their task and click again");
@@ -990,10 +1100,45 @@ async function runForProspect(p) {
   setStatus("Your email is ready below.");
 }
 
+function logRunStart(kind) {
+  const { version } = chrome.runtime.getManifest();
+  log("info", `run started: ${kind}`, {
+    version,
+    engine: settings.engine,
+    claudeUrl: settings.claudeUrl,
+    autoSend: settings.autoSend !== false,
+    findProof: settings.findProof !== false,
+    includePlaybook: settings.includePlaybook !== false,
+    playbookChars: (settings.playbook || "").length,
+    senderNameSet: Boolean(settings.senderName),
+    senderCompany: settings.senderCompany,
+    sequences: settings.sequences.map((q) => ({ name: q.name, outreachName: q.outreachName, stepMap: q.outreachSteps })),
+    callOutcome: $("call-outcome").value,
+  });
+}
+
+function startRunning(btn) {
+  stopRequested = false;
+  btn.disabled = true;
+  $("stop-run").hidden = false;
+}
+function stopRunning(btn) {
+  btn.disabled = false;
+  $("stop-run").hidden = true;
+}
+
+function failRun(err) {
+  const active = $("progress").querySelector("li.active");
+  if (active) active.className = "fail";
+  log(err.message === "Stopped." ? "warn" : "error", err.message === "Stopped." ? "run stopped by user" : "run failed", { error: err.message, stack: err.stack });
+  setStatus(err.message === "Stopped." ? "Stopped." : `${err.message} (Open the log for details.)`, true);
+}
+
 async function onRun() {
   const btn = $("auto-run");
-  btn.disabled = true;
+  startRunning(btn);
   resetProgress();
+  logRunStart("single");
   try {
     progress("outreach", "active", "reading…");
     const t = await readOutreach();
@@ -1015,11 +1160,9 @@ async function onRun() {
     }
     await runForProspect(p);
   } catch (err) {
-    const active = $("progress").querySelector("li.active");
-    if (active) active.className = "fail";
-    setStatus(err.message, true);
+    failRun(err);
   } finally {
-    btn.disabled = false;
+    stopRunning(btn);
   }
 }
 
@@ -1027,8 +1170,9 @@ async function onRun() {
 
 async function onWriteAll() {
   const btn = $("write-all");
-  btn.disabled = true;
+  startRunning(btn);
   resetProgress();
+  logRunStart(`write all (${pageRows.length})`);
   try {
     const rows = pageRows;
     const seq = matchSequence(settings.sequences, rows[0]?.sequence);
@@ -1036,6 +1180,8 @@ async function onWriteAll() {
     progress("outreach", "done", `${rows.length} prospects`);
     const histories = [];
     for (const [i, r] of rows.entries()) {
+      checkStop();
+      log("info", `history ${i + 1} of ${rows.length}`, { prospect: r.fullName, link: r.url });
       progress("history", "active", `${i + 1} of ${rows.length}: ${r.fullName}`);
       histories.push((await gatherHistory({ ...r, text: "" })).text);
     }
@@ -1054,10 +1200,11 @@ async function onWriteAll() {
     progress("claude", "done", `${saved} emails`);
     progress("insert", "skip", "open each person's task and click the top button");
     setStatus(`Wrote ${saved} emails. Open each person's task in Outreach and click the top button to drop theirs in.`);
+    log("info", "write all done", { saved });
   } catch (err) {
-    setStatus(err.message, true);
+    failRun(err);
   } finally {
-    btn.disabled = false;
+    stopRunning(btn);
   }
 }
 

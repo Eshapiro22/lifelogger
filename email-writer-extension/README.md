@@ -29,6 +29,12 @@ The step comes from Outreach ("Step #3 of 30MPC Sequence") through the step map 
 
 Everything else (manual fields, full plan mode, pasted replies) is under **Details & manual mode**.
 
+## If something goes wrong: the diagnostic log
+
+Every run writes a step-by-step log: what was read from Outreach, each background tab, what Claude's page showed while it waited, and any error. Under the main button, **Diagnostic log → Open (save as PDF)** opens it in a tab with **Save as PDF**, **Copy as text** and **Download .txt**. **Stop** ends a run that's taking too long.
+
+The log lives only in this browser session (cleared when Chrome closes). It never includes your API key or playbook text, but it does include prospect names and snippets of page text, so share it accordingly.
+
 ## Engines: with or without an API key
 
 **Claude tab (default, no API key).** The extension opens Claude, pastes the brief, sends it (turn off **Send the prompt automatically** to press Enter yourself), and reads the email back when Claude finishes. If it can't read the reply, click **Get reply from Claude tab**, or copy Claude's reply and use **Load pasted reply**.

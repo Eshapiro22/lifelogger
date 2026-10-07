@@ -28,7 +28,13 @@
       <select id="call-outcome"></select>
     </label>
     <p class="hint">Open the prospect (or their email task) in Outreach, then click. It reads the prospect and what you've already sent them, has Claude write the email, and puts it in the task if one is open. It never sends.</p>
+    <button id="stop-run" class="secondary" hidden>Stop</button>
     <ol id="progress" hidden></ol>
+    <p class="hint log-links">Diagnostic log:
+      <button id="open-log" class="link" type="button">Open (save as PDF)</button> ·
+      <button id="copy-log" class="link" type="button">Copy</button> ·
+      <button id="clear-log" class="link" type="button">Clear</button>
+    </p>
   </section>
 
   <p id="status" class="status"></p>

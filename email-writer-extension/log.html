@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Email Writer diagnostic log</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { max-width: 900px; margin: 0 auto; }
+    .entry { border-top: 1px solid var(--border); padding: 6px 0; break-inside: avoid; }
+    .entry .head { font: 12px/1.4 ui-monospace, monospace; }
+    .entry.error .head { color: var(--bad); font-weight: 600; }
+    .entry.warn .head { color: var(--warn); }
+    .entry pre { white-space: pre-wrap; word-break: break-word; font: 11px/1.4 ui-monospace, monospace; margin: 4px 0 0 12px; color: var(--muted); }
+    @media print {
+      .no-print { display: none !important; }
+      body { max-width: none; padding: 0; color: #000; background: #fff; }
+      .entry pre { color: #333; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Email Writer diagnostic log</h1></header>
+  <p id="meta" class="hint"></p>
+  <div class="banner no-print">Contains prospect names and bits of page text from Outreach, Salesforce and Claude. No API key or playbook text. Share it only where you'd share that.</div>
+  <div class="row no-print">
+    <button id="pdf" class="primary" style="width:auto;margin-top:0">Save as PDF</button>
+    <button id="copy" class="secondary">Copy as text</button>
+    <button id="download" class="secondary">Download .txt</button>
+    <button id="refresh" class="secondary">Refresh</button>
+  </div>
+  <p id="status" class="status no-print"></p>
+  <div id="entries"></div>
+  <script type="module" src="log.js"></script>
+</body>
+</html>

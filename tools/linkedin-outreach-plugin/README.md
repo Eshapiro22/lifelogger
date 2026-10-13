@@ -14,15 +14,21 @@ Say **"run my LinkedIn outreach"** in Cowork. Claude will:
 6. For the drafts you approve: open each message in its own browser tab, already written (the same approach as the Triple T email writer).
    **You click Send.** Claude never sends.
 
+## Where to run it
+
+Use the **Claude in Chrome side panel**: the side panel runs Cowork, so installed plugins,
+skills, and connectors are available there. It keeps its files in OneDrive, in a folder
+called `LinkedIn Outreach`, so no local folder is needed. The Cowork desktop app works too.
+
 ## What you need
 
-- Cowork with **Claude in Chrome**, signed into LinkedIn and Sales Navigator.
+- **Claude in Chrome**, with Chrome signed into LinkedIn and Sales Navigator.
 - Connectors: **Microsoft 365** (Outlook + SharePoint). Also **Glean** and **Highspot** if your org has them.
-- Your Salesforce account export saved as `accounts.csv` in the Cowork working folder.
+- Your Salesforce account export saved as `accounts.csv` in OneDrive › `LinkedIn Outreach` (or attached in chat on the first run).
 - Optional: LinkedIn's data export `Connections.csv` (Settings › Data privacy › Get a copy of your data),
   which gives exact company names.
 
-## Files it keeps in your working folder
+## Files it keeps in OneDrive › LinkedIn Outreach
 
 - `outreach-log.csv`: everyone sent or skipped, so later runs never double-message.
 - `story-library.md`: the customer stories it found, with source links. Edit this to add or remove stories.

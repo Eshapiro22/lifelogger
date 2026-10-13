@@ -32,19 +32,28 @@ user to send.
 - Work at a human pace in the browser: one page at a time, no rapid-fire actions.
   Stop and tell the user if LinkedIn shows a CAPTCHA, warning, or restriction notice.
 
-## Files in the working folder
+## Where this runs, and where state lives
 
-Keep state in the user's Cowork working folder so daily/weekly runs build on each other:
+This usually runs in the **Claude in Chrome side panel**, where there's no local working
+folder. Keep everything in the user's OneDrive (Microsoft 365 connector, which has
+read/write access), in a folder named **`LinkedIn Outreach`**:
 
 | File | Purpose |
 |---|---|
-| `accounts.csv` | Latest Salesforce account export. Ask for a fresh one if it's older than ~30 days. |
+| `accounts.csv` (or `.xlsx`) | Latest Salesforce account export. Ask for a fresh one if it's older than ~30 days. |
 | `outreach-log.csv` | Every person contacted or skipped by this workflow: `date,name,company,account,profile_url,status,message,story_source` |
-| `story-library.md` | Customer stories found so far, each with source link (see step 4) |
+| `story-library.md` | Customer stories found so far, each with its source link (see step 5) |
 | `last-run.txt` | Date of the last completed run (YYYY-MM-DD) |
-| `connections.json` | This run's captured connections (overwritten each run) |
 
-If `accounts.csv` is missing, ask the user to attach their account export before going further.
+At the start of a run, read these files. At the end, write the updated log, story library,
+and `last-run.txt` back. If the folder doesn't exist yet, create it and ask the user to
+drop their account export into it (or attach it in chat).
+
+If a local working folder *is* available (Cowork desktop app), the same files can live
+there instead. Check OneDrive first, so both surfaces share one history.
+
+If neither OneDrive nor a local folder can be written, say so at the start. At the end of
+the run, print the new `outreach-log.csv` rows in a code block for the user to save.
 
 ## Step 1: Pick the date window
 
@@ -63,18 +72,23 @@ Read `references/linkedin-capture.md` for page-by-page instructions. In short:
 3. If the user attached LinkedIn's `Connections.csv` export, use it as well. It has
    exact company names.
 
-Merge by person and write `connections.json` as a list of
-`{name, headline, title, company, connected_on, profile_url}` (leave unknown fields empty).
+Merge by person into a list of `{name, headline, title, company, connected_on, profile_url}`
+(leave unknown fields empty).
 
 ## Step 3: Match against the account list
 
-Run:
+If code execution is available, save the list as `connections.json` and the account export
+as `accounts.csv`, then run:
 
 ```bash
 python3 -I "${CLAUDE_PLUGIN_ROOT}/skills/linkedin-outreach/scripts/match_accounts.py" \
   --accounts accounts.csv --connections connections.json \
   --cutoff <window start> --log outreach-log.csv > matches.json
 ```
+
+If code execution isn't available (common in the Chrome side panel), apply the same rules
+by hand, following `references/matching-rules.md`. Work through the people in batches of
+about 25.
 
 Each result has a `status`:
 - `prospect`: a clean match to an account.
@@ -95,9 +109,10 @@ in `references/prior-contact.md`.
 1. **LinkedIn messaging.** Search their name in the inbox at `https://www.linkedin.com/messaging/`.
    If there's a thread, open it and note whether *they* have ever written.
 2. **Sales Navigator inbox.** Same search at `https://www.linkedin.com/sales/inbox/`.
-3. **Outlook email** (Microsoft 365 connector). Search mail for their full name, and their
+3. **Outlook email** (Microsoft 365 connector; if it isn't available, search in Outlook on
+   the web, `https://outlook.office.com/mail/`, in a browser tab). Search mail for their full name, and their
    email if known. Note any message *from* them, and any message *to* them that got no reply.
-4. **Outlook calendar** (Microsoft 365 connector). Look for events in the past 12 months
+4. **Outlook calendar** (Microsoft 365 connector, or Outlook on the web's calendar search). Look for events in the past 12 months
    or the next 90 days with them as an attendee, or with their name or company in the title.
 5. **`outreach-log.csv`**: anyone already messaged by this workflow.
 
@@ -112,8 +127,8 @@ Outcome per person:
 Read `references/customer-stories.md`. Build or refresh `story-library.md` by searching,
 in this order:
 1. SharePoint / OneDrive (Microsoft 365 connector)
-2. Glean
-3. Highspot
+2. Glean (connector, or the Glean web app in a tab)
+3. Highspot (connector, or the Highspot web app in a tab)
 4. The company's public website (customer stories / case studies)
 
 Only search for the verticals and personas on today's *Ready* list. Reuse stories already

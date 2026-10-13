@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 13px system-ui, sans-serif; width: 300px; margin: 12px; color: #1d2226; }
+  h1 { font-size: 14px; margin: 0 0 8px; }
+  p { margin: 6px 0; }
+  button { display: block; width: 100%; margin: 6px 0; padding: 8px; border: 1px solid #0a66c2; border-radius: 16px; background: #fff; color: #0a66c2; font-weight: 600; cursor: pointer; }
+  button.primary { background: #0a66c2; color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  .muted { color: #666; font-size: 12px; }
+  #status { min-height: 18px; }
+</style>
+</head>
+<body>
+  <h1>LinkedIn Prospector</h1>
+  <p id="page" class="muted">Checking this page…</p>
+  <button id="capture">Capture what's on screen</button>
+  <button id="auto">Scroll &amp; capture all</button>
+  <button id="stop" hidden>Stop</button>
+  <p id="status"></p>
+  <button id="dash" class="primary">Open dashboard</button>
+  <p class="muted">Works on: My Network › Connections, Sales Nav lead lists/search, LinkedIn Messaging, Sales Nav Inbox. Nothing is ever sent for you.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

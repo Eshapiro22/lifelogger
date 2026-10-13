@@ -1,0 +1,2 @@
+# Never commit account lists, LinkedIn exports, or outreach output
+*.csv

@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LinkedIn Prospector</title>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<header>
+  <h1>LinkedIn Prospector</h1>
+  <nav>
+    <button data-tab="outreach" class="active">Outreach</button>
+    <button data-tab="import">Import data</button>
+    <button data-tab="settings">Settings &amp; templates</button>
+  </nav>
+</header>
+
+<section id="tab-outreach">
+  <div class="toolbar">
+    <label>Connected since <input type="date" id="cutoff"></label>
+    <span id="counts"></span>
+    <span class="spacer"></span>
+    <button id="google-check">Check Gmail &amp; Calendar</button>
+    <button id="export">Export CSV</button>
+  </div>
+  <div id="google-status" class="muted"></div>
+  <div class="filters" id="filters"></div>
+  <div id="empty" class="muted" hidden></div>
+  <table id="table">
+    <thead><tr>
+      <th>Person</th><th>Account match</th><th>Prior contact</th><th>Draft (Triple T)</th><th></th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<section id="tab-import" hidden>
+  <div class="card">
+    <h2>1. Account list (from Salesforce)</h2>
+    <p>The CSV export of your territory. Columns used: Account Name, Type, Active Customer, Vertical, Website, Billing City/State.</p>
+    <input type="file" id="f-accounts" accept=".csv">
+    <p id="s-accounts" class="muted"></p>
+  </div>
+  <div class="card">
+    <h2>2. LinkedIn data export (recommended)</h2>
+    <p>LinkedIn → Settings → Data privacy → <em>Get a copy of your data</em>. Pick <b>Connections</b> and <b>Messages</b>.
+       It's the most reliable source: exact company names, connect dates, and full message history including who replied.</p>
+    <label>Connections.csv <input type="file" id="f-connections" accept=".csv"></label>
+    <p id="s-connections" class="muted"></p>
+    <label>messages.csv <input type="file" id="f-messages" accept=".csv"></label>
+    <p id="s-messages" class="muted"></p>
+  </div>
+  <div class="card">
+    <h2>3. Page captures</h2>
+    <p>Use the toolbar popup on My Network › Connections, Sales Nav lead lists, LinkedIn Messaging, and Sales Nav Inbox. Captures add to what's imported above.</p>
+    <p id="s-captures" class="muted"></p>
+    <button id="clear-captures" class="danger">Clear captured connections &amp; inbox</button>
+  </div>
+</section>
+
+<section id="tab-settings" hidden>
+  <div class="card">
+    <h2>You</h2>
+    <label>Your name as it appears on LinkedIn (used to read messages.csv) <input id="s-myname"></label>
+    <label>Google OAuth client ID (for Gmail &amp; Calendar check; see README) <input id="s-clientid" placeholder="xxxx.apps.googleusercontent.com"></label>
+    <p class="muted">Redirect URI to register in Google Cloud: <code id="redirect"></code></p>
+  </div>
+  <div class="card">
+    <h2>Triple T templates</h2>
+    <p class="muted"><b>Trigger</b>: why them, why now (shows it's meant for them). <b>Tension</b>: the problem that trigger creates, in problem language, no buzzwords.
+      <b>Trust</b>: one line of real proof (a peer customer story or number). Placeholders: {firstName} {company} {vertical} {region} {title} {trust}</p>
+    <div id="templates"></div>
+    <button id="save-settings" class="primary">Save settings</button>
+    <button id="reset-templates">Reset templates to defaults</button>
+    <span id="saved" class="muted"></span>
+  </div>
+</section>
+
+<script src="lib/util.js"></script>
+<script src="lib/match.js"></script>
+<script src="lib/templates.js"></script>
+<script src="lib/review.js"></script>
+<script src="lib/google.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

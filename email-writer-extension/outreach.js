@@ -52,6 +52,8 @@ function fromRow(r) {
     body: "",
     text: r.text,
     url,
+    onScreen: r.onScreen !== false,
+    top: r.top ?? 0,
   };
 }
 
@@ -87,10 +89,23 @@ export function parseTask(frames, { senderCompany = "" } = {}) {
   let single = null;
   if (rows.length === 1) {
     single = rows[0];
+  } else if (rows.length > 1 && frames.some((f) => f.editorTop != null) && rows.filter((r) => r.onScreen).length === 1) {
+    // Only one prospect is actually visible: that's the task you're on.
+    single = rows.find((r) => r.onScreen);
   } else if (rows.length > 1 && (body || subject)) {
-    // An open task with a list beside it: match the recipient.
+    // An open task with other prospects still in the page (a list beside it,
+    // or the previous task Outreach kept hidden after you completed it).
+    // 1) the recipient named in the email, 2) the only row actually on screen,
+    // 3) the on-screen row closest above the email editor.
     const recipient = named[0]?.name || clean(labels.name);
-    single = rows.find((r) => recipient && r.fullName.toLowerCase() === recipient.toLowerCase()) || null;
+    const shown = rows.filter((r) => r.onScreen);
+    const editorTop = frames.map((f) => f.editorTop).find((t) => t != null);
+    single =
+      rows.find((r) => recipient && r.fullName.toLowerCase() === recipient.toLowerCase()) ||
+      (shown.length === 1 ? shown[0] : null) ||
+      (editorTop != null
+        ? shown.filter((r) => r.top <= editorTop).sort((a, b) => b.top - a.top)[0] || null
+        : null);
   } else if (!rows.length) {
     // No task rows: fall back to labels and recipient patterns.
     const email = mailtos[0] || named[0]?.email || (labels.email || "").match(EMAIL_RE)?.[0] || "";

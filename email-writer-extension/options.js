@@ -19,6 +19,15 @@ async function init() {
   $("includePlaybook").checked = s.includePlaybook !== false;
   $("autoSend").checked = s.autoSend !== false;
   $("findProof").checked = s.findProof !== false;
+  $("typeIntoOutreach").checked = Boolean(s.typeIntoOutreach);
+  $("typeIntoOutreach").addEventListener("change", async (e) => {
+    if (!e.target.checked) return;
+    const granted = await chrome.permissions.request({ permissions: ["debugger"] }).catch(() => false);
+    if (!granted) {
+      e.target.checked = false;
+      $("status").textContent = "Typing stays off: Chrome's permission wasn't granted.";
+    }
+  });
   s.sequences.forEach(addSequence);
   $("add-seq").addEventListener("click", () => addSequence({ name: "New sequence" }));
   $("save").addEventListener("click", save);
@@ -35,7 +44,7 @@ async function save() {
     return;
   }
   const settings = Object.fromEntries(SIMPLE.map((k) => [k, $(k).value.trim()]));
-  await saveSettings({ ...settings, includePlaybook: $("includePlaybook").checked, autoSend: $("autoSend").checked, findProof: $("findProof").checked, sequences });
+  await saveSettings({ ...settings, includePlaybook: $("includePlaybook").checked, autoSend: $("autoSend").checked, findProof: $("findProof").checked, typeIntoOutreach: $("typeIntoOutreach").checked, sequences });
   $("status").textContent = "Saved.";
 }
 

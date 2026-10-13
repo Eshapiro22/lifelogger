@@ -7,7 +7,7 @@ import { callClaude, callClaudeText } from "./api.js";
 import { formatInstructions, parseEmails, dayFromStep } from "./emailformat.js";
 import {
   probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, submitClaude, readClaudeReply, readOutreachTask,
-  readFrameText, openActivityTab, claudeComposerText,
+  readFrameText, openActivityTab, claudeComposerText, focusEditor, editorText,
 } from "./inject.js";
 import { parseTask, mapOutreachStep, matchSequence } from "./outreach.js";
 import { initLog, log, clearLog, logText } from "./logger.js";
@@ -94,6 +94,7 @@ function bindEvents() {
   $("reset").addEventListener("click", onReset);
   $("fetch-reply").addEventListener("click", onFetchReply);
   $("auto-run").addEventListener("click", onRun);
+  $("type-in").addEventListener("click", onTypeIn);
   $("stop-run").addEventListener("click", () => {
     stopRequested = true;
     setStatus("Stopping…");
@@ -583,6 +584,8 @@ async function onGrab() {
 // subject into the frame that has a subject field and the body into the frame
 // whose editor you last clicked into, falling back to the largest editor.
 async function insertEmail(subject, body, targetTabId) {
+  // Body goes on the clipboard first, so Ctrl/Cmd+V in the editor always works.
+  await navigator.clipboard.writeText(body).catch(() => {});
   try {
     const tabId = targetTabId ?? (await activeTabId());
     const probes = await exec({ target: { tabId, allFrames: true }, func: probeFrame });
@@ -591,31 +594,115 @@ async function insertEmail(subject, body, targetTabId) {
       ok.find((p) => p.result.focusedEditor) ||
       ok.filter((p) => p.result.editorArea > 0).sort((a, b) => b.result.editorArea - a.result.editorArea)[0];
     const subjFrame = ok.find((p) => p.result.hasSubject && p.result.isTop) || ok.find((p) => p.result.hasSubject);
+    log("info", "insert: found", { frames: probes.length, bodyFrame: bodyFrame?.frameId ?? null, subjectFrame: subjFrame?.frameId ?? null, subject: Boolean(subject) });
 
     const done = [];
     if (subject && subjFrame) {
       const [{ result }] = await exec({
         target: { tabId, frameIds: [subjFrame.frameId] }, func: fillSubject, args: [subject],
       });
+      log(result ? "info" : "warn", "insert: subject", { ok: Boolean(result) });
       if (result) done.push("subject");
     }
+    let bodyResult = null;
+    lastInsert = bodyFrame ? { tabId, frameId: bodyFrame.frameId, body } : null;
     if (bodyFrame) {
-      const [{ result }] = await exec({
+      [{ result: bodyResult }] = await exec({
         target: { tabId, frameIds: [bodyFrame.frameId] }, func: fillBody, args: [body],
       });
-      if (result) done.push("body");
+      log(bodyResult?.ok ? "info" : "warn", "insert: body (paste)", bodyResult || {});
+      if (bodyResult?.ok) done.push("body");
+      // The editor ignored the paste: type it for real if you've allowed that.
+      if (!bodyResult?.ok && bodyResult?.needsTyping && settings.typeIntoOutreach && (await hasDebugger())) {
+        if (await typeIntoOutreach(lastInsert)) done.push("body");
+      }
     }
-    if (!done.length) {
-      setStatus("No email editor found. Click into the Outreach email body and try again, or use Copy.", true);
+    $("type-in").hidden = done.includes("body") || !bodyFrame;
+    if (!done.includes("body")) {
+      setStatus(
+        bodyFrame
+          ? "Outreach didn't take the automatic paste. The email is on your clipboard: click into the body and press Ctrl/Cmd+V, or click “Type it into Outreach”."
+          : "No email editor found. The body is on your clipboard: click into the Outreach email body and press Ctrl/Cmd+V.",
+        true
+      );
     } else {
       const missing = subject && !done.includes("subject") ? " No subject field found; paste it manually." : "";
       setStatus(`Inserted ${done.join(" + ")}. Review before saving or sending.${missing}`, Boolean(missing));
     }
     return done.includes("body");
   } catch (err) {
-    setStatus(`Couldn't insert (${err.message}). Use the Copy buttons.`, true);
+    log("error", "insert failed", { error: err.message });
+    setStatus(`Couldn't insert (${err.message}). The body is on your clipboard: click into the email body and press Ctrl/Cmd+V.`, true);
     return false;
   }
+}
+
+// ---- Real typing (Chrome's input system) for editors that ignore paste ----
+
+let lastInsert = null; // { tabId, frameId, body } of the last insert attempt
+
+const hasDebugger = () => chrome.permissions.contains({ permissions: ["debugger"] }).catch(() => false);
+
+// Types the body into the focused editor through Chrome's debugger input API:
+// real key events, so the editor processes them exactly like your keyboard.
+async function typeIntoOutreach(target) {
+  if (!target) return false;
+  const [{ result: found } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [target.frameId] }, func: focusEditor }).catch(() => []);
+  if (!found) {
+    log("warn", "type: no editor to focus");
+    return false;
+  }
+  const debuggee = { tabId: target.tabId };
+  try {
+    await chrome.debugger.attach(debuggee, "1.3");
+  } catch (err) {
+    log("error", "type: couldn't attach", { error: err.message });
+    setStatus(`Couldn't type into Outreach (${err.message}). Close DevTools on that tab if it's open, or paste with Ctrl/Cmd+V.`, true);
+    return false;
+  }
+  try {
+    const send = (method, params) => chrome.debugger.sendCommand(debuggee, method, params);
+    const enter = async (shift) => {
+      const k = { key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, modifiers: shift ? 8 : 0 };
+      await send("Input.dispatchKeyEvent", { type: "keyDown", ...k, text: "\r", unmodifiedText: "\r" });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", ...k });
+    };
+    const paragraphs = target.body.replace(/\r/g, "").replace(/\s+$/, "").split(/\n{2,}/);
+    for (const [i, para] of paragraphs.entries()) {
+      if (i > 0) {
+        await enter(false);
+        await enter(false);
+      }
+      for (const [j, line] of para.split("\n").entries()) {
+        if (j > 0) await enter(true);
+        if (line) await send("Input.insertText", { text: line });
+      }
+    }
+  } catch (err) {
+    log("error", "type: input failed", { error: err.message });
+  } finally {
+    await chrome.debugger.detach(debuggee).catch(() => {});
+  }
+  const [{ result: text } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [target.frameId] }, func: editorText }).catch(() => []);
+  const norm = (t) => (t || "").replace(/\s+/g, " ").trim();
+  const ok = norm(text).includes(norm(target.body).slice(0, 25));
+  log(ok ? "info" : "warn", "insert: body (typed)", { ok });
+  return ok;
+}
+
+// "Type it into Outreach" button: asks for the permission once (Chrome shows a prompt), then types.
+async function onTypeIn() {
+  if (!lastInsert) return setStatus("Run the writer first.", true);
+  if (!(await hasDebugger())) {
+    const granted = await chrome.permissions.request({ permissions: ["debugger"] }).catch(() => false);
+    log("info", "type: permission request", { granted });
+    if (!granted) return setStatus("Typing needs Chrome's permission. The email is on your clipboard: press Ctrl/Cmd+V in the body.", true);
+  }
+  await chrome.tabs.update(lastInsert.tabId, { active: true }).catch(() => {});
+  setStatus("Typing into Outreach… (Chrome briefly shows a “debugging this browser” bar)");
+  const ok = await typeIntoOutreach(lastInsert);
+  $("type-in").hidden = ok;
+  setStatus(ok ? "Typed into Outreach. Review it, then send." : "Couldn't type it in. The email is on your clipboard: press Ctrl/Cmd+V in the body.", !ok);
 }
 
 // ---- Outreach task import + one-click flow ----
@@ -721,6 +808,8 @@ function renderRows() {
     b.addEventListener("click", async () => {
       b.disabled = true;
       resetProgress();
+      clearResult();
+      running = true;
       stopRequested = false;
       $("stop-run").hidden = false;
       logRunStart(`row: ${pageRows[Number(b.dataset.row)].fullName}`);
@@ -730,6 +819,7 @@ function renderRows() {
         failRun(err);
       } finally {
         b.disabled = false;
+        running = false;
         $("stop-run").hidden = true;
       }
     })
@@ -1045,7 +1135,7 @@ async function hasEditor(tabId) {
 }
 
 function rememberDraft(p, out, step) {
-  batch = batch.filter((b) => !sameName(b.row.fullName, p.fullName));
+  batch = batch.filter((b) => !sameProspect(b.row, p));
   batch.push({ row: p, out, stepId: step.id });
   chrome.storage.session.set({ batch }).catch(() => {});
   renderBatch();
@@ -1057,7 +1147,8 @@ async function runForProspect(p) {
   progress("outreach", "done", [p.fullName, p.title, p.company].filter(Boolean).join(", "));
 
   // Reuse a draft already written for this person (e.g. from "Write all").
-  const saved = batch.find((b) => sameName(b.row.fullName, p.fullName));
+  const saved = batch.find((b) => !b.used && sameProspect(b.row, p));
+  if (saved) log("info", "reusing saved draft", { prospect: p.fullName, link: p.url });
   let email, step, historyText = "";
   if (saved) {
     progress("history", "skip", "used the draft written earlier");
@@ -1092,7 +1183,13 @@ async function runForProspect(p) {
     if (editor) {
       const ok = await insertEmail(out.subject, out.body, outreachTabId);
       log(ok ? "info" : "warn", "outreach: insert", { ok });
-      progress("insert", ok ? "done" : "fail", ok ? "review it, then send" : "use Copy");
+      if (ok) {
+        // Used: never drop this draft into another task.
+        batch = batch.map((b) => (sameProspect(b.row, p) ? { ...b, used: true } : b));
+        chrome.storage.session.set({ batch }).catch(() => {});
+      }
+      progress("insert", ok ? "done" : "fail", ok ? "review it, then send" : "press Ctrl/Cmd+V in the body, or click “Type it into Outreach”");
+      if (!ok) return; // keep the insert message (clipboard / Type it in) on screen
     } else {
       progress("insert", "skip", "no email task open; copy it, or open their task and click again");
     }
@@ -1118,11 +1215,13 @@ function logRunStart(kind) {
 }
 
 function startRunning(btn) {
+  running = true;
   stopRequested = false;
   btn.disabled = true;
   $("stop-run").hidden = false;
 }
 function stopRunning(btn) {
+  running = false;
   btn.disabled = false;
   $("stop-run").hidden = true;
 }
@@ -1134,8 +1233,28 @@ function failRun(err) {
   setStatus(err.message === "Stopped." ? "Stopped." : `${err.message} (Open the log for details.)`, true);
 }
 
+// Clears the last email from the panel so it can't be mistaken for the next one.
+function clearResult(message = "") {
+  $("result").hidden = true;
+  $("reply-wrap").hidden = true;
+  $("type-in").hidden = true;
+  lastInsert = null;
+  ["out-subject", "out-body", "out-voicemail"].forEach((id) => ($(id).value = ""));
+  $("flags").innerHTML = "";
+  $("proof").innerHTML = "";
+  $("checks").innerHTML = "";
+  $("history-used").textContent = "";
+  draftStep = undefined;
+  pending = null;
+  chrome.storage.session.remove("pending").catch(() => {});
+  resetProgress();
+  $("progress").hidden = true;
+  setStatus(message);
+}
+
 async function onRun() {
   const btn = $("auto-run");
+  clearResult();
   startRunning(btn);
   resetProgress();
   logRunStart("single");
@@ -1238,6 +1357,13 @@ function applyTextReply(text) {
   setStatus("Loaded Claude's reply.");
 }
 
+// Same person: same Outreach record link when both have one, else same name.
+function sameProspect(a, b) {
+  const id = (u) => ((u || "").match(/\/prospects\/(\d+)/) || [])[1];
+  if (id(a.url) && id(b.url)) return id(a.url) === id(b.url);
+  return sameName(a.fullName, b.fullName);
+}
+
 const sameName = (a, b) => (a || "").toLowerCase().replace(/\s+/g, " ").trim() === (b || "").toLowerCase().replace(/\s+/g, " ").trim();
 
 function renderBatch() {
@@ -1286,6 +1412,15 @@ function setStatus(msg, isError = false) {
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 }
+
+// Outreach loads the next task without reloading the page; when its URL
+// changes, clear the last email so the panel never shows the wrong person.
+let running = false;
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  if (!info.url || tabId !== outreachTabId || running) return;
+  log("info", "outreach: tab moved to a new page", { url: info.url });
+  clearResult("Outreach moved to a new task. Click Write email when you're ready.");
+});
 
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.settings) renderSettings();

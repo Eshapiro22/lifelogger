@@ -5,9 +5,12 @@
 // Runs in every frame. Reports what this frame can offer so the side panel can
 // pick where to write the subject and the body.
 export function probeFrame() {
+  // On screen, not just in the DOM: Outreach can keep the previous task's
+  // editor in the page (slid off screen) after you complete it.
   const visible = (el) => {
     const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+    const shown = el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : true;
+    return shown && r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
   };
   const isSubject = (el) =>
     /subject/i.test(
@@ -27,7 +30,7 @@ export function probeFrame() {
   const area = Math.max(0, ...editors.map((el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height));
   return {
     hasSubject: Boolean(subject),
-    focusedEditor: editable(active) && (active.isContentEditable || active.tagName === "TEXTAREA"),
+    focusedEditor: editable(active) && (active.isContentEditable || active.tagName === "TEXTAREA") && visible(active),
     editorArea: area,
     isTop: window === window.top,
   };
@@ -37,7 +40,10 @@ export function probeFrame() {
 export function fillSubject(subject) {
   const el = [...document.querySelectorAll("input")].find(
     (i) =>
-      i.getBoundingClientRect().width > 0 &&
+      (() => {
+        const r = i.getBoundingClientRect();
+        return r.width > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+      })() &&
       /subject/i.test([i.name, i.placeholder, i.id, i.getAttribute("aria-label"), i.getAttribute("data-testid")].join(" "))
   );
   if (!el) return false;
@@ -52,64 +58,92 @@ export function fillSubject(subject) {
 // Replaces the body in this frame's focused editor (or its largest visible
 // editor). Tries a synthetic paste first, which rich-text editors handle
 // through their own paste pipeline, then falls back to insertHTML.
-export function fillBody(body) {
-  const isSubject = (el) =>
-    /subject/i.test([el.name, el.placeholder, el.id, el.getAttribute("aria-label")].join(" "));
-  const editable = (el) => el && (el.isContentEditable || el.tagName === "TEXTAREA") && !isSubject(el);
+// Puts the body into the on-screen editor without ever changing its HTML
+// ourselves: editors like Outreach's keep their own copy of the text and error
+// if the page changes underneath them. So: select all, then hand the editor a
+// paste event it processes itself. If it ignores the paste we stop and report
+// it (the caller can then type it in for real, or ask you to press Ctrl+V).
+export async function fillBody(body) {
+  try {
+    const editor = (function () {
+      const onScreen = (el) => {
+        const r = el.getBoundingClientRect();
+        const shown = el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : true;
+        return shown && r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+      };
+      const isSubject = (el) => /subject/i.test([el.name, el.placeholder, el.id, el.getAttribute("aria-label")].join(" "));
+      const editable = (el) => el && (el.isContentEditable || el.tagName === "TEXTAREA") && !isSubject(el) && onScreen(el);
+      let active = document.activeElement;
+      while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+      let ed = editable(active) ? active : null;
+      if (!ed) {
+        const area = (el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height;
+        ed = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')].filter(editable).sort((a, b) => area(b) - area(a))[0];
+      }
+      while (ed?.parentElement?.isContentEditable) ed = ed.parentElement;
+      return ed || null;
+    })();
+    if (!editor) return { ok: false, method: "none", error: "no on-screen editor found" };
+
+    if (editor.tagName === "TEXTAREA") {
+      editor.focus();
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(editor, body);
+      editor.dispatchEvent(new Event("input", { bubbles: true }));
+      return { ok: true, method: "textarea" };
+    }
+
+    const norm = (t) => t.replace(/\s+/g, " ").trim();
+    const probe = norm(body).slice(0, 25);
+    const landed = () => norm(editor.innerText).includes(probe);
+    const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const html = body.replace(/\r/g, "").split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("<p><br></p>");
+
+    editor.focus();
+    document.execCommand("selectAll", false, null); // selection only; no content change
+    const dt = new DataTransfer();
+    dt.setData("text/plain", body);
+    dt.setData("text/html", html);
+    const notHandled = editor.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    for (let i = 0; i < 10 && !landed(); i++) await new Promise((r) => setTimeout(r, 100));
+    if (landed()) return { ok: true, method: "paste" };
+    return { ok: false, method: "paste", needsTyping: true, pasteHandled: !notHandled, error: "the editor didn't take the paste" };
+  } catch (err) {
+    return { ok: false, method: "error", error: String((err && err.message) || err) };
+  }
+}
+
+// Focuses the on-screen editor and selects its contents, ready for real
+// (debugger) typing to replace them. Returns whether one was found.
+export function focusEditor() {
+  const onScreen = (el) => {
+    const r = el.getBoundingClientRect();
+    const shown = el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : true;
+    return shown && r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+  };
+  const isSubject = (el) => /subject/i.test([el.name, el.placeholder, el.id, el.getAttribute("aria-label")].join(" "));
+  const editable = (el) => el && (el.isContentEditable || el.tagName === "TEXTAREA") && !isSubject(el) && onScreen(el);
   let active = document.activeElement;
   while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-
-  let editor = editable(active) ? active : null;
-  if (!editor) {
-    const cands = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')]
-      .filter((el) => el.getBoundingClientRect().width > 0 && editable(el));
-    editor = cands.sort((a, b) => {
-      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
-      return rb.width * rb.height - ra.width * ra.height;
-    })[0];
+  let ed = editable(active) ? active : null;
+  if (!ed) {
+    const area = (el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height;
+    ed = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')].filter(editable).sort((a, b) => area(b) - area(a))[0];
   }
-  if (!editor) return false;
-  // Climb to the editor root so we replace all of it, not one paragraph.
-  while (editor.parentElement?.isContentEditable) editor = editor.parentElement;
+  while (ed?.parentElement?.isContentEditable) ed = ed.parentElement;
+  if (!ed) return false;
+  ed.focus();
+  if (ed.tagName === "TEXTAREA") ed.select();
+  else document.execCommand("selectAll", false, null);
+  return true;
+}
 
-  if (editor.tagName === "TEXTAREA") {
-    editor.focus();
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(editor, body);
-    editor.dispatchEvent(new Event("input", { bubbles: true }));
-    return true;
-  }
-
-  const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const html = body
-    .split(/\n{2,}/)
-    .map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`)
-    .join("");
-  const probe = body.trim().slice(0, 25);
-  const landed = () => editor.innerText.replace(/\s+/g, " ").includes(probe.replace(/\s+/g, " "));
-
-  editor.focus();
-  const range = document.createRange();
-  range.selectNodeContents(editor);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-
-  const dt = new DataTransfer();
-  dt.setData("text/html", html);
-  dt.setData("text/plain", body);
-  const paste = new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true });
-  const unhandled = editor.dispatchEvent(paste);
-  if (!unhandled && landed()) return true;
-
-  sel.removeAllRanges();
-  range.selectNodeContents(editor);
-  sel.addRange(range);
-  document.execCommand("insertHTML", false, html);
-  if (landed()) return true;
-
-  editor.innerHTML = html;
-  editor.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertFromPaste" }));
-  return landed();
+// Text of the on-screen editor (to confirm typing landed).
+export function editorText() {
+  const eds = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight;
+  });
+  return eds.map((el) => (el.tagName === "TEXTAREA" ? el.value : el.innerText)).join("\n");
 }
 
 // Reads the selection, or the visible text, from the top frame.
@@ -179,9 +213,14 @@ export function readOutreachTask() {
 
   const isSubject = (el) =>
     /subject/i.test([el.name, el.placeholder, el.id, el.getAttribute("aria-label"), el.getAttribute("data-testid")].join(" "));
-  const subjectEl = [...document.querySelectorAll("input")].find((el) => visible(el) && isSubject(el));
+  // The open task's fields: only what's on screen (a completed task can linger off screen).
+  const onScreen = (el) => {
+    const r = el.getBoundingClientRect();
+    return visible(el) && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+  };
+  const subjectEl = [...document.querySelectorAll("input")].find((el) => onScreen(el) && isSubject(el));
   const editors = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')]
-    .filter((el) => visible(el) && !isSubject(el) && !el.parentElement?.closest('[contenteditable="true"]'));
+    .filter((el) => onScreen(el) && !isSubject(el) && !el.parentElement?.closest('[contenteditable="true"]'));
   const area = (el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height;
   const editor = editors.sort((a, b) => area(b) - area(a))[0];
 
@@ -203,7 +242,11 @@ export function readOutreachTask() {
     seen.add(id);
     const account = row.querySelector('a[href*="/accounts/"]');
     const seqLinks = [...row.querySelectorAll('a[href*="/sequences/"]')].map((x) => (x.innerText || "").trim());
+    const rect = a.getBoundingClientRect();
+    const shown = (a.checkVisibility ? a.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : true) && !a.closest('[aria-hidden="true"], [hidden], [inert]');
     rows.push({
+      top: Math.round(rect.top),
+      onScreen: shown && rect.bottom > 0 && rect.top < window.innerHeight && rect.right > 0 && rect.left < window.innerWidth,
       url: a.href,
       fullName: name,
       company: (account?.innerText || "").trim(),
@@ -217,6 +260,10 @@ export function readOutreachTask() {
   return {
     isTop: window === window.top,
     url: location.href,
+    editorTop: (() => {
+      const e = editors.sort((a, b) => area(b) - area(a))[0];
+      return e ? Math.round(e.getBoundingClientRect().top) : null;
+    })(),
     rows,
     labels,
     mailtos,

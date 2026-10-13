@@ -29,6 +29,16 @@ The step comes from Outreach ("Step #3 of 30MPC Sequence") through the step map 
 
 Everything else (manual fields, full plan mode, pasted replies) is under **Details & manual mode**.
 
+## How the email gets into Outreach
+
+The extension never edits Outreach's editor directly (that can make Outreach error). It:
+1. Puts the email on your clipboard.
+2. Selects the body in the task on screen and hands the editor a paste, which the editor processes itself.
+3. If Outreach ignores that paste, click **Type it into Outreach**. The first time, Chrome asks for the "debugger" permission. Then it types the email through Chrome's own input system, like a keyboard, while a "debugging this browser" bar shows briefly. To do this automatically, turn on **type the email in for real** in Settings.
+4. Or click into the body and press **Ctrl/Cmd+V**: the email is already on your clipboard.
+
+When you complete a task and Outreach moves to the next one, the panel clears so it never shows the previous person's email. The next run reads only the task on screen, even if Outreach keeps the old one in the page.
+
 ## If something goes wrong: the diagnostic log
 
 Every run writes a step-by-step log: what was read from Outreach, each background tab, what Claude's page showed while it waited, and any error. Under the main button, **Diagnostic log → Open (save as PDF)** opens it in a tab with **Save as PDF**, **Copy as text** and **Download .txt**. **Stop** ends a run that's taking too long.

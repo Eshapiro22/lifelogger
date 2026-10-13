@@ -107,8 +107,15 @@ To rebuild the vendored SDK (only needed to update it): `npm install && npm run 
    list and capture each results page. Then open the LinkedIn inbox and the Sales Nav
    inbox and capture those too.
 3. In the dashboard, click **Check Outlook**, then **Draft Ready with Claude**.
-4. Work the **Ready** tab: edit the draft → **Copy & open** (copies the draft and opens
-   their profile) → paste and send in LinkedIn → **Mark sent**.
+4. Work the **Ready** tab: edit the draft → **Check & open** → review → click Send in LinkedIn → **Mark sent**.
+   **Check & open** runs a last-second check before anything is typed:
+   - re-checks Outlook (if set up), and stops if they've emailed or met with you
+   - opens their profile and their LinkedIn message box, and reads the conversation:
+     - **they've written to you before** → red STOP banner, nothing typed, and the dashboard moves them to *Don't message*
+     - **you've written, no reply** → amber banner, nothing typed, moved to *Review first* as a follow-up
+     - **no history** → the draft is typed into the message box for you to review and send
+     - **can't tell** → amber banner, nothing typed
+   It never clicks Send.
 5. Work the **Review first** tab. Use **Override** to set someone as Is a prospect,
    Not a prospect, or Already in touch. Overrides are remembered for future runs.
 

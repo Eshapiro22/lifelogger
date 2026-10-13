@@ -168,6 +168,126 @@
     return { total, rounds };
   }
 
+  // ---------- Last-second check before sending ----------
+  // The dashboard's "Check & open" stores a pending send and opens the
+  // person's profile. Here we open their message box, read whatever
+  // conversation history LinkedIn shows, and only insert the draft if they
+  // have never written to you. We never click Send.
+
+  function banner(kind, text) {
+    document.getElementById('lp-banner')?.remove();
+    const colors = { stop: '#b24020', warn: '#915907', ok: '#057642', info: '#0a66c2' };
+    const b = document.createElement('div');
+    b.id = 'lp-banner';
+    b.style.cssText = `position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:99999;
+      max-width:560px;padding:12px 40px 12px 16px;border-radius:8px;font:14px system-ui,sans-serif;
+      color:#fff;background:${colors[kind]};box-shadow:0 4px 16px rgba(0,0,0,.25);white-space:pre-line`;
+    b.textContent = 'LinkedIn Prospector: ' + text;
+    const x = document.createElement('button');
+    x.textContent = '×';
+    x.style.cssText = 'position:absolute;top:6px;right:10px;background:none;border:0;color:#fff;font-size:20px;cursor:pointer';
+    x.onclick = () => b.remove();
+    b.append(x);
+    document.body.append(b);
+  }
+
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  async function waitFor(fn, timeout = 8000) {
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+      const v = fn();
+      if (v) return v;
+      await wait(250);
+    }
+    return null;
+  }
+
+  // The message composer: a contenteditable textbox inside the chat overlay.
+  function composer() {
+    const boxes = [...document.querySelectorAll('[contenteditable="true"][role="textbox"], div[contenteditable="true"]')]
+      .filter(b => b.offsetParent && /message/i.test(b.getAttribute('aria-label') || b.closest('form')?.innerText || 'message'));
+    return boxes[boxes.length - 1] || null;
+  }
+
+  // Read the conversation shown above the composer. Returns
+  // {theirs, mine, readable}: counts of message groups by sender.
+  function readHistory(box, personName, myName) {
+    // Stay inside the chat window so profile-page lists ("People also viewed") don't count.
+    const pane = box.closest('[role="dialog"], aside, [class*="overlay"], [class*="conversation"], [class*="msg-"]');
+    if (!pane) return { theirs: 0, mine: 0, readable: false, sawList: true };
+    const them = personKey(personName), me = personKey(myName);
+    let theirs = 0, mine = 0;
+    for (const li of pane.querySelectorAll('ul li')) {
+      if (li.contains(box)) continue;
+      // Sender name is usually a profile link or a short bold line at the top of each group.
+      const nameEl = li.querySelector('a[href*="/in/"] span, [class*="name"], h3, h4');
+      const who = personKey((nameEl?.innerText || '').trim());
+      if (!who) continue;
+      if (who === them) theirs++;
+      else if (who === me || /^you$/i.test(nameEl.innerText.trim())) mine++;
+    }
+    return { theirs, mine, readable: true, sawList: !!pane.querySelector('ul li') };
+  }
+
+  async function insertDraft(box, text) {
+    box.focus();
+    if ((box.innerText || '').trim()) return false; // never overwrite something already typed
+    document.execCommand('insertText', false, text);
+    return true;
+  }
+
+  let pendingHandled = false;
+  async function runPendingSend() {
+    if (pendingHandled || !location.pathname.startsWith('/in/')) return;
+    const { pendingSend: ps } = await chrome.storage.local.get('pendingSend');
+    if (!ps || Date.now() - ps.at > 3 * 60000) return;
+    pendingHandled = true;
+    await chrome.storage.local.remove('pendingSend');
+
+    banner('info', `Checking your conversation with ${ps.name}…`);
+    const btn = await waitFor(() => [...document.querySelectorAll('main button, main a')].find(b =>
+      /^message\b/i.test((b.getAttribute('aria-label') || b.innerText || '').trim()) && b.offsetParent));
+    if (!btn) {
+      banner('warn', `Couldn't find a Message button for ${ps.name} (they may need InMail or a connection request).\nThe draft is on your clipboard.`);
+      return;
+    }
+    btn.click();
+    const box = await waitFor(composer);
+    if (!box) {
+      banner('warn', 'The message box didn\'t open. The draft is on your clipboard; check the conversation yourself before sending.');
+      return;
+    }
+    await wait(1500); // let history load
+    const h = readHistory(box, ps.name, ps.myName);
+
+    if (h.theirs > 0) {
+      banner('stop', `STOP: ${ps.name} has written to you before in this conversation.\nRead the thread and reply to it instead of sending a first-touch message. Nothing was typed.`);
+      chrome.runtime.sendMessage({ type: 'lp:liveCheck', key: ps.key, result: 'replied' }).catch(() => {});
+      return;
+    }
+    if (h.mine > 0) {
+      banner('warn', `You've messaged ${ps.name} before and they haven't replied.\nConsider a follow-up instead. Nothing was typed; the draft is on your clipboard.`);
+      chrome.runtime.sendMessage({ type: 'lp:liveCheck', key: ps.key, result: 'messaged' }).catch(() => {});
+      return;
+    }
+    if (h.sawList && !h.theirs && !h.mine) {
+      banner('warn', `There's a conversation here, but I couldn't tell who wrote it.\nCheck it before sending. The draft is on your clipboard.`);
+      return;
+    }
+    const typed = await insertDraft(box, ps.text);
+    banner(typed ? 'ok' : 'warn', typed
+      ? `No previous conversation with ${ps.name}. Draft typed in — review it and click Send yourself.`
+      : 'The message box already had text in it, so I left it alone. The draft is on your clipboard.');
+    chrome.runtime.sendMessage({ type: 'lp:liveCheck', key: ps.key, result: 'clear' }).catch(() => {});
+  }
+
+  // LinkedIn is a single-page app: re-check when the URL changes.
+  let lastPath = location.pathname;
+  setInterval(() => {
+    if (location.pathname !== lastPath) { lastPath = location.pathname; pendingHandled = false; runPendingSend(); }
+  }, 1000);
+  runPendingSend();
+
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg.type === 'lp:kind') { reply({ kind: pageKind() }); return; }
     if (msg.type === 'lp:capture') {

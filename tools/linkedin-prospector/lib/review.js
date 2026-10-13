@@ -40,8 +40,10 @@
     const li = s.liMessages?.[key];
     const inbox = s.inbox?.[key] || {};
     const sent = s.sentLog?.[key];
+    const live = s.liveChecks?.[key];
     const g = s.contactChecks?.[key];
 
+    if (live?.result === 'replied') skip = `Replied on LinkedIn (seen in the conversation on ${live.at.slice(0, 10)})`;
     if (li?.theyMessaged) skip = skip || `They've messaged you on LinkedIn (last ${li.lastTheirs || 'date unknown'})`;
     for (const [src, t] of Object.entries(inbox)) {
       const where = src === 'salesnav-inbox' ? 'Sales Nav' : 'LinkedIn';
@@ -61,6 +63,7 @@
       const m = g.calendar.upcoming[0];
       skip = skip || `Meeting scheduled: "${m.summary}" on ${m.date}`;
     }
+    if (live?.result === 'messaged') flag = flag || `You've messaged them before with no reply (seen in the conversation on ${live.at.slice(0, 10)}) — follow-up?`;
     if (li?.iMessaged && !li.theyMessaged) flag = flag || `You messaged them on LinkedIn ${li.lastMine || ''}, no reply — follow-up rather than a first touch?`;
     if (sent) flag = flag || `Already sent from this tool on ${sent.date.slice(0, 10)}`;
     if (g?.mail?.toThem?.length) flag = flag || `You emailed them ("${g.mail.toThem[0].subject}", ${g.mail.toThem[0].date}), no reply found`;

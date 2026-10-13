@@ -1,5 +1,5 @@
 const $ = s => document.querySelector(s);
-const KEYS = ['claudeNotes', 'accounts', 'connections', 'inbox', 'liMessages', 'sentLog', 'contactChecks', 'overrides', 'settings', 'drafts'];
+const KEYS = ['liveChecks', 'claudeNotes', 'accounts', 'connections', 'inbox', 'liMessages', 'sentLog', 'contactChecks', 'overrides', 'settings', 'drafts'];
 const STATUS_LABEL = {
   ready: 'Ready to message', review: 'Review first', sent: 'Sent', skip: "Don't message", not_prospect: 'Not a prospect',
 };
@@ -101,10 +101,7 @@ function rowEl(r) {
   ov.value = S.overrides?.[r.key] || '';
 
   const actions = el('td', { class: 'actions' },
-    el('button', { class: 'primary', onclick: async () => {
-      await navigator.clipboard.writeText(ta.value);
-      window.open(profileLink(p), '_blank');
-    } }, 'Copy & open'),
+    el('button', { class: 'primary', onclick: () => checkAndOpen(r, ta.value) }, 'Check & open'),
     el('button', { onclick: async () => {
       S.sentLog = { ...(S.sentLog || {}), [r.key]: { date: new Date().toISOString(), text: ta.value } };
       await save({ sentLog: S.sentLog }); render();
@@ -130,6 +127,40 @@ function checksEl(k) {
     k.buzzwords ? el('span', { class: 'bad' }, '✗ buzzwords') : null,
     el('span', { class: 'muted' }, `${k.length} chars`));
 }
+
+// Last-second check right before sending: refresh Outlook (if set up), stop on
+// any reply, then hand off to the profile page, where the content script reads
+// the live LinkedIn conversation before typing anything.
+async function checkAndOpen(r, text) {
+  const p = r.person;
+  if (S.settings.msClientId) {
+    status(`Re-checking Outlook for ${p.name}…`);
+    try {
+      S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await LP.checkPerson(p, msCfg()) };
+      await save({ contactChecks: S.contactChecks });
+    } catch (e) { status(`Outlook check failed (${e.message}); LinkedIn check will still run.`); }
+  }
+  const h = LP.history(r.key, S);
+  if (h.skip && !confirm(`Stop: ${h.skip}\n\nOpen their profile anyway?`)) { render(); return; }
+  await navigator.clipboard.writeText(text);
+  if (!p.profileUrl) {
+    status(`${p.name} has no LinkedIn profile link (Sales Nav only), so the live conversation check can't run. Draft copied; check the thread yourself.`);
+    window.open(profileLink(p), '_blank');
+    return;
+  }
+  await chrome.storage.local.set({ pendingSend: {
+    key: r.key, name: p.name, text, myName: S.settings.myName, at: Date.now(),
+  } });
+  status(`Opening ${p.name}'s profile to check your LinkedIn conversation…`);
+  window.open(p.profileUrl, '_blank');
+}
+
+chrome.runtime.onMessage.addListener(async m => {
+  if (m.type !== 'lp:liveCheck') return;
+  S.liveChecks = { ...(S.liveChecks || {}), [m.key]: { result: m.result, at: new Date().toISOString() } };
+  await save({ liveChecks: S.liveChecks });
+  render();
+});
 
 const msCfg = () => ({ clientId: S.settings.msClientId, tenant: S.settings.msTenant });
 const status = t => { $('#status').textContent = t; };
@@ -266,7 +297,16 @@ $('#clear-captures').onclick = async () => {
 };
 
 function importStatus() {
-  $('#s-accounts').textContent = (S.accounts || []).length ? `${S.accounts.length} accounts loaded.` : 'No account list loaded.';
+  const nAcc = (S.accounts || []).length;
+  if (!nAcc) $('#s-accounts').textContent = 'No account list loaded.';
+  else {
+    const rows = LP.buildRows(S);
+    const matched = rows.filter(r => r.cls.account);
+    const accts = new Set(matched.map(r => r.cls.account.name));
+    $('#s-accounts').textContent = `${nAcc} accounts loaded. ${matched.length} of ${rows.length} captured connections ` +
+      `match ${accts.size} accounts (${rows.filter(r => r.cls.status === 'prospect').length} clean matches, ` +
+      `${matched.filter(r => r.cls.status !== 'prospect').length} to review).`;
+  }
   const inbox = Object.keys(S.inbox || {}).length;
   $('#s-captures').textContent = `${Object.keys(S.connections || {}).length} connections, ${inbox} inbox threads captured.`;
 }

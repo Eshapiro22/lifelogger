@@ -40,7 +40,7 @@
     const li = s.liMessages?.[key];
     const inbox = s.inbox?.[key] || {};
     const sent = s.sentLog?.[key];
-    const g = s.googleChecks?.[key];
+    const g = s.contactChecks?.[key];
 
     if (li?.theyMessaged) skip = skip || `They've messaged you on LinkedIn (last ${li.lastTheirs || 'date unknown'})`;
     for (const [src, t] of Object.entries(inbox)) {
@@ -49,9 +49,9 @@
       if (!t.lastFromMe) skip = skip || `Existing ${where} thread, latest message is theirs: "${(t.preview || '').slice(0, 60)}"`;
       else flag = flag || `You have a ${where} thread with them; latest message is yours — follow-up rather than a first touch?`;
     }
-    if (g?.gmail?.fromThem?.length) {
-      const m = g.gmail.fromThem[0];
-      skip = skip || `Emailed you: "${m.subject}" (${m.date.slice(0, 16)})`;
+    if (g?.mail?.fromThem?.length) {
+      const m = g.mail.fromThem[0];
+      skip = skip || `Emailed you: "${m.subject}" (${m.date})`;
     }
     if (g?.calendar?.past?.length) {
       const m = g.calendar.past[g.calendar.past.length - 1];
@@ -63,9 +63,9 @@
     }
     if (li?.iMessaged && !li.theyMessaged) flag = flag || `You messaged them on LinkedIn ${li.lastMine || ''}, no reply — follow-up rather than a first touch?`;
     if (sent) flag = flag || `Already sent from this tool on ${sent.date.slice(0, 10)}`;
-    if (g?.gmail?.toThem?.length) flag = flag || `You emailed them ("${g.gmail.toThem[0].subject}"), no reply found`;
-    if (g?.error) notes.push(`Gmail/Calendar check failed: ${g.error}`);
-    if (!g) notes.push('Gmail & Calendar not checked yet');
+    if (g?.mail?.toThem?.length) flag = flag || `You emailed them ("${g.mail.toThem[0].subject}", ${g.mail.toThem[0].date}), no reply found`;
+    if (g?.error) notes.push(`Outlook check failed: ${g.error}`);
+    if (!g) notes.push('Outlook mail & calendar not checked yet');
     if (!s.liMessages) notes.push('No messages.csv imported — LinkedIn reply check is limited to inbox captures');
     return { skip, flag, notes, sent: !!sent };
   }

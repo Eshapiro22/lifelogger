@@ -6,8 +6,9 @@
   "permissions": ["storage", "unlimitedStorage", "identity", "tabs"],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "https://gmail.googleapis.com/*",
-    "https://www.googleapis.com/*"
+    "https://login.microsoftonline.com/*",
+    "https://graph.microsoft.com/*",
+    "https://api.anthropic.com/*"
   ],
   "action": { "default_popup": "popup.html", "default_title": "LinkedIn Prospector" },
   "content_scripts": [

@@ -44,3 +44,4 @@ ul.notes { margin: 4px 0 0; padding-left: 16px; font-size: 12px; }
 .tpl textarea { width: 100%; min-height: 110px; font: 13px/1.4 system-ui, sans-serif; }
 .tpl input { width: 100%; }
 code { background: #eee; padding: 1px 4px; }
+.card textarea { width: 100%; font: 13px/1.4 system-ui, sans-serif; margin-top: 4px; }

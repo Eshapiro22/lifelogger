@@ -20,10 +20,11 @@
     <label>Connected since <input type="date" id="cutoff"></label>
     <span id="counts"></span>
     <span class="spacer"></span>
-    <button id="google-check">Check Gmail &amp; Calendar</button>
+    <button id="outlook-check">Check Outlook</button>
+    <button id="claude-all">Draft Ready with Claude</button>
     <button id="export">Export CSV</button>
   </div>
-  <div id="google-status" class="muted"></div>
+  <div id="status" class="muted"></div>
   <div class="filters" id="filters"></div>
   <div id="empty" class="muted" hidden></div>
   <table id="table">
@@ -62,8 +63,21 @@
   <div class="card">
     <h2>You</h2>
     <label>Your name as it appears on LinkedIn (used to read messages.csv) <input id="s-myname"></label>
-    <label>Google OAuth client ID (for Gmail &amp; Calendar check; see README) <input id="s-clientid" placeholder="xxxx.apps.googleusercontent.com"></label>
-    <p class="muted">Redirect URI to register in Google Cloud: <code id="redirect"></code></p>
+  </div>
+  <div class="card">
+    <h2>Microsoft 365 (Outlook mail &amp; calendar check)</h2>
+    <label>Application (client) ID <input id="s-msclient" placeholder="00000000-0000-0000-0000-000000000000"></label>
+    <label>Directory (tenant) ID — leave blank to use "organizations" <input id="s-mstenant"></label>
+    <p class="muted">Redirect URI to register (platform: Single-page application): <code id="redirect"></code></p>
+  </div>
+  <div class="card">
+    <h2>Claude (customer stories → Trust line)</h2>
+    <label>Anthropic API key (from your company's Claude Console org) <input id="s-anthropic" type="password" placeholder="sk-ant-..."></label>
+    <label>Customer story library — separate stories with a line containing only <code>---</code>.
+      Put vertical, persona, outcome, and whether the customer can be named in each story.
+      <textarea id="s-stories" rows="12" placeholder="Acme Manufacturing (Ontario, discrete manufacturing, ~800 employees). Can name: yes.&#10;Finance team automated AP invoice processing; month-end close went from 9 to 5 days.&#10;---&#10;..."></textarea></label>
+    <label>…or load a .txt / .md file <input type="file" id="f-stories" accept=".txt,.md"></label>
+    <p class="muted">Claude only uses facts from this library. If no story fits a prospect, the draft keeps its [TRUST] placeholder.</p>
   </div>
   <div class="card">
     <h2>Triple T templates</h2>
@@ -80,7 +94,9 @@
 <script src="lib/match.js"></script>
 <script src="lib/templates.js"></script>
 <script src="lib/review.js"></script>
-<script src="lib/google.js"></script>
+<script src="lib/microsoft.js"></script>
+<script src="lib/vendor/anthropic-sdk.js"></script>
+<script src="lib/claude.js"></script>
 <script src="dashboard.js"></script>
 </body>
 </html>

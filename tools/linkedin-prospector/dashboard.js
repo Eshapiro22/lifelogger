@@ -1,5 +1,5 @@
 const $ = s => document.querySelector(s);
-const KEYS = ['accounts', 'connections', 'inbox', 'liMessages', 'sentLog', 'googleChecks', 'overrides', 'settings', 'drafts'];
+const KEYS = ['claudeNotes', 'accounts', 'connections', 'inbox', 'liMessages', 'sentLog', 'contactChecks', 'overrides', 'settings', 'drafts'];
 const STATUS_LABEL = {
   ready: 'Ready to message', review: 'Review first', sent: 'Sent', skip: "Don't message", not_prospect: 'Not a prospect',
 };
@@ -8,7 +8,7 @@ let filter = 'ready';
 
 async function load() {
   S = await chrome.storage.local.get(KEYS);
-  S.settings = { cutoff: '2026-08-01', myName: 'Ethan Shapiro', clientId: '', ...(S.settings || {}) };
+  S.settings = { cutoff: '2026-08-01', myName: 'Ethan Shapiro', msClientId: '', msTenant: '', anthropicKey: '', stories: '', ...(S.settings || {}) };
 }
 const save = obj => chrome.storage.local.set(obj);
 
@@ -85,7 +85,8 @@ function rowEl(r) {
     checks.replaceWith(checks = checksEl(LP.checksFor(ta.value, c)));
   };
   let checks = checksEl(r.checks);
-  const draft = el('td', { class: 'draft' }, ta, checks);
+  const note = S.claudeNotes?.[r.key];
+  const draft = el('td', { class: 'draft' }, ta, checks, note ? el('div', { class: 'muted' }, note) : null);
 
   const ov = el('select', {
     onchange: async e => {
@@ -111,9 +112,11 @@ function rowEl(r) {
     S.sentLog?.[r.key] ? el('button', { onclick: async () => {
       delete S.sentLog[r.key]; await save({ sentLog: S.sentLog }); render();
     } }, 'Undo sent') : null,
-    el('button', { onclick: () => checkOne(r) }, 'Check email/cal'),
+    el('button', { onclick: () => checkOne(r) }, 'Check Outlook'),
+    el('button', { onclick: () => claudeOne(r) }, 'Draft with Claude'),
     S.drafts?.[r.key] != null ? el('button', { onclick: async () => {
-      delete S.drafts[r.key]; await save({ drafts: S.drafts }); render();
+      delete S.drafts[r.key]; if (S.claudeNotes) delete S.claudeNotes[r.key];
+      await save({ drafts: S.drafts, claudeNotes: S.claudeNotes || {} }); render();
     } }, 'Reset draft') : null,
     ov);
 
@@ -128,39 +131,65 @@ function checksEl(k) {
     el('span', { class: 'muted' }, `${k.length} chars`));
 }
 
+const msCfg = () => ({ clientId: S.settings.msClientId, tenant: S.settings.msTenant });
+const status = t => { $('#status').textContent = t; };
+
 async function checkOne(r) {
-  $('#google-status').textContent = `Checking ${r.person.name}…`;
+  status(`Checking Outlook for ${r.person.name}…`);
   try {
-    const res = await LP.checkPerson(r.person, S.settings.clientId);
-    S.googleChecks = { ...(S.googleChecks || {}), [r.key]: res };
-  } catch (e) {
-    $('#google-status').textContent = e.message;
-    return;
-  }
-  await save({ googleChecks: S.googleChecks });
-  $('#google-status').textContent = `Checked ${r.person.name}.`;
+    S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await LP.checkPerson(r.person, msCfg()) };
+  } catch (e) { status(e.message); return; }
+  await save({ contactChecks: S.contactChecks });
+  status(`Checked ${r.person.name}.`);
   render();
 }
 
 // Only check people who could actually get a message (skips non-prospects).
-$('#google-check').onclick = async () => {
+$('#outlook-check').onclick = async () => {
   const rows = LP.buildRows(S).filter(r => ['ready', 'review'].includes(r.status));
-  const btn = $('#google-check');
+  const btn = $('#outlook-check');
   btn.disabled = true;
   try {
-    await LP.getToken(S.settings.clientId);
-    S.googleChecks = { ...(S.googleChecks || {}) };
+    await LP.msGetToken(msCfg());
+    S.contactChecks = { ...(S.contactChecks || {}) };
     let i = 0;
     for (const r of rows) {
-      $('#google-status').textContent = `Gmail & Calendar: ${++i}/${rows.length} — ${r.person.name}`;
-      try { S.googleChecks[r.key] = await LP.checkPerson(r.person, S.settings.clientId); }
-      catch (e) { S.googleChecks[r.key] = { error: e.message, checkedAt: new Date().toISOString() }; }
+      status(`Outlook: ${++i}/${rows.length} — ${r.person.name}`);
+      try { S.contactChecks[r.key] = await LP.checkPerson(r.person, msCfg()); }
+      catch (e) { S.contactChecks[r.key] = { error: e.message, checkedAt: new Date().toISOString() }; }
     }
-    await save({ googleChecks: S.googleChecks });
-    $('#google-status').textContent = `Checked ${rows.length} people against Gmail & Calendar.`;
-  } catch (e) {
-    $('#google-status').textContent = e.message;
+    await save({ contactChecks: S.contactChecks });
+    status(`Checked ${rows.length} people against Outlook mail & calendar.`);
+  } catch (e) { status(e.message); }
+  btn.disabled = false;
+  render();
+};
+
+async function claudeDraft(r) {
+  const out = await LP.draftWithClaude(r, S.settings);
+  S.drafts = { ...(S.drafts || {}), [r.key]: out.message };
+  S.claudeNotes = { ...(S.claudeNotes || {}), [r.key]: out.story_id === 'none' ? `No story fit: ${out.why}` : `Story: ${out.story} — ${out.why}` };
+  await save({ drafts: S.drafts, claudeNotes: S.claudeNotes });
+}
+
+async function claudeOne(r) {
+  status(`Claude is drafting for ${r.person.name}…`);
+  try { await claudeDraft(r); status(`Drafted ${r.person.name}.`); }
+  catch (e) { status(e.message); }
+  render();
+}
+
+// Skips drafts you've already edited by hand or that Claude already wrote.
+$('#claude-all').onclick = async () => {
+  const rows = LP.buildRows(S).filter(r => r.status === 'ready' && S.drafts?.[r.key] == null);
+  const btn = $('#claude-all');
+  btn.disabled = true;
+  let i = 0, failed = 0;
+  for (const r of rows) {
+    status(`Claude: ${++i}/${rows.length} — ${r.person.name}`);
+    try { await claudeDraft(r); } catch (e) { failed++; status(e.message); if (/API key|stories/.test(e.message)) break; }
   }
+  if (!failed) status(`Claude drafted ${rows.length} messages. Read each one before sending.`);
   btn.disabled = false;
   render();
 };
@@ -243,9 +272,17 @@ function importStatus() {
 }
 
 // ---------- settings ----------
+$('#f-stories').onchange = async e => {
+  $('#s-stories').value = await readText(e.target.files[0]);
+  $('#saved').textContent = 'Loaded. Click Save settings to keep it.';
+};
+
 function renderSettings() {
   $('#s-myname').value = S.settings.myName || '';
-  $('#s-clientid').value = S.settings.clientId || '';
+  $('#s-msclient').value = S.settings.msClientId || '';
+  $('#s-mstenant').value = S.settings.msTenant || '';
+  $('#s-anthropic').value = S.settings.anthropicKey || '';
+  $('#s-stories').value = S.settings.stories || '';
   $('#redirect').textContent = chrome.identity.getRedirectURL();
   const tpl = { ...LP.DEFAULT_TEMPLATES, ...(S.settings.templates || {}) };
   const trust = { ...LP.DEFAULT_TRUST, ...(S.settings.trust || {}) };
@@ -260,7 +297,10 @@ function renderSettings() {
 
 $('#save-settings').onclick = async () => {
   S.settings.myName = $('#s-myname').value.trim();
-  S.settings.clientId = $('#s-clientid').value.trim();
+  S.settings.msClientId = $('#s-msclient').value.trim();
+  S.settings.msTenant = $('#s-mstenant').value.trim();
+  S.settings.anthropicKey = $('#s-anthropic').value.trim();
+  S.settings.stories = $('#s-stories').value;
   S.settings.templates = Object.fromEntries([...document.querySelectorAll('[data-tpl]')].map(t => [t.dataset.tpl, t.value]));
   S.settings.trust = Object.fromEntries([...document.querySelectorAll('[data-trust]')].map(t => [t.dataset.trust, t.value]));
   await save({ settings: S.settings });

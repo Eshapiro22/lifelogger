@@ -1,0 +1,12 @@
+{
+  "name": "linkedin-prospector",
+  "private": true,
+  "description": "Build step only for vendoring the Anthropic SDK into the extension.",
+  "scripts": {
+    "build": "esbuild build/claude-entry.js --bundle --format=iife --platform=browser --target=chrome120 --minify --outfile=lib/vendor/anthropic-sdk.js"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "0.133.0",
+    "esbuild": "0.25.10"
+  }
+}

@@ -7,7 +7,7 @@ import { callClaude, callClaudeText } from "./api.js";
 import { formatInstructions, parseEmails, dayFromStep } from "./emailformat.js";
 import {
   probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, submitClaude, readClaudeReply, readOutreachTask,
-  readFrameText, openActivityTab, claudeComposerText, focusEditor, editorText,
+  readFrameText, openActivityTab, claudeComposerText, focusEditor, editorText, focusSubject, subjectText, writeClipboard,
 } from "./inject.js";
 import { parseTask, mapOutreachStep, matchSequence } from "./outreach.js";
 import { initLog, log, clearLog, logText } from "./logger.js";
@@ -583,53 +583,75 @@ async function onGrab() {
 // Probes every frame (Outreach's editor may sit in an iframe), then writes the
 // subject into the frame that has a subject field and the body into the frame
 // whose editor you last clicked into, falling back to the largest editor.
-async function insertEmail(subject, body, targetTabId) {
-  // Body goes on the clipboard first, so Ctrl/Cmd+V in the editor always works.
-  await navigator.clipboard.writeText(body).catch(() => {});
-  try {
-    const tabId = targetTabId ?? (await activeTabId());
-    const probes = await exec({ target: { tabId, allFrames: true }, func: probeFrame });
-    const ok = probes.filter((p) => p.result);
-    const bodyFrame =
-      ok.find((p) => p.result.focusedEditor) ||
-      ok.filter((p) => p.result.editorArea > 0).sort((a, b) => b.result.editorArea - a.result.editorArea)[0];
-    const subjFrame = ok.find((p) => p.result.hasSubject && p.result.isTop) || ok.find((p) => p.result.hasSubject);
-    log("info", "insert: found", { frames: probes.length, bodyFrame: bodyFrame?.frameId ?? null, subjectFrame: subjFrame?.frameId ?? null, subject: Boolean(subject) });
+// Where the subject and body go in the open task (frame ids), without touching it.
+async function locateTargets(tabId) {
+  const probes = await exec({ target: { tabId, allFrames: true }, func: probeFrame });
+  const ok = probes.filter((p) => p.result);
+  const bodyFrame =
+    ok.find((p) => p.result.focusedEditor) ||
+    ok.filter((p) => p.result.editorArea > 0).sort((a, b) => b.result.editorArea - a.result.editorArea)[0];
+  const subjFrame = ok.find((p) => p.result.hasSubject && p.result.isTop) || ok.find((p) => p.result.hasSubject);
+  return { frames: probes.length, bodyFrameId: bodyFrame?.frameId ?? null, subjectFrameId: subjFrame?.frameId ?? null };
+}
 
+const insertMode = () => settings.insertMode || "clipboard";
+
+// Gets the email into the Outreach task according to Settings → "Putting the email into Outreach":
+//  clipboard (default): never touches Outreach; you press Ctrl/Cmd+V in the body.
+//  type: types subject and body through Chrome's real keyboard input.
+//  paste: hands the editor a simulated paste (experimental; can make Outreach error).
+async function insertEmail(subject, body, targetTabId, { mode = insertMode() } = {}) {
+  // Body goes on the clipboard first, so Ctrl/Cmd+V in the editor always works.
+  const copied = await copyText(body);
+  const tabId = targetTabId ?? outreachTabId ?? (await activeTabId());
+  lastInsert = { tabId, subject, body };
+  $("type-in").hidden = false;
+  log("info", "insert: start", { mode, subject: Boolean(subject), bodyCopied: copied });
+
+  if (mode === "clipboard") {
+    setStatus(
+      copied
+        ? `The email body is on your clipboard. In Outreach, click into the email body and press Ctrl/Cmd+V${subject ? `, and set the subject to “${subject}” (Copy subject)` : ""}. Or click “Type it into Outreach”.`
+        : `Click “Copy body”, then click into the email body in Outreach and press Ctrl/Cmd+V${subject ? `; set the subject to “${subject}”` : ""}. Or click “Type it into Outreach”.`
+    );
+    return false;
+  }
+
+  try {
+    if (mode === "type") {
+      if (!(await hasDebugger())) {
+        setStatus("Typing needs Chrome's permission: click “Type it into Outreach” once to allow it. The body is on your clipboard meanwhile (Ctrl/Cmd+V).", true);
+        return false;
+      }
+      const ok = await typeIntoOutreach(lastInsert);
+      setStatus(ok ? "Typed into Outreach. Review it, then send." : "Couldn't type it in. The body is on your clipboard: click into the email body and press Ctrl/Cmd+V.", !ok);
+      $("type-in").hidden = ok;
+      return ok;
+    }
+
+    // mode === "paste" (experimental)
+    const t = await locateTargets(tabId);
+    log("info", "insert: found", t);
     const done = [];
-    if (subject && subjFrame) {
-      const [{ result }] = await exec({
-        target: { tabId, frameIds: [subjFrame.frameId] }, func: fillSubject, args: [subject],
-      });
-      log(result ? "info" : "warn", "insert: subject", { ok: Boolean(result) });
+    if (subject && t.subjectFrameId != null) {
+      const [{ result }] = await exec({ target: { tabId, frameIds: [t.subjectFrameId] }, func: fillSubject, args: [subject] });
+      log(result ? "info" : "warn", "insert: subject (set value)", { ok: Boolean(result) });
       if (result) done.push("subject");
     }
-    let bodyResult = null;
-    lastInsert = bodyFrame ? { tabId, frameId: bodyFrame.frameId, body } : null;
-    if (bodyFrame) {
-      [{ result: bodyResult }] = await exec({
-        target: { tabId, frameIds: [bodyFrame.frameId] }, func: fillBody, args: [body],
-      });
-      log(bodyResult?.ok ? "info" : "warn", "insert: body (paste)", bodyResult || {});
-      if (bodyResult?.ok) done.push("body");
-      // The editor ignored the paste: type it for real if you've allowed that.
-      if (!bodyResult?.ok && bodyResult?.needsTyping && settings.typeIntoOutreach && (await hasDebugger())) {
-        if (await typeIntoOutreach(lastInsert)) done.push("body");
-      }
+    if (t.bodyFrameId != null) {
+      const [{ result }] = await exec({ target: { tabId, frameIds: [t.bodyFrameId] }, func: fillBody, args: [body] });
+      log(result?.ok ? "info" : "warn", "insert: body (simulated paste)", result || {});
+      if (result?.ok) done.push("body");
     }
-    $("type-in").hidden = done.includes("body") || !bodyFrame;
-    if (!done.includes("body")) {
-      setStatus(
-        bodyFrame
-          ? "Outreach didn't take the automatic paste. The email is on your clipboard: click into the body and press Ctrl/Cmd+V, or click “Type it into Outreach”."
-          : "No email editor found. The body is on your clipboard: click into the Outreach email body and press Ctrl/Cmd+V.",
-        true
-      );
-    } else {
-      const missing = subject && !done.includes("subject") ? " No subject field found; paste it manually." : "";
-      setStatus(`Inserted ${done.join(" + ")}. Review before saving or sending.${missing}`, Boolean(missing));
-    }
-    return done.includes("body");
+    const ok = done.includes("body");
+    $("type-in").hidden = ok;
+    setStatus(
+      ok
+        ? `Inserted ${done.join(" + ")}. Review before saving or sending.`
+        : "Outreach didn't take the automatic paste. The body is on your clipboard: click into the email body and press Ctrl/Cmd+V, or click “Type it into Outreach”.",
+      !ok
+    );
+    return ok;
   } catch (err) {
     log("error", "insert failed", { error: err.message });
     setStatus(`Couldn't insert (${err.message}). The body is on your clipboard: click into the email body and press Ctrl/Cmd+V.`, true);
@@ -647,19 +669,24 @@ const hasDebugger = () => chrome.permissions.contains({ permissions: ["debugger"
 // real key events, so the editor processes them exactly like your keyboard.
 async function typeIntoOutreach(target) {
   if (!target) return false;
-  const [{ result: found } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [target.frameId] }, func: focusEditor }).catch(() => []);
-  if (!found) {
-    log("warn", "type: no editor to focus");
+  const t = await locateTargets(target.tabId).catch((e) => (log("error", "type: couldn't find the task fields", { error: e.message }), null));
+  if (!t || t.bodyFrameId == null) {
+    log("warn", "type: no email editor on screen", t || {});
+    setStatus("No email editor on screen in that tab. Open the prospect's email task, then click “Type it into Outreach”.", true);
     return false;
   }
+  log("info", "type: found", t);
   const debuggee = { tabId: target.tabId };
   try {
+    await chrome.tabs.update(target.tabId, { active: true });
     await chrome.debugger.attach(debuggee, "1.3");
   } catch (err) {
     log("error", "type: couldn't attach", { error: err.message });
     setStatus(`Couldn't type into Outreach (${err.message}). Close DevTools on that tab if it's open, or paste with Ctrl/Cmd+V.`, true);
     return false;
   }
+  const norm = (x) => (x || "").replace(/\s+/g, " ").trim();
+  let subjectOk = !target.subject;
   try {
     const send = (method, params) => chrome.debugger.sendCommand(debuggee, method, params);
     const enter = async (shift) => {
@@ -667,6 +694,21 @@ async function typeIntoOutreach(target) {
       await send("Input.dispatchKeyEvent", { type: "keyDown", ...k, text: "\r", unmodifiedText: "\r" });
       await send("Input.dispatchKeyEvent", { type: "keyUp", ...k });
     };
+
+    // Subject (new-thread steps only): focus it, select what's there, type over it.
+    if (target.subject && t.subjectFrameId != null) {
+      const [{ result: focused } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [t.subjectFrameId] }, func: focusSubject }).catch(() => []);
+      if (focused) {
+        await send("Input.insertText", { text: target.subject });
+        const [{ result: v } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [t.subjectFrameId] }, func: subjectText }).catch(() => []);
+        subjectOk = norm(v) === norm(target.subject);
+      }
+      log(subjectOk ? "info" : "warn", "insert: subject (typed)", { ok: subjectOk });
+    }
+
+    // Body: focus the editor, select all, type it line by line (Enter / Shift+Enter).
+    const [{ result: found } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [t.bodyFrameId] }, func: focusEditor }).catch(() => []);
+    if (!found) throw new Error("couldn't focus the email body");
     const paragraphs = target.body.replace(/\r/g, "").replace(/\s+$/, "").split(/\n{2,}/);
     for (const [i, para] of paragraphs.entries()) {
       if (i > 0) {
@@ -683,26 +725,29 @@ async function typeIntoOutreach(target) {
   } finally {
     await chrome.debugger.detach(debuggee).catch(() => {});
   }
-  const [{ result: text } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [target.frameId] }, func: editorText }).catch(() => []);
-  const norm = (t) => (t || "").replace(/\s+/g, " ").trim();
+  const [{ result: text } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [t.bodyFrameId] }, func: editorText }).catch(() => []);
   const ok = norm(text).includes(norm(target.body).slice(0, 25));
   log(ok ? "info" : "warn", "insert: body (typed)", { ok });
+  if (ok && !subjectOk) setStatus(`Typed the body. Set the subject to “${target.subject}” (Copy subject).`, true);
   return ok;
 }
 
 // "Type it into Outreach" button: asks for the permission once (Chrome shows a prompt), then types.
 async function onTypeIn() {
-  if (!lastInsert) return setStatus("Run the writer first.", true);
+  if (!lastInsert && $("out-body").value.trim()) {
+    lastInsert = { tabId: outreachTabId ?? (await activeTabId()), subject: draftStep?.thread === "reply" ? "" : $("out-subject").value, body: $("out-body").value };
+  }
+  if (!lastInsert) return setStatus("Write an email first.", true);
   if (!(await hasDebugger())) {
     const granted = await chrome.permissions.request({ permissions: ["debugger"] }).catch(() => false);
     log("info", "type: permission request", { granted });
     if (!granted) return setStatus("Typing needs Chrome's permission. The email is on your clipboard: press Ctrl/Cmd+V in the body.", true);
   }
-  await chrome.tabs.update(lastInsert.tabId, { active: true }).catch(() => {});
   setStatus("Typing into Outreach… (Chrome briefly shows a “debugging this browser” bar)");
   const ok = await typeIntoOutreach(lastInsert);
   $("type-in").hidden = ok;
-  setStatus(ok ? "Typed into Outreach. Review it, then send." : "Couldn't type it in. The email is on your clipboard: press Ctrl/Cmd+V in the body.", !ok);
+  if (ok && !/subject/i.test($("status").textContent)) setStatus("Typed into Outreach. Review it, then send.");
+  if (!ok && !$("status").classList.contains("error")) setStatus("Couldn't type it in. The body is on your clipboard: click into the email body and press Ctrl/Cmd+V.", true);
 }
 
 // ---- Outreach task import + one-click flow ----
@@ -1002,7 +1047,7 @@ function claudeTabMessage(brief) {
 
 // Opens Claude, pastes the message, sends it, and confirms it went.
 async function openClaudeWith(text) {
-  await navigator.clipboard.writeText(text).catch(() => {});
+  await copyText(text);
   const tab = await chrome.tabs.create({ url: settings.claudeUrl || "https://claude.ai/new" });
   log("info", "claude: opened tab", { tabId: tab.id, url: settings.claudeUrl || "https://claude.ai/new", promptChars: text.length });
   for (let i = 0; i < 40; i++) {
@@ -1178,8 +1223,8 @@ async function runForProspect(p) {
   // Back to Outreach; fill the task if its email editor is open.
   if (outreachTabId) {
     await chrome.tabs.update(outreachTabId, { active: true }).catch(() => {});
-    const editor = await hasEditor(outreachTabId);
-    log("info", "outreach: email editor open?", { editor });
+    const editor = insertMode() === "clipboard" ? true : await hasEditor(outreachTabId);
+    log("info", "outreach: email editor open?", { editor, mode: insertMode() });
     if (editor) {
       const ok = await insertEmail(out.subject, out.body, outreachTabId);
       log(ok ? "info" : "warn", "outreach: insert", { ok });
@@ -1187,6 +1232,10 @@ async function runForProspect(p) {
         // Used: never drop this draft into another task.
         batch = batch.map((b) => (sameProspect(b.row, p) ? { ...b, used: true } : b));
         chrome.storage.session.set({ batch }).catch(() => {});
+      }
+      if (insertMode() === "clipboard") {
+        progress("insert", "done", "body copied: press Ctrl/Cmd+V in the email body (or “Type it into Outreach”)");
+        return; // keep the paste instructions on screen
       }
       progress("insert", ok ? "done" : "fail", ok ? "review it, then send" : "press Ctrl/Cmd+V in the body, or click “Type it into Outreach”");
       if (!ok) return; // keep the insert message (clipboard / Type it in) on screen
@@ -1399,9 +1448,27 @@ function renderBatch() {
   });
 }
 
+// Copies text even when the panel isn't focused: from the panel if it has
+// focus, else from the active tab you're looking at (e.g. Outreach), else via
+// a hidden offscreen page.
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {}
+  const tabId = await activeTabId().catch(() => null);
+  if (tabId != null) {
+    const [{ result } = {}] = await exec({ target: { tabId }, func: writeClipboard, args: [text] }, 4000).catch(() => []);
+    if (result) return true;
+  }
+  const res = await chrome.runtime.sendMessage({ type: "copy", text }).catch((e) => ({ ok: false, error: e.message }));
+  if (!res?.ok) log("warn", "clipboard: copy failed", res || {});
+  return Boolean(res?.ok);
+}
+
 async function copy(text, msg) {
-  await navigator.clipboard.writeText(text);
-  setStatus(msg);
+  const ok = await copyText(text);
+  setStatus(ok ? msg : "Couldn't copy. Select the text and press Ctrl/Cmd+C.", !ok);
 }
 
 function setStatus(msg, isError = false) {

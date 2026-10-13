@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS = {
   includePlaybook: true,
   autoSend: true,
   findProof: true,
+  insertMode: "clipboard",
   apiKey: "",
   model: "claude-opus-5",
   senderName: "",
@@ -36,6 +37,8 @@ export async function loadSettings() {
   const stored = await chrome.storage.local.get("settings");
   const settings = { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
   if (settings.tripleT?.startsWith(OLD_TRIPLE_T_PREFIX)) settings.tripleT = DEFAULT_TRIPLE_T;
+  // v0.7.2 had a "type it in" checkbox; carry that choice over.
+  if (!stored.settings?.insertMode && stored.settings?.typeIntoOutreach) settings.insertMode = "type";
   return settings;
 }
 

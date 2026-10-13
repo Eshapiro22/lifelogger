@@ -19,13 +19,13 @@ async function init() {
   $("includePlaybook").checked = s.includePlaybook !== false;
   $("autoSend").checked = s.autoSend !== false;
   $("findProof").checked = s.findProof !== false;
-  $("typeIntoOutreach").checked = Boolean(s.typeIntoOutreach);
-  $("typeIntoOutreach").addEventListener("change", async (e) => {
-    if (!e.target.checked) return;
+  $("insertMode").value = s.insertMode || (s.typeIntoOutreach ? "type" : "clipboard");
+  $("insertMode").addEventListener("change", async (e) => {
+    if (e.target.value !== "type") return;
     const granted = await chrome.permissions.request({ permissions: ["debugger"] }).catch(() => false);
     if (!granted) {
-      e.target.checked = false;
-      $("status").textContent = "Typing stays off: Chrome's permission wasn't granted.";
+      e.target.value = "clipboard";
+      $("status").textContent = "Typing needs Chrome's permission, which wasn't granted. Using copy & paste.";
     }
   });
   s.sequences.forEach(addSequence);
@@ -44,7 +44,7 @@ async function save() {
     return;
   }
   const settings = Object.fromEntries(SIMPLE.map((k) => [k, $(k).value.trim()]));
-  await saveSettings({ ...settings, includePlaybook: $("includePlaybook").checked, autoSend: $("autoSend").checked, findProof: $("findProof").checked, typeIntoOutreach: $("typeIntoOutreach").checked, sequences });
+  await saveSettings({ ...settings, includePlaybook: $("includePlaybook").checked, autoSend: $("autoSend").checked, findProof: $("findProof").checked, insertMode: $("insertMode").value, sequences });
   $("status").textContent = "Saved.";
 }
 

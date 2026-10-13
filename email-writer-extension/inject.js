@@ -316,3 +316,36 @@ export function claudeComposerText() {
   if (!box) return null;
   return (box.tagName === "TEXTAREA" ? box.value : box.innerText).trim();
 }
+
+// Focuses the on-screen subject field and selects its text, ready for real typing.
+export function focusSubject() {
+  const el = [...document.querySelectorAll("input")].find((i) => {
+    const r = i.getBoundingClientRect();
+    return r.width > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight &&
+      /subject/i.test([i.name, i.placeholder, i.id, i.getAttribute("aria-label"), i.getAttribute("data-testid")].join(" "));
+  });
+  if (!el) return false;
+  el.focus();
+  el.select();
+  return true;
+}
+
+// Value of the on-screen subject field (to confirm typing landed).
+export function subjectText() {
+  const el = [...document.querySelectorAll("input")].find((i) => {
+    const r = i.getBoundingClientRect();
+    return r.width > 0 && r.right > 0 && r.left < innerWidth && /subject/i.test([i.name, i.placeholder, i.id, i.getAttribute("aria-label")].join(" "));
+  });
+  return el ? el.value : null;
+}
+
+// Writes text to the clipboard from this (focused) tab. Clipboard only: the
+// page itself is not touched.
+export async function writeClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}

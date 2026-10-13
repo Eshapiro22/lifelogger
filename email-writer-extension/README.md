@@ -31,11 +31,11 @@ Everything else (manual fields, full plan mode, pasted replies) is under **Detai
 
 ## How the email gets into Outreach
 
-The extension never edits Outreach's editor directly (that can make Outreach error). It:
-1. Puts the email on your clipboard.
-2. Selects the body in the task on screen and hands the editor a paste, which the editor processes itself.
-3. If Outreach ignores that paste, click **Type it into Outreach**. The first time, Chrome asks for the "debugger" permission. Then it types the email through Chrome's own input system, like a keyboard, while a "debugging this browser" bar shows briefly. To do this automatically, turn on **type the email in for real** in Settings.
-4. Or click into the body and press **Ctrl/Cmd+V**: the email is already on your clipboard.
+Settings → **Putting the email into Outreach**:
+
+- **Copy it; I press Ctrl/Cmd+V (default, safest).** The extension never touches Outreach's editor. When the email is ready, the body is on your clipboard: click into the email body and press Ctrl/Cmd+V. Outreach handles a real paste like any other. **Copy subject** is in the panel for new-thread steps.
+- **Type it in for me.** Types the subject and body through Chrome's real keyboard input, exactly as if you'd typed them. Chrome asks for the "debugger" permission once and briefly shows a "debugging this browser" bar while it types. The **Type it into Outreach** button in the panel does the same on demand, whatever this setting is.
+- **Simulated paste (experimental).** The old automatic method. It can make Outreach show "Something's gone wrong", so it's off by default.
 
 When you complete a task and Outreach moves to the next one, the panel clears so it never shows the previous person's email. The next run reads only the task on screen, even if Outreach keeps the old one in the page.
 

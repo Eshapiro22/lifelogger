@@ -11,7 +11,7 @@ Say **"run my LinkedIn outreach"** in Cowork. Claude will:
    - its own log of earlier runs
 4. Find real customer stories in SharePoint, Glean, Highspot, and your company website.
 5. Draft a Triple T message (Trigger, Tension, Trust) for each person who's ready, and show a review table in chat.
-6. For the drafts you approve: open each person's LinkedIn message box and type the message in.
+6. For the drafts you approve: open each message in its own browser tab, already written (the same approach as the Triple T email writer).
    **You click Send.** Claude never sends.
 
 ## What you need

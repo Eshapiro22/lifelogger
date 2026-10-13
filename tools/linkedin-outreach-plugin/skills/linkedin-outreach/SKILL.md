@@ -139,12 +139,23 @@ Then ask which drafts to send, and for any edits. Don't type anything into Linke
 
 ## Step 8: Fill in approved messages (Claude in Chrome)
 
-For each approved person, one at a time:
-1. Open their profile (or Sales Nav lead page) and click **Message**.
-   If LinkedIn only offers InMail or "Connect", stop and ask the user.
-2. Type the approved draft into the message box exactly as approved.
-3. **Do not click Send.** Tell the user it's ready and wait for them to say "sent" or "skip".
-4. Append a row to `outreach-log.csv` with status `sent` or `skipped`.
+Use the same approach as the user's Triple T email writer: each message opens in its own
+browser tab, already written, ready for the user to review and send.
 
-After the batch, write today's date to `last-run.txt` and give a short wrap-up: how many
+For each approved person, in order:
+1. Open a **new tab** on their profile (or Sales Nav lead page) and click **Message**.
+   If LinkedIn only offers InMail or "Connect", close that tab, note it, and move on.
+2. Type the approved draft into the message box exactly as approved.
+3. **Do not click Send.** Leave the tab open and move to the next person in a new tab.
+
+When every tab is ready, list them for the user in tab order (name, company, first line of
+the message) and tell them to go tab by tab: edit if needed, click Send, close the tab.
+Also list anyone who couldn't be messaged and why. Then ask which were sent and which were
+skipped, and append a row for each to `outreach-log.csv` with status `sent` or `skipped`.
+Anyone the user doesn't confirm stays out of the log, so the next run brings them up again.
+
+Open at most ~10 tabs per batch. If more were approved, do the next batch after the user
+confirms the first.
+
+After all batches, write today's date to `last-run.txt` and give a short wrap-up: how many
 were sent, skipped, or are waiting for review.

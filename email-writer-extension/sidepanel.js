@@ -7,7 +7,7 @@ import { callClaude, callClaudeText } from "./api.js";
 import { formatInstructions, parseEmails, dayFromStep } from "./emailformat.js";
 import {
   probeFrame, fillSubject, fillBody, readPage, pasteIntoClaude, submitClaude, readClaudeReply, readOutreachTask,
-  readFrameText, openActivityTab, claudeComposerText, focusEditor, editorText, focusSubject, subjectText, writeClipboard,
+  readFrameText, openActivityTab, claudeComposerText, focusEditor, editorText, focusSubject, subjectText, writeClipboard, selectEditorBody,
 } from "./inject.js";
 import { parseTask, mapOutreachStep, matchSequence } from "./outreach.js";
 import { initLog, log, clearLog, logText } from "./logger.js";
@@ -596,14 +596,29 @@ async function locateTargets(tabId) {
 
 const insertMode = () => settings.insertMode || "clipboard";
 
+// Selects everything above your signature in the task's email body (selection only).
+async function selectAboveSignature(tabId, frameId) {
+  const [{ result } = {}] = await exec({
+    target: { tabId, frameIds: [frameId] }, func: selectEditorBody, args: [settings.signatureStart || "", settings.senderName || ""],
+  }).catch((e) => (log("warn", "signature: select failed", { error: e.message }), []));
+  log("info", "signature: selection", result || { found: false });
+  return result || { found: false };
+}
+
 // Gets the email into the Outreach task according to Settings → "Putting the email into Outreach":
 //  clipboard (default): never touches Outreach; you press Ctrl/Cmd+V in the body.
 //  type: types subject and body through Chrome's real keyboard input.
 //  paste: hands the editor a simulated paste (experimental; can make Outreach error).
 async function insertEmail(subject, body, targetTabId, { mode = insertMode() } = {}) {
-  // Body goes on the clipboard first, so Ctrl/Cmd+V in the editor always works.
-  const copied = await copyText(body);
   const tabId = targetTabId ?? outreachTabId ?? (await activeTabId());
+  // In copy mode, pre-select the text above your signature so Ctrl/Cmd+V replaces only that.
+  let sel = { found: false };
+  if (mode === "clipboard") {
+    const t = await locateTargets(tabId).catch(() => null);
+    if (t?.bodyFrameId != null) sel = await selectAboveSignature(tabId, t.bodyFrameId);
+  }
+  // Body goes on the clipboard first, so Ctrl/Cmd+V in the editor always works.
+  const copied = await copyText(sel.breaks ? `${body}\n\n` : body);
   lastInsert = { tabId, subject, body };
   $("type-in").hidden = false;
   log("info", "insert: start", { mode, subject: Boolean(subject), bodyCopied: copied });
@@ -611,7 +626,9 @@ async function insertEmail(subject, body, targetTabId, { mode = insertMode() } =
   if (mode === "clipboard") {
     setStatus(
       copied
-        ? `The email body is on your clipboard. In Outreach, click into the email body and press Ctrl/Cmd+V${subject ? `, and set the subject to “${subject}” (Copy subject)` : ""}. Or click “Type it into Outreach”.`
+        ? sel.signature
+          ? `Ready: in Outreach, the text above your signature is selected and the email is on your clipboard. Press Ctrl/Cmd+V now (if you click elsewhere first, select the text above your signature again)${subject ? `. Subject: “${subject}” (Copy subject)` : ""}. Or click “Type it into Outreach”.`
+          : `The email body is on your clipboard. In Outreach, click into the email body and press Ctrl/Cmd+V${subject ? `, and set the subject to “${subject}” (Copy subject)` : ""}. Or click “Type it into Outreach”.`
         : `Click “Copy body”, then click into the email body in Outreach and press Ctrl/Cmd+V${subject ? `; set the subject to “${subject}”` : ""}. Or click “Type it into Outreach”.`
     );
     return false;
@@ -639,7 +656,8 @@ async function insertEmail(subject, body, targetTabId, { mode = insertMode() } =
       if (result) done.push("subject");
     }
     if (t.bodyFrameId != null) {
-      const [{ result }] = await exec({ target: { tabId, frameIds: [t.bodyFrameId] }, func: fillBody, args: [body] });
+      const ps = await selectAboveSignature(tabId, t.bodyFrameId);
+      const [{ result }] = await exec({ target: { tabId, frameIds: [t.bodyFrameId] }, func: fillBody, args: [ps.breaks ? `${body}\n\n` : body] });
       log(result?.ok ? "info" : "warn", "insert: body (simulated paste)", result || {});
       if (result?.ok) done.push("body");
     }
@@ -707,8 +725,8 @@ async function typeIntoOutreach(target) {
     }
 
     // Body: focus the editor, select all, type it line by line (Enter / Shift+Enter).
-    const [{ result: found } = {}] = await exec({ target: { tabId: target.tabId, frameIds: [t.bodyFrameId] }, func: focusEditor }).catch(() => []);
-    if (!found) throw new Error("couldn't focus the email body");
+    const sel = await selectAboveSignature(target.tabId, t.bodyFrameId);
+    if (!sel.found) throw new Error("couldn't focus the email body");
     const paragraphs = target.body.replace(/\r/g, "").replace(/\s+$/, "").split(/\n{2,}/);
     for (const [i, para] of paragraphs.entries()) {
       if (i > 0) {
@@ -720,6 +738,8 @@ async function typeIntoOutreach(target) {
         if (line) await send("Input.insertText", { text: line });
       }
     }
+    // Keep a blank line between the email and your signature.
+    for (let k = 0; k < (sel.breaks || 0); k++) await enter(false);
   } catch (err) {
     log("error", "type: input failed", { error: err.message });
   } finally {

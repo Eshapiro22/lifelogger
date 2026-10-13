@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = {
   model: "claude-opus-5",
   senderName: "",
   senderCompany: "",
+  signatureStart: "",
   tripleT: DEFAULT_TRIPLE_T,
   playbook: "",
   extraRules: "",

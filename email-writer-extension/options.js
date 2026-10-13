@@ -1,7 +1,7 @@
 import { loadSettings, saveSettings } from "./storage.js";
 
 const $ = (id) => document.getElementById(id);
-const SIMPLE = ["engine", "claudeUrl", "apiKey", "model", "senderName", "senderCompany", "tripleT", "playbook", "extraRules"];
+const SIMPLE = ["engine", "claudeUrl", "apiKey", "model", "senderName", "senderCompany", "signatureStart", "tripleT", "playbook", "extraRules"];
 
 function addSequence(seq = {}) {
   const node = $("seq-tpl").content.firstElementChild.cloneNode(true);

@@ -37,6 +37,8 @@ Settings → **Putting the email into Outreach**:
 - **Type it in for me.** Types the subject and body through Chrome's real keyboard input, exactly as if you'd typed them. Chrome asks for the "debugger" permission once and briefly shows a "debugging this browser" bar while it types. The **Type it into Outreach** button in the panel does the same on demand, whatever this setting is.
 - **Simulated paste (experimental).** The old automatic method. It can make Outreach show "Something's gone wrong", so it's off by default.
 
+**Your signature is kept.** In every mode, only the text *above* your signature is replaced, with one blank line left before it. The signature is found from, in order: a signature section in the editor, **Settings → Signature starts with** (e.g. your full name), a line with your first name plus a last name ("Ethan Shapiro"; a lone "Ethan" sign-off doesn't count), or the unsubscribe line. In copy mode the text above your signature is pre-selected, so pressing Ctrl/Cmd+V right away replaces just that.
+
 When you complete a task and Outreach moves to the next one, the panel clears so it never shows the previous person's email. The next run reads only the task on screen, even if Outreach keeps the old one in the page.
 
 ## If something goes wrong: the diagnostic log

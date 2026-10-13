@@ -98,8 +98,7 @@ export async function fillBody(body) {
     const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const html = body.replace(/\r/g, "").split(/\n{2,}/).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("<p><br></p>");
 
-    editor.focus();
-    document.execCommand("selectAll", false, null); // selection only; no content change
+    // The selection was set by selectEditorBody (everything above your signature).
     const dt = new DataTransfer();
     dt.setData("text/plain", body);
     dt.setData("text/html", html);
@@ -348,4 +347,128 @@ export async function writeClipboard(text) {
   } catch {
     return false;
   }
+}
+
+// Focuses the on-screen email editor and selects everything ABOVE your
+// signature (never the signature itself), ready for typing or a paste to
+// replace it. Selection only: the editor's content isn't changed.
+// Signature start, in order: a signature element in the editor, the
+// "Signature starts with" line from Settings, a "First Last" line for your
+// first name, or the unsubscribe line.
+// Returns { found, signature, how, breaks } where breaks = Enter presses to
+// add after the new text so it sits on its own, one blank line above the signature.
+export function selectEditorBody(signatureLine, firstName) {
+  const onScreen = (el) => {
+    const r = el.getBoundingClientRect();
+    const shown = el.checkVisibility ? el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : true;
+    return shown && r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+  };
+  const isSubject = (el) => /subject/i.test([el.name, el.placeholder, el.id, el.getAttribute("aria-label")].join(" "));
+  const editable = (el) => el && (el.isContentEditable || el.tagName === "TEXTAREA") && !isSubject(el) && onScreen(el);
+  let active = document.activeElement;
+  while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+  let ed = editable(active) ? active : null;
+  if (!ed) {
+    const area = (el) => el.getBoundingClientRect().width * el.getBoundingClientRect().height;
+    ed = [...document.querySelectorAll('[contenteditable="true"], [contenteditable=""], textarea')].filter(editable).sort((a, b) => area(b) - area(a))[0];
+  }
+  while (ed?.parentElement?.isContentEditable) ed = ed.parentElement;
+  if (!ed) return { found: false };
+  ed.focus();
+
+  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [];
+  if (signatureLine && signatureLine.trim()) patterns.push({ how: "your signature line", re: new RegExp(signatureLine.trim().split(/\s+/).map(esc).join("\\s+"), "i") });
+  if (firstName && firstName.trim()) patterns.push({ how: "your full name", re: new RegExp(`(^|\\n)[ \\t]*${esc(firstName.trim())}[ \\t]+[A-Z][\\w'’-]+[ \\t]*(?=\\n|$)`) });
+  patterns.push({ how: "the unsubscribe line", re: /(^|\n)[^\n]*(stop sending you emails|unsubscribe|opt[ -]?out)/i });
+  patterns.push({ how: "a -- line", re: /(^|\n)[ \t]*--[ \t]*(?=\n|$)/ });
+
+  // Plain textarea: select from the top to where the signature starts.
+  if (ed.tagName === "TEXTAREA") {
+    const v = ed.value;
+    for (const p of patterns) {
+      const m = p.re.exec(v);
+      if (m) {
+        const at = m.index + (m[1] ? m[1].length : 0);
+        ed.setSelectionRange(0, at);
+        return { found: true, signature: true, how: p.how, breaks: 2 };
+      }
+    }
+    ed.select();
+    return { found: true, signature: false, breaks: 0 };
+  }
+
+  // Rich editor: map the text to its text nodes.
+  const nodes = [];
+  let full = "";
+  const blockish = /^(P|DIV|LI|TR|TABLE|BLOCKQUOTE|H[1-6]|BR|UL|OL|SECTION)$/;
+  const walker = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.nodeType === 1) {
+      if (blockish.test(n.tagName) && full && !full.endsWith("\n")) full += "\n";
+      continue;
+    }
+    nodes.push({ node: n, start: full.length });
+    full += n.textContent;
+  }
+  const textNodes = nodes.filter((x) => x.node.textContent.length);
+
+  // Signature start as (text node, offset).
+  let sig = null;
+  const marker = ed.querySelector('[class*="signature" i], [id*="signature" i], [data-signature], .gmail_signature');
+  if (marker) {
+    const first = nodes.find((x) => marker.contains(x.node));
+    if (first) sig = { node: first.node, offset: 0, how: "Outreach's signature block" };
+  }
+  if (!sig) {
+    for (const p of patterns) {
+      const m = p.re.exec(full);
+      if (!m) continue;
+      const at = m.index + (m[1] ? m[1].length : 0);
+      const hit = [...nodes].reverse().find((x) => x.start <= at && x.node.textContent.length + x.start > at) ||
+        nodes.find((x) => x.start >= at);
+      if (hit) {
+        sig = { node: hit.node, offset: Math.max(0, at - hit.start), how: p.how };
+        break;
+      }
+    }
+  }
+
+  const sel = window.getSelection();
+  const range = document.createRange();
+  if (!sig) {
+    document.execCommand("selectAll", false, null); // no signature found: replace everything
+    return { found: true, signature: false, breaks: 0 };
+  }
+  // Everything before the signature, ending inside the last text node before it
+  // (so the signature keeps its own line instead of merging with the email).
+  const before = textNodes.filter((x) => x.node !== sig.node && x.node.compareDocumentPosition(sig.node) & Node.DOCUMENT_POSITION_FOLLOWING);
+  if (sig.offset > 0) {
+    const firstNode = before[0]?.node || sig.node;
+    range.setStart(firstNode, 0);
+    range.setEnd(sig.node, sig.offset);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return { found: true, signature: true, how: sig.how, breaks: 2 };
+  }
+  if (!before.length) {
+    // Nothing above the signature: put the cursor right before it.
+    range.setStart(sig.node, 0);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return { found: true, signature: true, how: sig.how, breaks: 2 };
+  }
+  const last = before[before.length - 1].node;
+  // Is there already an empty line between the old text and the signature?
+  // If so, keep it and don't add another.
+  const gap = document.createRange();
+  gap.setStart(last, last.textContent.length);
+  gap.setEnd(sig.node, sig.offset);
+  const spacer = gap.cloneContents().querySelectorAll("br").length > 0;
+  range.setStart(before[0].node, 0);
+  range.setEnd(last, last.textContent.length);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return { found: true, signature: true, how: sig.how, breaks: spacer ? 0 : 1 };
 }

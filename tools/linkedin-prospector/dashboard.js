@@ -237,6 +237,68 @@ $('#li-check').onclick = async () => {
 };
 $('#li-stop').onclick = () => { liStop = true; status('Stopping after the current search…'); };
 
+// ---------- Hand-off to your work Claude (no API key needed) ----------
+// Builds one prompt with the rules + every prospect in view, copies it, and
+// opens Claude. You paste it into your work Claude (which can search UiPath's
+// case studies through Glean/Highspot/SharePoint if connected), copy Claude's
+// JSON answer, then click "Paste Claude's drafts".
+function claudePrompt(rows) {
+  const people = rows.map(r => ({
+    id: r.key, name: r.person.name, headline: r.person.title || r.person.headline || '',
+    company: r.cls.company || r.person.company || '', account_vertical: r.cls.account?.vertical || '',
+    sub_vertical: r.cls.account?.subVertical || '', location: [r.cls.account?.city, r.cls.account?.state].filter(Boolean).join(', '),
+    persona: r.persona.label, touch: r.touch, current_draft: r.draft,
+  }));
+  return `I'm ${S.settings.myName || 'an account executive'} at UiPath. Please write LinkedIn messages for people who recently accepted my connection request.
+
+Rules (Triple T, from 30 Minutes to President's Club):
+- Touch 1 = one short message with: a specific Trigger (why this person, why now: their role, company, industry, or something timely; use anything you can find about them or their company), the Tension it creates (the problem, in plain words), Trust (one line on UiPath plus ONE real UiPath customer result), then a soft, interest-based question. No hard ask: no "15 minutes", no calendar link, no "book a call".
+- Touch 2 = short follow-up with a new angle and a curious question. Touch 3 = short, gracious close-the-loop note.
+- Customer proof must come from real UiPath sources you can actually see (case studies, Highspot, Glean, SharePoint, uipath.com). Never invent a customer, number, or quote. If you can't find a fitting one, keep the literal text [TRUST: needs a real customer result] in the message.
+- Only name a customer if the source is public or approved for external use; otherwise describe them anonymously (e.g. "a Canadian manufacturer").
+- No buzzwords ("single source of truth", "all-in-one", "AI-powered", "seamless", "best-in-class"). No emojis, no sign-off.
+- Touch 1: 300-600 characters in short paragraphs. Touches 2-3: under 300 characters.
+- Write the touch number given for each person. Use the current draft as a starting point, not a script.
+
+Reply with ONLY a JSON array, one object per person, in this exact shape:
+[{"id": "...", "message": "...", "proof_source": "link or title of the source you used, or none"}]
+
+People:
+${JSON.stringify(people, null, 1)}`;
+}
+
+$('#claude-copy').onclick = async () => {
+  const wanted = ['review', 'ready'].includes(filter) ? [filter] : ['ready', 'review'];
+  const rows = LP.buildRows(S).filter(r => wanted.includes(r.status)).slice(0, 25);
+  if (!rows.length) { status('Nobody to draft in this view.'); return; }
+  await navigator.clipboard.writeText(claudePrompt(rows));
+  window.open(S.settings.claudeUrl || 'https://claude.ai/new', '_blank');
+  status(`Copied a prompt for ${rows.length} people${rows.length === 25 ? ' (max 25 per batch)' : ''}. Paste it into Claude, copy Claude's JSON reply, then click "Paste Claude's drafts".`);
+};
+
+$('#claude-paste').onclick = async () => {
+  let text = '';
+  try { text = await navigator.clipboard.readText(); } catch (_) {}
+  if (!/^\s*\[|```/.test(text)) text = prompt("Paste Claude's JSON reply here:") || '';
+  const json = (text.match(/\[[\s\S]*\]/) || [])[0];
+  let items;
+  try { items = JSON.parse(json); } catch (_) { status("Couldn't read that. Copy Claude's whole JSON reply (it starts with [ ) and try again."); return; }
+  const rows = Object.fromEntries(LP.buildRows(S).map(r => [r.key, r]));
+  let n = 0;
+  S.drafts = { ...(S.drafts || {}) };
+  S.claudeNotes = { ...(S.claudeNotes || {}) };
+  for (const it of items) {
+    const r = rows[it.id];
+    if (!r || !it.message) continue;
+    S.drafts[r.key] = { text: String(it.message).trim(), touch: r.touch };
+    S.claudeNotes[r.key] = `Drafted by your work Claude. Proof source: ${it.proof_source || 'none'}`;
+    n++;
+  }
+  await save({ drafts: S.drafts, claudeNotes: S.claudeNotes });
+  status(`Loaded ${n} drafts from Claude. Read each one before sending; check the proof sources.`);
+  render();
+};
+
 const msCfg = () => ({ clientId: S.settings.msClientId, tenant: S.settings.msTenant });
 const status = t => { $('#status').textContent = t; };
 

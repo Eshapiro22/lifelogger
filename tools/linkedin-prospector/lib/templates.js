@@ -37,7 +37,8 @@
     3: 'Hi {firstName}, I\'ll leave it here. If {topic} ends up on the list at {company}, happy to share what\'s worked for similar {vertical} teams.',
   };
 
-  const DEFAULT_YOU = '[YOU: your company + one line, e.g. "At Acme, we help finance teams take the manual work out of close and AP."]';
+  // Default company line for a UiPath rep; edit in Settings.
+  const DEFAULT_YOU = 'I work with {vertical} companies here at UiPath, helping teams automate exactly this kind of manual work.';
 
   // Per persona. {trigger} = why them, why now. {tension} = the problem it
   // creates. {question} = the soft ask. {thought} = touch 2's new angle.
@@ -128,6 +129,7 @@
       trust: trustMap[persona.id] || trustMap.general,
       you: settings.you || DEFAULT_YOU,
     };
+    vars.you = fill(vars.you, vars);
     // Lines can use the same placeholders, so fill them first.
     for (const k of ['trigger', 'tension', 'question', 'thought', 'topic']) vars[k] = fill(lines[k] || '', vars);
     const text = fill(touches[touch] || touches[1], vars);

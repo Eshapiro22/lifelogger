@@ -1,11 +1,15 @@
-// Triple T drafting (Trigger -> Tension -> Trust), per Jason Bay's framework as
-// written up by 30MPC. Prospects are bucketed into persona groups so each
-// group gets a tailored message without writing one-by-one.
+// LinkedIn message drafting, following 30MPC's outbound sequence ("there's
+// nothing people hate more than a connect and pitch"):
 //
-// Every default below is a starting point to edit on the dashboard's Settings
-// tab. Trust lines ship as [TRUST: ...] placeholders on purpose: proof has to
-// be a real customer story or number, and the dashboard won't mark a draft
-// ready while a placeholder is still in it.
+//   Touch 1  context only    - about them, no pitch, no product, no meeting ask
+//   Touch 2  thoughts bubble - one observation about the problem (the Tension)
+//   Touch 3  proof bubble    - one real customer story (the Trust), light ask
+//
+// The Triple T (Trigger -> Tension -> Trust) is spread across the touches
+// instead of crammed into the first message. Prospects are bucketed by persona
+// so each group gets tailored lines without writing one-by-one. Everything here
+// is a default to edit on the dashboard's Settings tab. Trust lines ship as
+// [TRUST: ...] placeholders on purpose: proof has to be a real customer story.
 (function (root) {
   const LP = root.LP || (root.LP = {});
 
@@ -23,19 +27,45 @@
   ];
   const DEFAULT_PERSONA = { id: 'general', label: 'Everyone else' };
 
-  const DEFAULT_TEMPLATES = {
-    finance:
-      'Hi {firstName}, thanks for connecting. Finance teams at {vertical} companies like {company} keep getting asked to close faster and absorb more volume without adding headcount, and a lot of that time still goes to manual reconciliations and chasing exceptions.\n\n{trust}\n\nWorth comparing notes on how {company} is handling it?',
-    shared:
-      'Hi {firstName}, thanks for connecting. Shared services leaders I talk to are being asked to take on more processes every year while the team stays flat, so the backlog of manual hand-offs keeps growing.\n\n{trust}\n\nOpen to a quick swap of notes on what that looks like at {company}?',
-    it:
-      'Hi {firstName}, thanks for connecting. IT leaders at {vertical} companies are getting a long list of "can we automate this?" requests from the business, and most of them stall between pilot and production.\n\n{trust}\n\nCurious whether that matches what you are seeing at {company}?',
-    ops:
-      'Hi {firstName}, thanks for connecting. Ops leaders at {vertical} companies I speak with are still re-keying orders, invoices and shipment data between systems, which slows everything down when volume spikes.\n\n{trust}\n\nIs that a headache at {company}, or have you solved it?',
-    exec:
-      'Hi {firstName}, thanks for connecting. Leaders at {vertical} companies like {company} are under pressure to grow without growing headcount at the same rate, and back-office work is usually where that gap shows up first.\n\n{trust}\n\nWould it be worth a short conversation?',
-    general:
-      'Hi {firstName}, thanks for connecting. I work with {vertical} companies across {region} and keep hearing that teams are stretched thin by manual, repetitive work that never makes the priority list.\n\n{trust}\n\nWould it be useful to compare notes on what that looks like at {company}?',
+  const TOUCHES = [
+    { n: 1, label: 'Touch 1 · context only (no pitch)' },
+    { n: 2, label: 'Touch 2 · thoughts bubble-up' },
+    { n: 3, label: 'Touch 3 · proof bubble-up' },
+  ];
+
+  const DEFAULT_TOUCHES = {
+    1: 'Hi {firstName}, thanks for connecting. {context}',
+    2: 'Hi {firstName}, one thought since we connected: {thought}',
+    3: '{firstName}, last note from me on this. {trust} If it would ever help to compare notes on how {company} handles it, happy to.',
+  };
+
+  // Per persona: {context} for touch 1 (about them, ends in an easy question,
+  // no pitch) and {thought} for touch 2 (the problem, in plain words).
+  const DEFAULT_LINES = {
+    finance: {
+      context: 'Saw you lead finance at {company}. With year-end coming up, is the close something your team is trying to tighten, or is it in a good spot?',
+      thought: 'most {vertical} finance teams I talk to say the close isn\'t slow because of the big items, it\'s the hundreds of small reconciliations and exceptions that eat the last few days. Curious if that rings true at {company}.',
+    },
+    shared: {
+      context: 'Saw you\'re running shared services at {company}. Is the team taking on new processes this year, or mostly holding steady?',
+      thought: 'a lot of shared services leaders I talk to get handed more processes every year with the same headcount, so the manual hand-offs pile up quietly. Curious whether that\'s the case at {company}.',
+    },
+    it: {
+      context: 'Saw your role at {company}. What\'s taking up most of your team\'s time heading into next year?',
+      thought: 'IT teams at {vertical} companies keep telling me the business sends a long list of "can we automate this?" requests, and most stall between pilot and production. Curious if that matches what you see at {company}.',
+    },
+    ops: {
+      context: 'Saw you\'re in operations at {company}. Is volume picking up for you this quarter?',
+      thought: 'ops leaders at {vertical} companies I speak with are still re-keying orders, invoices and shipment data between systems, which is fine until volume spikes. Curious whether that\'s a headache at {company} or already solved.',
+    },
+    exec: {
+      context: 'Saw you lead {company}. What\'s the big focus for the team going into next year?',
+      thought: 'leaders at {vertical} companies keep telling me they\'re asked to grow without headcount growing at the same rate, and the back office is usually where that gap shows up first. Curious how you\'re thinking about it at {company}.',
+    },
+    general: {
+      context: 'Saw your role at {company}. What\'s keeping your team busiest these days?',
+      thought: 'teams I talk to across {region} keep saying they\'re stretched thin by repetitive work that never makes the priority list. Curious if that\'s true at {company} too.',
+    },
   };
 
   const DEFAULT_TRUST = {
@@ -56,10 +86,18 @@
     return (LP.cleanName(name).split(' ')[0] || '').replace(/^\w/, c => c.toUpperCase());
   }
 
-  // person + classification -> {persona, text, checks}
-  function draft(person, cls, settings) {
+  // Strip legal suffixes for natural-sounding copy: "Shopify Inc" -> "Shopify".
+  function displayCompany(name) {
+    return String(name).replace(/[,.]?\s+(inc|inc\.|llc|ltd|ltd\.|limited|corp|corp\.|corporation|lp|ulc|plc)\.?$/i, '').trim();
+  }
+
+  const fill = (tpl, vars) => tpl.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
+
+  // person + classification + touch (1-3) -> {persona, touch, text, checks}
+  function draft(person, cls, settings, touch = 1) {
     const persona = personaFor(person.title || person.headline);
-    const templates = { ...DEFAULT_TEMPLATES, ...(settings.templates || {}) };
+    const touches = { ...DEFAULT_TOUCHES, ...(settings.touches || {}) };
+    const lines = { ...DEFAULT_LINES[persona.id], ...(settings.lines?.[persona.id] || {}) };
     const trustMap = { ...DEFAULT_TRUST, ...(settings.trust || {}) };
     const acct = cls.account || {};
     const vars = {
@@ -70,17 +108,13 @@
       title: person.title || '',
       trust: trustMap[persona.id] || trustMap.general,
     };
-    const text = (templates[persona.id] || templates.general)
-      .replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
-    // Checklist lives in review.js (LP.checksFor) so edited drafts are re-scored the same way.
-    return { persona, text, checks: LP.checksFor(text, cls) };
+    // Lines can use the same placeholders, so fill them first.
+    vars.context = fill(lines.context, vars);
+    vars.thought = fill(lines.thought, vars);
+    const text = fill(touches[touch] || touches[1], vars);
+    return { persona, touch, text, checks: LP.checksFor(text, cls, touch) };
   }
 
-  // Strip legal suffixes for natural-sounding copy: "Shopify Inc" -> "Shopify".
-  function displayCompany(name) {
-    return String(name).replace(/[,.]?\s+(inc|inc\.|llc|ltd|ltd\.|limited|corp|corp\.|corporation|lp|ulc|plc)\.?$/i, '').trim();
-  }
-
-  Object.assign(LP, { PERSONAS, DEFAULT_TEMPLATES, DEFAULT_TRUST, personaFor, draft, displayCompany });
+  Object.assign(LP, { PERSONAS, TOUCHES, DEFAULT_TOUCHES, DEFAULT_LINES, DEFAULT_TRUST, personaFor, draft, displayCompany });
   if (typeof module !== 'undefined' && module.exports) module.exports = LP;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

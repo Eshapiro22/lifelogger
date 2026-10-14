@@ -31,6 +31,20 @@ sends anything.
    - Trust: is there one line of real proof?
    - It also flags buzzwords.
 
+## How the messages are written
+
+No connect-and-pitch. Following 30MPC's outbound sequence ("there's nothing people hate
+more than a connect and pitch"), each person gets up to three touches, a few days apart:
+
+1. **Touch 1, context only.** About them (role, company, timing) and an easy question. No product, no meeting ask.
+2. **Touch 2, thoughts bubble-up.** One observation about the problem their role usually has (the *Tension*).
+3. **Touch 3, proof bubble-up.** One real customer story (the *Trust*) and a light close.
+
+The dashboard works out which touch each person is on from **Mark sent** and from any earlier
+LinkedIn messages it finds. A follow-up becomes due after 3 days, which you can change in
+Settings. Every line is editable per persona in Settings. Touch 1 is flagged if it starts
+to sound like a pitch.
+
 ## Install (one time)
 
 1. Download this `tools/linkedin-prospector` folder.
@@ -101,7 +115,12 @@ To rebuild the vendored SDK (only needed to update it): `npm install && npm run 
 
 1. **Weekly:** request a fresh LinkedIn data export (Connections + Messages) and
    import both CSVs. This is the most reliable source for "did they reply?".
-2. **Daily (quick):** open My Network › Connections → extension → **Scroll & capture all**.
+2. **Review first → Check LinkedIn messages.** Searches your LinkedIn inbox for each person in the
+   current view, one at a time, with a random 20–45 second pause between searches. It opens each
+   matching conversation and reads who wrote: they replied → *Don't message*; only you → follow-up
+   (touch 2/3); nothing → stays put. It only reads; it never types or sends. Leave the LinkedIn
+   messaging tab open while it runs. Stop anytime.
+3. **Daily (quick):** open My Network › Connections → extension → **Scroll & capture all**.
    It stops once it passes your "Connected since" date. Then open your Sales Nav lead
    list and capture each results page. Then open the LinkedIn inbox and the Sales Nav
    inbox and capture those too.

@@ -262,22 +262,66 @@
 
   // Read the conversation shown above the composer. Returns
   // {theirs, mine, readable}: counts of message groups by sender.
-  function readHistory(box, personName, myName) {
-    // Stay inside the chat window so profile-page lists ("People also viewed") don't count.
-    const pane = box.closest('[role="dialog"], aside, [class*="overlay"], [class*="conversation"], [class*="msg-"]');
-    if (!pane) return { theirs: 0, mine: 0, readable: false, sawList: true };
+  // Read the conversation shown above a message box. Walks up from the box
+  // until it finds message items, but never past the chat window (`boundary`),
+  // so profile-page lists or the inbox's conversation list don't count.
+  // Returns {theirs, mine, sawList, readable}.
+  function readHistory(box, personName, myName, { boundary, exclude } = {}) {
+    const stop = boundary || box.closest('[role="dialog"], aside, [class*="overlay"], [class*="bubble"]');
+    if (!stop) return { theirs: 0, mine: 0, sawList: true, readable: false };
+    const items = el => [...el.querySelectorAll('li')].filter(li => !li.contains(box) && !(exclude && exclude.contains(li)));
+    let pane = box.parentElement;
+    while (pane && pane !== stop && !items(pane).length) pane = pane.parentElement;
+    const lis = pane ? items(pane) : [];
+    if (!lis.length) return { theirs: 0, mine: 0, sawList: false, readable: true };   // empty chat window
     const them = personKey(personName), me = personKey(myName);
     let theirs = 0, mine = 0;
-    for (const li of pane.querySelectorAll('ul li')) {
-      if (li.contains(box)) continue;
+    for (const li of lis) {
       // Sender name is usually a profile link or a short bold line at the top of each group.
       const nameEl = li.querySelector('a[href*="/in/"] span, [class*="name"], h3, h4');
-      const who = personKey((nameEl?.innerText || '').trim());
+      const raw = (nameEl?.innerText || '').trim();
+      const who = personKey(raw);
       if (!who) continue;
       if (who === them) theirs++;
-      else if (who === me || /^you$/i.test(nameEl.innerText.trim())) mine++;
+      else if (who === me || /^you$/i.test(raw)) mine++;
     }
-    return { theirs, mine, readable: true, sawList: !!pane.querySelector('ul li') };
+    return { theirs, mine, sawList: true, readable: true };
+  }
+
+  // ---------- LinkedIn inbox search (for staggered checks from the dashboard) ----------
+  // On linkedin.com/messaging: search the person's name, open the matching
+  // conversation, and read who has written. Never types a message.
+  async function liInboxSearch({ name, myName }) {
+    if (!location.pathname.startsWith('/messaging')) return { error: 'not on LinkedIn messaging' };
+    const input = await waitFor(() => [...document.querySelectorAll('input')]
+      .find(i => i.offsetParent && /search/i.test(i.placeholder + ' ' + (i.getAttribute('aria-label') || ''))), 15000);
+    if (!input) return { error: "Couldn't find the messaging search box" };
+    const threadLinks = () => [...document.querySelectorAll('a[href*="/messaging/thread/"]')].filter(a => a.offsetParent);
+    const before = threadLinks().map(a => a.innerText).join('|');
+    input.focus();
+    input.select();
+    document.execCommand('insertText', false, cleanName(name));
+    for (const type of ['keydown', 'keyup']) {
+      input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    }
+    await waitFor(() => threadLinks().map(a => a.innerText).join('|') !== before
+      || /no (messages|results)|didn.t find/i.test(document.querySelector('main')?.innerText || ''), 10000);
+    await wait(1500);
+
+    const them = personKey(name);
+    const match = threadLinks().find(a => {
+      const first = (a.innerText || '').split('\n').map(l => l.trim()).filter(Boolean)[0] || '';
+      return personKey(first) === them && !/,| and \d+ others?/.test(first);
+    });
+    if (!match) return { found: false };
+    const convList = match.closest('ul');
+    match.click();
+    const box = await waitFor(() => [...document.querySelectorAll('[contenteditable="true"]')].find(b => b.offsetParent), 10000);
+    await wait(2000); // let the thread load
+    if (!box) return { found: true, readable: false };
+    const h = readHistory(box, name, myName, { boundary: document.querySelector('main') || document.body, exclude: convList });
+    if (!h.sawList || (h.theirs === 0 && h.mine === 0)) return { found: true, readable: false };
+    return { found: true, readable: true, theirs: h.theirs, mine: h.mine };
   }
 
   async function insertDraft(box, text) {
@@ -316,6 +360,14 @@
       chrome.runtime.sendMessage({ type: 'lp:liveCheck', key: ps.key, result: 'replied' }).catch(() => {});
       return;
     }
+    if (h.mine > 0 && (ps.touch || 1) > 1) {
+      const typed = await insertDraft(box, ps.text);
+      banner(typed ? 'ok' : 'warn', typed
+        ? `Follow-up (touch ${ps.touch}): you've messaged ${ps.name} before and they haven't replied. Draft typed in; review it and click Send yourself.`
+        : 'The message box already had text in it, so I left it alone. The draft is on your clipboard.');
+      chrome.runtime.sendMessage({ type: 'lp:liveCheck', key: ps.key, result: 'messaged' }).catch(() => {});
+      return;
+    }
     if (h.mine > 0) {
       banner('warn', `You've messaged ${ps.name} before and they haven't replied.\nConsider a follow-up instead. Nothing was typed; the draft is on your clipboard.`);
       chrome.runtime.sendMessage({ type: 'lp:liveCheck', key: ps.key, result: 'messaged' }).catch(() => {});
@@ -341,6 +393,10 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
     if (msg.type === 'lp:kind') { reply({ kind: isOutlook ? null : pageKind() }); return; }
+    if (msg.type === 'lp:liSearch') {
+      liInboxSearch(msg).then(reply, e => reply({ error: e.message }));
+      return true;
+    }
     if (msg.type === 'lp:outlookSearch') {
       if (!isOutlook) { reply({ error: 'not an Outlook tab' }); return; }
       outlookSearch(msg).then(reply, e => reply({ error: e.message }));

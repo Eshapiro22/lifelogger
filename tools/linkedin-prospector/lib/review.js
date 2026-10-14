@@ -63,16 +63,19 @@
       const m = g.calendar.upcoming[0];
       skip = skip || `Meeting scheduled: "${m.summary}" on ${m.date}`;
     }
-    if (live?.result === 'messaged') flag = flag || `You've messaged them before with no reply (seen in the conversation on ${live.at.slice(0, 10)}) — follow-up?`;
-    if (li?.iMessaged && !li.theyMessaged) flag = flag || `You messaged them on LinkedIn ${li.lastMine || ''}, no reply — follow-up rather than a first touch?`;
-    if (sent) flag = flag || `Already sent from this tool on ${sent.date.slice(0, 10)}`;
+    if (live?.result === 'unclear') flag = flag || `Found a LinkedIn conversation but couldn't read who wrote it (${live.at.slice(0, 10)}); check it`;
+    if (live?.result === 'clear') notes.push(`No LinkedIn conversation found (checked ${live.at.slice(0, 10)})`);
+    // Messages you sent outside this tool: treat as touch 1 already done.
+    const priorOutside = !sent && (live?.result === 'messaged' || (li?.iMessaged && !li.theyMessaged));
+    if (live?.result === 'messaged' && !sent) flag = flag || `You've messaged them before with no reply (seen ${live.at.slice(0, 10)}): draft below is a follow-up`;
+    else if (li?.iMessaged && !li.theyMessaged && !sent) flag = flag || `You messaged them on LinkedIn ${li.lastMine || ''}, no reply: draft below is a follow-up`;
     if (g?.mail?.toThem?.length && !g.mail.fromThem?.length) flag = flag || `You emailed them ("${g.mail.toThem[0].subject}", ${g.mail.toThem[0].date}), no reply found`;
     if (g?.error) flag = flag || `Couldn't check Outlook (${g.error}); check before sending`;
     if (g?.unreadable) flag = flag || "Outlook search showed results the extension couldn't read; check the Outlook tab";
     if (g?.via === 'outlook-web') notes.push('Outlook checked via mail search (meeting invites included; calendar not checked directly)');
     if (!g) notes.push('Outlook mail & calendar not checked yet');
     if (!s.liMessages) notes.push('No messages.csv imported — LinkedIn reply check is limited to inbox captures');
-    return { skip, flag, notes, sent: !!sent };
+    return { skip, flag, notes, sent: !!sent, priorOutside };
   }
 
   // Build the outreach table rows from everything in storage.
@@ -90,17 +93,22 @@
       if (ov === 'contacted') h.skip = 'Marked as already in touch by you';
       if (!p.connectedOn) h.notes.push('No connect date (from Sales Nav) — included regardless of cutoff');
 
+      // Where they are in the 3-touch sequence.
+      const seq = sequence(s.sentLog?.[key], h.priorOutside, s.settings?.followupDays ?? 3);
+
       let status;
       if (cls.status === 'not_prospect') status = 'not_prospect';
       else if (h.skip) status = 'skip';
-      else if (h.sent) status = 'sent';
-      else if (cls.status === 'unsure' || h.flag) status = 'review';
+      else if (seq.done || seq.waiting) status = 'sent';
+      else if (cls.status === 'unsure' || h.flag || seq.followupDue) status = 'review';
       else status = 'ready';
+      if (seq.note) h.notes.unshift(seq.note);
 
-      const d = LP.draft(p, cls, s.settings || {});
-      const text = s.drafts?.[key] ?? d.text;
-      rows.push({ key, person: p, cls, history: h, status, persona: d.persona,
-        draft: text, checks: LP.checksFor(text, cls) });
+      const d = LP.draft(p, cls, s.settings || {}, seq.touch);
+      const saved = s.drafts?.[key];
+      const text = saved && saved.touch === seq.touch ? saved.text : d.text;
+      rows.push({ key, person: p, cls, history: h, status, persona: d.persona, touch: seq.touch,
+        draft: text, edited: !!(saved && saved.touch === seq.touch), checks: LP.checksFor(text, cls, seq.touch) });
     }
     const order = { ready: 0, review: 1, sent: 2, skip: 3, not_prospect: 4 };
     rows.sort((a, b) => order[a.status] - order[b.status] ||
@@ -108,11 +116,31 @@
     return rows;
   }
 
-  LP.checksFor = function (text, cls) {
+  // sentLog entry -> {touch, followupDue, waiting, done, note}
+  function sequence(entry, priorOutside, followupDays) {
+    const sends = entry?.sends || (entry ? [{ date: entry.date }] : []);
+    const count = sends.length + (priorOutside ? 1 : 0);
+    if (count >= 3) return { touch: 3, done: true, note: 'All 3 touches sent: sequence complete' };
+    const touch = count + 1;
+    if (!sends.length) return { touch, followupDue: priorOutside };
+    const last = sends[sends.length - 1].date;
+    const days = (Date.now() - Date.parse(last)) / 864e5;
+    if (days < followupDays) {
+      return { touch, waiting: true, note: `Touch ${count} sent ${last.slice(0, 10)}; touch ${touch} due in ${Math.ceil(followupDays - days)} day(s)` };
+    }
+    return { touch, followupDue: true, note: `Touch ${count} sent ${last.slice(0, 10)}, no reply: touch ${touch} is due` };
+  }
+
+  // Pre-send checklist. Touch 1 must be context only (no pitch); touch 3
+  // must carry real proof; every touch is checked for buzzwords.
+  const PITCHY = /\b(we help|our (platform|solution|product|software|customers)|i work with|demo|book a (call|meeting)|15 minutes|quick call|calendar|case study)\b/i;
+  LP.checksFor = function (text, cls, touch = 1) {
     return {
+      touch,
       trigger: !!(cls.company || cls.account),
-      tension: !/\{\w+\}/.test(text) && text.length > 120,
-      trust: !/\[TRUST/i.test(text),
+      noPitch: touch !== 1 || !PITCHY.test(text),
+      trust: touch !== 3 || !/\[TRUST/i.test(text),
+      placeholders: !/\{\w+\}/.test(text),
       buzzwords: /(single source of truth|all-in-one|ai-powered|best-in-class|synergy|cutting-edge|seamless)/i.test(text),
       length: text.length,
     };

@@ -80,13 +80,13 @@ function rowEl(r) {
   const ta = el('textarea', {});
   ta.value = r.draft;
   ta.oninput = async () => {
-    S.drafts = { ...(S.drafts || {}), [r.key]: ta.value };
+    S.drafts = { ...(S.drafts || {}), [r.key]: { text: ta.value, touch: r.touch } };
     await save({ drafts: S.drafts });
-    checks.replaceWith(checks = checksEl(LP.checksFor(ta.value, c)));
+    checks.replaceWith(checks = checksEl(LP.checksFor(ta.value, c, r.touch)));
   };
   let checks = checksEl(r.checks);
   const note = S.claudeNotes?.[r.key];
-  const draft = el('td', { class: 'draft' }, ta, checks, note ? el('div', { class: 'muted' }, note) : null);
+  const draft = el('td', { class: 'draft' }, el('div', { class: 'muted' }, LP.TOUCHES[r.touch - 1].label), ta, checks, note ? el('div', { class: 'muted' }, note) : null);
 
   const ov = el('select', {
     onchange: async e => {
@@ -103,15 +103,21 @@ function rowEl(r) {
   const actions = el('td', { class: 'actions' },
     el('button', { class: 'primary', onclick: () => checkAndOpen(r, ta.value) }, 'Check & open'),
     el('button', { onclick: async () => {
-      S.sentLog = { ...(S.sentLog || {}), [r.key]: { date: new Date().toISOString(), text: ta.value } };
-      await save({ sentLog: S.sentLog }); render();
+      const prev = S.sentLog?.[r.key];
+      const sends = [...(prev?.sends || (prev ? [{ date: prev.date }] : [])), { date: new Date().toISOString(), touch: r.touch, text: ta.value }];
+      S.sentLog = { ...(S.sentLog || {}), [r.key]: { date: sends[sends.length - 1].date, sends } };
+      if (S.drafts) delete S.drafts[r.key];
+      await save({ sentLog: S.sentLog, drafts: S.drafts || {} }); render();
     } }, 'Mark sent'),
     S.sentLog?.[r.key] ? el('button', { onclick: async () => {
-      delete S.sentLog[r.key]; await save({ sentLog: S.sentLog }); render();
-    } }, 'Undo sent') : null,
+      const sends = (S.sentLog[r.key].sends || []).slice(0, -1);
+      if (sends.length) S.sentLog[r.key] = { date: sends[sends.length - 1].date, sends };
+      else delete S.sentLog[r.key];
+      await save({ sentLog: S.sentLog }); render();
+    } }, 'Undo last sent') : null,
     el('button', { onclick: () => checkOne(r) }, 'Check Outlook'),
     el('button', { onclick: () => claudeOne(r) }, 'Draft with Claude'),
-    S.drafts?.[r.key] != null ? el('button', { onclick: async () => {
+    r.edited ? el('button', { onclick: async () => {
       delete S.drafts[r.key]; if (S.claudeNotes) delete S.claudeNotes[r.key];
       await save({ drafts: S.drafts, claudeNotes: S.claudeNotes || {} }); render();
     } }, 'Reset draft') : null,
@@ -123,7 +129,10 @@ function rowEl(r) {
 function checksEl(k) {
   const mark = (ok, label) => el('span', { class: ok ? 'ok' : 'bad' }, (ok ? '✓ ' : '✗ ') + label);
   return el('div', { class: 'checks' },
-    mark(k.trigger, 'Trigger'), mark(k.tension, 'Tension'), mark(k.trust, k.trust ? 'Trust' : 'Trust (fill in proof)'),
+    mark(k.trigger, 'About them'),
+    k.touch === 1 ? mark(k.noPitch, k.noPitch ? 'No pitch' : 'Sounds like a pitch') : null,
+    k.touch === 3 ? mark(k.trust, k.trust ? 'Real proof' : 'Fill in proof') : null,
+    k.placeholders ? null : el('span', { class: 'bad' }, '✗ unfilled {placeholder}'),
     k.buzzwords ? el('span', { class: 'bad' }, '✗ buzzwords') : null,
     el('span', { class: 'muted' }, `${k.length} chars`));
 }
@@ -149,7 +158,7 @@ async function checkAndOpen(r, text) {
     return;
   }
   await chrome.storage.local.set({ pendingSend: {
-    key: r.key, name: p.name, text, myName: S.settings.myName, at: Date.now(),
+    key: r.key, name: p.name, text, touch: r.touch, myName: S.settings.myName, at: Date.now(),
   } });
   status(`Opening ${p.name}'s profile to check your LinkedIn conversation…`);
   window.open(p.profileUrl, '_blank');
@@ -161,6 +170,67 @@ chrome.runtime.onMessage.addListener(async m => {
   await save({ liveChecks: S.liveChecks });
   render();
 });
+
+// ---------- Staggered LinkedIn inbox check ----------
+// Searches your LinkedIn inbox for each person, one at a time, with a random
+// 20-45s pause between searches so it looks like a person working through a
+// list. Only reads; never types or sends.
+let liStop = false;
+async function linkedinTab() {
+  let [tab] = await chrome.tabs.query({ url: 'https://www.linkedin.com/messaging/*' });
+  if (!tab) tab = await chrome.tabs.create({ url: 'https://www.linkedin.com/messaging/', active: false });
+  for (let i = 0; i < 60; i++) {
+    tab = await chrome.tabs.get(tab.id);
+    if (tab.status === 'complete') break;
+    await sleep(500);
+  }
+  return tab;
+}
+
+async function liCheckOne(tab, p) {
+  let res;
+  for (let attempt = 0; attempt < 5 && !res; attempt++) {
+    try { res = await chrome.tabs.sendMessage(tab.id, { type: 'lp:liSearch', name: p.name, myName: S.settings.myName }); }
+    catch (_) { await sleep(2000); }
+  }
+  if (!res) throw new Error("LinkedIn messaging tab didn't respond");
+  if (res.error) throw new Error(res.error);
+  if (!res.found) return 'clear';
+  if (!res.readable) return 'unclear';
+  return res.theirs > 0 ? 'replied' : res.mine > 0 ? 'messaged' : 'unclear';
+}
+
+$('#li-check').onclick = async () => {
+  const wanted = ['review', 'ready'].includes(filter) ? [filter] : ['review', 'ready'];
+  const rows = LP.buildRows(S).filter(r => wanted.includes(r.status));
+  if (!rows.length) { status('Nobody to check in this view.'); return; }
+  const mins = Math.round(rows.length * 32 / 60);
+  if (!confirm(`Check LinkedIn messages for ${rows.length} people?\n\nIt searches one person every 20-45 seconds (about ${mins} min). Leave the LinkedIn messaging tab open; you can keep working in other tabs.`)) return;
+  liStop = false;
+  $('#li-check').hidden = true; $('#li-stop').hidden = false;
+  let tab;
+  try { tab = await linkedinTab(); } catch (e) { status(e.message); }
+  let i = 0, errors = 0;
+  for (const r of rows) {
+    if (liStop || !tab) break;
+    status(`LinkedIn: ${++i}/${rows.length} — ${r.person.name}…`);
+    try {
+      const result = await liCheckOne(tab, r.person);
+      S.liveChecks = { ...(S.liveChecks || {}), [r.key]: { result, at: new Date().toISOString() } };
+      await save({ liveChecks: S.liveChecks });
+      render();
+    } catch (e) {
+      errors++;
+      status(`LinkedIn check for ${r.person.name} failed: ${e.message}`);
+      if (errors >= 3) { status(`Stopped after 3 failed searches (${e.message}). Check that the LinkedIn messaging tab is open and signed in.`); break; }
+    }
+    const [lo, hi] = S.settings.liDelaySec || [20, 45];   // seconds between searches
+    if (i < rows.length && !liStop) await sleep((lo + Math.random() * (hi - lo)) * 1000);
+  }
+  if (errors < 3) status(liStop ? `Stopped after ${i} of ${rows.length}.` : `Checked LinkedIn messages for ${i} people.`);
+  $('#li-check').hidden = false; $('#li-stop').hidden = true;
+};
+$('#li-stop').onclick = () => { liStop = true; status('Stopping after the current search…'); };
 
 const msCfg = () => ({ clientId: S.settings.msClientId, tenant: S.settings.msTenant });
 const status = t => { $('#status').textContent = t; };
@@ -239,7 +309,7 @@ $('#outlook-check').onclick = async () => {
 
 async function claudeDraft(r) {
   const out = await LP.draftWithClaude(r, S.settings);
-  S.drafts = { ...(S.drafts || {}), [r.key]: out.message };
+  S.drafts = { ...(S.drafts || {}), [r.key]: { text: out.message, touch: r.touch } };
   S.claudeNotes = { ...(S.claudeNotes || {}), [r.key]: out.story_id === 'none' ? `No story fit: ${out.why}` : `Story: ${out.story} — ${out.why}` };
   await save({ drafts: S.drafts, claudeNotes: S.claudeNotes });
 }
@@ -253,7 +323,7 @@ async function claudeOne(r) {
 
 // Skips drafts you've already edited by hand or that Claude already wrote.
 $('#claude-all').onclick = async () => {
-  const rows = LP.buildRows(S).filter(r => r.status === 'ready' && S.drafts?.[r.key] == null);
+  const rows = LP.buildRows(S).filter(r => ['ready', 'review'].includes(r.status) && !r.edited);
   const btn = $('#claude-all');
   btn.disabled = true;
   let i = 0, failed = 0;
@@ -366,15 +436,25 @@ function renderSettings() {
   $('#s-anthropic').value = S.settings.anthropicKey || '';
   $('#s-stories').value = S.settings.stories || '';
   $('#redirect').textContent = chrome.identity.getRedirectURL();
-  const tpl = { ...LP.DEFAULT_TEMPLATES, ...(S.settings.templates || {}) };
+  $('#s-followup').value = S.settings.followupDays ?? 3;
+  const touches = { ...LP.DEFAULT_TOUCHES, ...(S.settings.touches || {}) };
   const trust = { ...LP.DEFAULT_TRUST, ...(S.settings.trust || {}) };
   const personas = [...LP.PERSONAS, { id: 'general', label: 'Everyone else' }];
-  $('#templates').replaceChildren(...personas.map(p => {
-    const ta = el('textarea', { 'data-tpl': p.id }); ta.value = tpl[p.id];
+  const touchEls = LP.TOUCHES.map(t => {
+    const ta = el('textarea', { 'data-touch': t.n }); ta.value = touches[t.n];
+    return el('div', { class: 'tpl' }, el('h2', {}, t.label), ta);
+  });
+  const personaEls = personas.map(p => {
+    const lines = { ...LP.DEFAULT_LINES[p.id], ...(S.settings.lines?.[p.id] || {}) };
+    const cx = el('textarea', { 'data-line': p.id, 'data-kind': 'context' }); cx.value = lines.context;
+    const th = el('textarea', { 'data-line': p.id, 'data-kind': 'thought' }); th.value = lines.thought;
     const tr = el('input', { 'data-trust': p.id }); tr.value = trust[p.id];
-    return el('div', { class: 'tpl' }, el('h2', {}, p.label), ta,
-      el('label', {}, 'Trust line ({trust}) — a real customer story or number', tr));
-  }));
+    return el('div', { class: 'tpl' }, el('h2', {}, p.label),
+      el('label', {}, '{context}: touch 1, about them, no pitch', cx),
+      el('label', {}, '{thought}: touch 2, the problem in plain words', th),
+      el('label', {}, '{trust}: touch 3, one real customer story or number', tr));
+  });
+  $('#templates').replaceChildren(el('h2', {}, 'Sequence'), ...touchEls, el('h2', {}, 'Lines by persona'), ...personaEls);
 }
 
 $('#save-settings').onclick = async () => {
@@ -384,7 +464,12 @@ $('#save-settings').onclick = async () => {
   S.settings.msTenant = $('#s-mstenant').value.trim();
   S.settings.anthropicKey = $('#s-anthropic').value.trim();
   S.settings.stories = $('#s-stories').value;
-  S.settings.templates = Object.fromEntries([...document.querySelectorAll('[data-tpl]')].map(t => [t.dataset.tpl, t.value]));
+  S.settings.followupDays = Math.max(1, Number($('#s-followup').value) || 3);
+  S.settings.touches = Object.fromEntries([...document.querySelectorAll('[data-touch]')].map(t => [t.dataset.touch, t.value]));
+  S.settings.lines = {};
+  for (const t of document.querySelectorAll('[data-line]')) {
+    (S.settings.lines[t.dataset.line] ||= {})[t.dataset.kind] = t.value;
+  }
   S.settings.trust = Object.fromEntries([...document.querySelectorAll('[data-trust]')].map(t => [t.dataset.trust, t.value]));
   await save({ settings: S.settings });
   $('#saved').textContent = 'Saved. Drafts you hand-edited keep your edits; use "Reset draft" to regenerate.';
@@ -392,7 +477,7 @@ $('#save-settings').onclick = async () => {
 };
 
 $('#reset-templates').onclick = async () => {
-  delete S.settings.templates; delete S.settings.trust;
+  delete S.settings.templates; delete S.settings.touches; delete S.settings.lines;
   await save({ settings: S.settings });
   renderSettings(); render();
 };

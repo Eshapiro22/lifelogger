@@ -20,6 +20,8 @@
     <label>Connected since <input type="date" id="cutoff"></label>
     <span id="counts"></span>
     <span class="spacer"></span>
+    <button id="li-check">Check LinkedIn messages</button>
+    <button id="li-stop" hidden>Stop</button>
     <button id="outlook-check">Check Outlook</button>
     <button id="claude-all">Draft Ready with Claude</button>
     <button id="export">Export CSV</button>
@@ -86,9 +88,12 @@
     <p class="muted">Claude only uses facts from this library. If no story fits a prospect, the draft keeps its [TRUST] placeholder.</p>
   </div>
   <div class="card">
-    <h2>Triple T templates</h2>
-    <p class="muted"><b>Trigger</b>: why them, why now (shows it's meant for them). <b>Tension</b>: the problem that trigger creates, in problem language, no buzzwords.
-      <b>Trust</b>: one line of real proof (a peer customer story or number). Placeholders: {firstName} {company} {vertical} {region} {title} {trust}</p>
+    <h2>Message sequence (no connect-and-pitch)</h2>
+    <p class="muted">Based on 30MPC's outbound sequence: people hate a connect-and-pitch, so the pitch is held back.
+      <b>Touch 1</b> is context only: about them, no product, no meeting ask. <b>Touch 2</b> bubbles up one thought about
+      the problem (the Tension). <b>Touch 3</b> bubbles up one real customer story (the Trust).
+      Placeholders: {firstName} {company} {vertical} {region} {title} {context} {thought} {trust}</p>
+    <label>Days to wait before the next touch is due <input id="s-followup" type="number" min="1" style="width:80px"></label>
     <div id="templates"></div>
     <button id="save-settings" class="primary">Save settings</button>
     <button id="reset-templates">Reset templates to defaults</button>

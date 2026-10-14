@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Prospector",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Matches recent LinkedIn connections to your account list, checks prior contact, and drafts Triple T messages for you to send by hand.",
   "permissions": [
     "storage",

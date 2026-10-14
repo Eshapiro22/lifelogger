@@ -133,7 +133,7 @@ To rebuild the vendored SDK (only needed to update it): `npm install && npm run 
 1. **Weekly:** request a fresh LinkedIn data export (Connections + Messages) and
    import both CSVs. This is the most reliable source for "did they reply?".
 2. **Review first → Check LinkedIn messages.** Searches your LinkedIn inbox for each person in the
-   current view, one at a time, with a pause between searches (20–45 seconds by default; set it as low as 1 second in Settings → LinkedIn message check). It opens each
+   current view, one at a time, with a pause between searches (20–45 seconds by default; set it as low as 0.5 seconds in Settings → LinkedIn message check). It opens each
    matching conversation and reads who wrote: they replied → *Don't message*; only you → follow-up
    (touch 2/3); nothing → stays put. It only reads; it never types or sends. Leave the LinkedIn
    messaging tab open while it runs. Stop anytime.

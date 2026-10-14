@@ -559,7 +559,7 @@ $('#save-settings').onclick = async () => {
   S.settings.myName = $('#s-myname').value.trim();
   S.settings.outlookUrl = $('#s-outlookurl').value.trim() || 'https://outlook.office.com/mail/';
   S.settings.outlookFreshHours = Math.max(0, Number($('#s-outlookfresh').value) || 0);
-  const dMin = Math.max(1, Number($('#s-lidelaymin').value) || 1);
+  const dMin = Math.max(0.5, Number($('#s-lidelaymin').value) || 0.5);
   S.settings.liDelaySec = [dMin, Math.max(dMin, Number($('#s-lidelaymax').value) || dMin)];
   S.settings.msClientId = $('#s-msclient').value.trim();
   S.settings.msTenant = $('#s-mstenant').value.trim();

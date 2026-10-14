@@ -1,15 +1,13 @@
-// LinkedIn message drafting, following 30MPC's outbound sequence ("there's
-// nothing people hate more than a connect and pitch"):
+// LinkedIn message drafting. Touch 1 is the full Triple T in one short
+// message: a specific Trigger, the Tension it creates, who you are in one line
+// plus real proof (Trust), and a soft, interest-based question. No hard ask
+// (no "15 minutes?", no calendar link). Touches 2-3 are short bubble-up
+// follow-ups a few days apart if there's no reply.
 //
-//   Touch 1  context only    - about them, no pitch, no product, no meeting ask
-//   Touch 2  thoughts bubble - one observation about the problem (the Tension)
-//   Touch 3  proof bubble    - one real customer story (the Trust), light ask
-//
-// The Triple T (Trigger -> Tension -> Trust) is spread across the touches
-// instead of crammed into the first message. Prospects are bucketed by persona
-// so each group gets tailored lines without writing one-by-one. Everything here
-// is a default to edit on the dashboard's Settings tab. Trust lines ship as
-// [TRUST: ...] placeholders on purpose: proof has to be a real customer story.
+// Prospects are bucketed by persona so each group gets tailored lines without
+// writing one-by-one. Everything is editable on the dashboard's Settings tab.
+// {you} and {trust} ship as [YOU: ...] / [TRUST: ...] placeholders on purpose:
+// they must be your real company line and a real customer result.
 (function (root) {
   const LP = root.LP || (root.LP = {});
 
@@ -28,53 +26,74 @@
   const DEFAULT_PERSONA = { id: 'general', label: 'Everyone else' };
 
   const TOUCHES = [
-    { n: 1, label: 'Touch 1 · context only (no pitch)' },
-    { n: 2, label: 'Touch 2 · thoughts bubble-up' },
-    { n: 3, label: 'Touch 3 · proof bubble-up' },
+    { n: 1, label: 'Touch 1 · Triple T (trigger, tension, proof, soft ask)' },
+    { n: 2, label: 'Touch 2 · follow-up: new angle' },
+    { n: 3, label: 'Touch 3 · follow-up: close the loop' },
   ];
 
   const DEFAULT_TOUCHES = {
-    1: 'Hi {firstName}, thanks for connecting. {context}',
-    2: 'Hi {firstName}, one thought since we connected: {thought}',
-    3: '{firstName}, last note from me on this. {trust} If it would ever help to compare notes on how {company} handles it, happy to.',
+    1: 'Hi {firstName}, thanks for connecting.\n\n{trigger} {tension}\n\n{you} {trust}\n\n{question}',
+    2: 'Hi {firstName}, one more thought: {thought}',
+    3: 'Hi {firstName}, I\'ll leave it here. If {topic} ends up on the list at {company}, happy to share what\'s worked for similar {vertical} teams.',
   };
 
-  // Per persona: {context} for touch 1 (about them, ends in an easy question,
-  // no pitch) and {thought} for touch 2 (the problem, in plain words).
+  const DEFAULT_YOU = '[YOU: your company + one line, e.g. "At Acme, we help finance teams take the manual work out of close and AP."]';
+
+  // Per persona. {trigger} = why them, why now. {tension} = the problem it
+  // creates. {question} = the soft ask. {thought} = touch 2's new angle.
+  // {topic} = a 2-4 word name for the problem, used in touch 3.
   const DEFAULT_LINES = {
     finance: {
-      context: 'Saw you lead finance at {company}. With year-end coming up, is the close something your team is trying to tighten, or is it in a good spot?',
-      thought: 'most {vertical} finance teams I talk to say the close isn\'t slow because of the big items, it\'s the hundreds of small reconciliations and exceptions that eat the last few days. Curious if that rings true at {company}.',
+      trigger: 'Saw you lead finance at {company}.',
+      tension: 'Heading into year-end, the close usually gets heavier as volume grows, and the team doesn\'t.',
+      question: 'Is close speed on your list for next year, or already handled?',
+      thought: 'when I talk to {vertical} finance teams, the last few days of close are rarely the big entries. It\'s the hundreds of small reconciliations and exceptions. Is that where the time goes at {company} too?',
+      topic: 'close speed',
     },
     shared: {
-      context: 'Saw you\'re running shared services at {company}. Is the team taking on new processes this year, or mostly holding steady?',
-      thought: 'a lot of shared services leaders I talk to get handed more processes every year with the same headcount, so the manual hand-offs pile up quietly. Curious whether that\'s the case at {company}.',
+      trigger: 'Saw you run shared services at {company}.',
+      tension: 'Most teams I talk to get handed more processes every year with the same headcount, so manual hand-offs quietly pile up.',
+      question: 'Is that backlog something you\'re working on next year?',
+      thought: 'the shared services teams that scale best tend to start with the highest-volume, most rules-based process rather than the most painful one. Curious which one you\'d pick at {company}.',
+      topic: 'the hand-off backlog',
     },
     it: {
-      context: 'Saw your role at {company}. What\'s taking up most of your team\'s time heading into next year?',
-      thought: 'IT teams at {vertical} companies keep telling me the business sends a long list of "can we automate this?" requests, and most stall between pilot and production. Curious if that matches what you see at {company}.',
+      trigger: 'Saw your role at {company}.',
+      tension: 'IT teams at {vertical} companies keep getting "can we automate this?" requests from the business, and most stall between pilot and production.',
+      question: 'Is getting automations into production a focus for you next year?',
+      thought: 'the pilots that make it to production usually have an owner in the business, not just in IT. Is that how {company} is set up?',
+      topic: 'automation in production',
     },
     ops: {
-      context: 'Saw you\'re in operations at {company}. Is volume picking up for you this quarter?',
-      thought: 'ops leaders at {vertical} companies I speak with are still re-keying orders, invoices and shipment data between systems, which is fine until volume spikes. Curious whether that\'s a headache at {company} or already solved.',
+      trigger: 'Saw you\'re in operations at {company}.',
+      tension: 'At a lot of {vertical} companies, orders, invoices and shipment data still get re-keyed between systems, which holds up fine until volume spikes.',
+      question: 'Is that a headache at {company}, or already solved?',
+      thought: 'the teams I see handle peak season best stopped re-keying the top 2-3 documents first, rather than trying to fix everything at once. Which documents eat the most time for your team?',
+      topic: 're-keying between systems',
     },
     exec: {
-      context: 'Saw you lead {company}. What\'s the big focus for the team going into next year?',
-      thought: 'leaders at {vertical} companies keep telling me they\'re asked to grow without headcount growing at the same rate, and the back office is usually where that gap shows up first. Curious how you\'re thinking about it at {company}.',
+      trigger: 'Saw you lead {company}.',
+      tension: 'Most {vertical} leaders I talk to are asked to grow without headcount growing at the same rate, and the back office is usually where that gap shows up first.',
+      question: 'Is that on your radar for next year?',
+      thought: 'the companies that grow without adding back-office headcount usually start with one high-volume process and prove it out before expanding. Is there an obvious first candidate at {company}?',
+      topic: 'back-office capacity',
     },
     general: {
-      context: 'Saw your role at {company}. What\'s keeping your team busiest these days?',
-      thought: 'teams I talk to across {region} keep saying they\'re stretched thin by repetitive work that never makes the priority list. Curious if that\'s true at {company} too.',
+      trigger: 'Saw your role at {company}.',
+      tension: 'Teams across {region} keep telling me they\'re stretched thin by repetitive work that never makes the priority list.',
+      question: 'Is that true at {company}, or are you in good shape?',
+      thought: 'the repetitive work that hurts most is usually the stuff no one owns end to end. Is there a process like that on your team?',
+      topic: 'the repetitive work',
     },
   };
 
   const DEFAULT_TRUST = {
-    finance: '[TRUST: one sentence of real proof, e.g. a peer finance team you helped and the result]',
-    shared: '[TRUST: one sentence of real proof from a shared services customer]',
-    it: '[TRUST: one sentence of real proof, e.g. a peer IT team that got automations into production]',
-    ops: '[TRUST: one sentence of real proof from an ops / supply chain customer]',
-    exec: '[TRUST: one sentence of real proof, e.g. a peer company result]',
-    general: '[TRUST: one sentence of real proof]',
+    finance: '[TRUST: one real result, e.g. "We helped a SaaS finance team take month-end close from 9 days to 5 without adding headcount."]',
+    shared: '[TRUST: one real result from a shared services customer]',
+    it: '[TRUST: one real result, e.g. a peer IT team that got automations into production]',
+    ops: '[TRUST: one real result from an ops / supply chain customer]',
+    exec: '[TRUST: one real result from a peer company]',
+    general: '[TRUST: one real result]',
   };
 
   function personaFor(text) {
@@ -107,14 +126,14 @@
       region: acct.state || 'the Northeast and Canada',
       title: person.title || '',
       trust: trustMap[persona.id] || trustMap.general,
+      you: settings.you || DEFAULT_YOU,
     };
     // Lines can use the same placeholders, so fill them first.
-    vars.context = fill(lines.context, vars);
-    vars.thought = fill(lines.thought, vars);
+    for (const k of ['trigger', 'tension', 'question', 'thought', 'topic']) vars[k] = fill(lines[k] || '', vars);
     const text = fill(touches[touch] || touches[1], vars);
     return { persona, touch, text, checks: LP.checksFor(text, cls, touch) };
   }
 
-  Object.assign(LP, { PERSONAS, TOUCHES, DEFAULT_TOUCHES, DEFAULT_LINES, DEFAULT_TRUST, personaFor, draft, displayCompany });
+  Object.assign(LP, { PERSONAS, TOUCHES, DEFAULT_TOUCHES, DEFAULT_LINES, DEFAULT_TRUST, DEFAULT_YOU, personaFor, draft, displayCompany });
   if (typeof module !== 'undefined' && module.exports) module.exports = LP;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

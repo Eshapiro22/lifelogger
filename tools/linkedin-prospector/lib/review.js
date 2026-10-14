@@ -131,15 +131,16 @@
     return { touch, followupDue: true, note: `Touch ${count} sent ${last.slice(0, 10)}, no reply: touch ${touch} is due` };
   }
 
-  // Pre-send checklist. Touch 1 must be context only (no pitch); touch 3
-  // must carry real proof; every touch is checked for buzzwords.
-  const PITCHY = /\b(we help|our (platform|solution|product|software|customers)|i work with|demo|book a (call|meeting)|15 minutes|quick call|calendar|case study)\b/i;
+  // Pre-send checklist (30MPC's): clear trigger, real proof, says who you are,
+  // soft ask only, no buzzwords, no unfilled placeholders.
+  const HARD_ASK = /\b(15|20|30) ?min|\bcalendar\b|calendly|book (a|some) (call|meeting|time)|hop on a call|jump on a call|demo\b/i;
   LP.checksFor = function (text, cls, touch = 1) {
     return {
       touch,
       trigger: !!(cls.company || cls.account),
-      noPitch: touch !== 1 || !PITCHY.test(text),
-      trust: touch !== 3 || !/\[TRUST/i.test(text),
+      you: touch !== 1 || !/\[YOU/i.test(text),
+      trust: touch !== 1 || !/\[TRUST/i.test(text),
+      softAsk: !HARD_ASK.test(text),
       placeholders: !/\{\w+\}/.test(text),
       buzzwords: /(single source of truth|all-in-one|ai-powered|best-in-class|synergy|cutting-edge|seamless)/i.test(text),
       length: text.length,

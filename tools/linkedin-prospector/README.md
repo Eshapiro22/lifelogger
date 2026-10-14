@@ -33,17 +33,29 @@ sends anything.
 
 ## How the messages are written
 
-No connect-and-pitch. Following 30MPC's outbound sequence ("there's nothing people hate
-more than a connect and pitch"), each person gets up to three touches, a few days apart:
+**Touch 1 is the full Triple T in one short message:**
+- a specific **Trigger** (why them, why now)
+- the **Tension** that trigger creates
+- who you are in one line, plus one real customer result (**Trust**)
+- a soft, interest-based question, with no hard meeting ask
 
-1. **Touch 1, context only.** About them (role, company, timing) and an easy question. No product, no meeting ask.
-2. **Touch 2, thoughts bubble-up.** One observation about the problem their role usually has (the *Tension*).
-3. **Touch 3, proof bubble-up.** One real customer story (the *Trust*) and a light close.
+Example (finance persona):
 
-The dashboard works out which touch each person is on from **Mark sent** and from any earlier
-LinkedIn messages it finds. A follow-up becomes due after 3 days, which you can change in
-Settings. Every line is editable per persona in Settings. Touch 1 is flagged if it starts
-to sound like a pitch.
+> Hi Kate, thanks for connecting.
+>
+> Saw you lead finance at HubSpot. Heading into year-end, the close usually gets heavier as volume grows, and the team doesn't.
+>
+> At Acme, we help finance teams take the manual work out of close and AP. One SaaS finance team we work with took month-end close from 9 days to 5 without adding headcount.
+>
+> Is close speed on your list for next year, or already handled?
+
+Set your company line (`{you}`) once in Settings, and a real result (`{trust}`) per persona.
+Until you do, drafts show `[YOU: …]` / `[TRUST: …]` and are flagged. The default trigger is
+role-based ("Saw you lead finance at…"). A sharper, person-specific trigger (a new role, a hiring
+push, news) beats it: edit it into the draft, or use **Draft with Claude**.
+
+**Touches 2–3** are short follow-ups if there's no reply (due after 3 days, changeable in Settings):
+a new angle on the problem, then a gracious close-the-loop note.
 
 ## Install (one time)
 

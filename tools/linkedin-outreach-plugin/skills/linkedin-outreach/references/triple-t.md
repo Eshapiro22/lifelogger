@@ -16,22 +16,21 @@ newsletter. Every message needs all three:
 Pre-send checklist: Is there a clear trigger? Is the tension relevant? Is trust earned with
 real proof? Is it free of buzzwords? "Relevant messaging beats more messaging."
 
-## No connect-and-pitch: spread it over three touches
+## Touch 1 is the full Triple T; touches 2-3 are short follow-ups
 
-30MPC's outbound sequence (Aug 2026 newsletter): "there's nothing that people hate more than a
-connect and pitch." So the pitch is held back, and the Triple T is spread across touches a few
-days apart:
+The user wants the first message to carry real substance, not just a question about the problem:
 
-1. **Touch 1, context only:** the Trigger. About them, plus an easy question. No product, no "we help", no meeting ask.
-2. **Touch 2, thoughts bubble-up:** the Tension. One observation about the problem, ending in a curious question.
-3. **Touch 3, proof bubble-up:** the Trust. One real story from `story-library.md`, then a light close.
+1. **Touch 1:** a specific Trigger, the Tension, the user's company in one line plus one real
+   result from `story-library.md` (Trust), then a soft, interest-based question. No hard ask
+   (no "15 minutes", no calendar link).
+2. **Touch 2 (if no reply, 3+ days later):** a new angle on the problem plus a curious question. Under 300 characters.
+3. **Touch 3:** a short, gracious close-the-loop note. Stop after this.
 
-Draft the touch that's due: touch 1 for a new connection; touch 2 or 3 if `outreach-log.csv`
-or the LinkedIn thread shows earlier touches with no reply (at least 3 days apart). Stop after 3.
+Ask the user once for their company line ("At <Company>, we help <who> <do what>") and reuse it.
 
 ## LinkedIn-specific shape
 
-- 200–450 characters. No subject line, no emojis, no sign-off (LinkedIn shows the sender).
+- Touch 1: 300–600 characters in short paragraphs; touches 2–3 under 300. No subject line, no emojis, no sign-off (LinkedIn shows the sender).
 - The opening line can acknowledge the new connection, but the trigger has to do more
   than "thanks for connecting": tie it to their role, company, or industry.
 - Close with a low-pressure, interest-based question ("Worth comparing notes?",

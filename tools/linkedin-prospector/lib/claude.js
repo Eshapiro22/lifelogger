@@ -8,17 +8,20 @@
 
   const SYSTEM = `You help a B2B account executive write short LinkedIn messages to people who recently accepted their connection request.
 
-They follow 30 Minutes to President's Club's outbound sequence, because people hate a "connect and pitch". The pitch is held back, and the Triple T (Trigger -> Tension -> Trust) is spread across three touches:
-- Touch 1, context only: about them (role, company, industry, something timely) and an easy question about their world. No product, no "we help", no case study, no meeting ask.
-- Touch 2, thoughts bubble-up: one observation about the problem their role usually faces, in plain problem language, ending with a curious question. Still no pitch.
-- Touch 3, proof bubble-up: one sentence of real proof from the story library (a peer customer's outcome), then a light, interest-based close. No hard meeting ask.
+Touch 1 is the Triple T in one message (Jason Bay's framework, as taught by 30 Minutes to President's Club):
+- Trigger: a specific reason this message is for THIS person (their role, company, industry, or something timely). Never just "thanks for connecting".
+- Tension: the problem that trigger creates, in plain problem language.
+- Trust: who the rep is in one line (use the provided company line as-is) plus one real customer result from the story library.
+- Close with a soft, interest-based question. No hard ask: no "15 minutes", no calendar link, no "book a call".
+Touch 2 is a short follow-up with a new angle on the problem and a curious question. Touch 3 is a short, gracious close-the-loop note.
 
 Rules:
 - Write only the touch you are asked for.
-- Use ONLY customer names, numbers, and outcomes that appear in the provided story library. Never invent or embellish a customer, metric, or quote. On touch 3, if no story fits, set story_id to "none", leave trust_line empty, and keep the literal [TRUST: ...] placeholder in the message. On touches 1 and 2, set story_id to "none".
-- For touch 3, prefer a story from the same industry, then the same persona, then the same problem. If a story is marked as not approved for naming the customer, describe it anonymously (e.g. "a Canadian manufacturer").
+- Use ONLY customer names, numbers, and outcomes that appear in the provided story library. Never invent or embellish a customer, metric, or quote. On touch 1, if no story fits, set story_id to "none", leave trust_line empty, and keep the literal [TRUST: ...] placeholder. On touches 2 and 3, set story_id to "none".
+- Keep any [YOU: ...] placeholder exactly as-is if it's in the draft; don't make up the rep's company.
+- Prefer a story from the same industry, then the same persona, then the same problem. If a story is marked as not approved for naming the customer, describe it anonymously (e.g. "a Canadian manufacturer").
 - No buzzwords ("single source of truth", "all-in-one", "AI-powered", "seamless", "best-in-class").
-- 200 to 450 characters, conversational, no emojis, no sign-off (LinkedIn shows the sender).
+- Touch 1: 300 to 600 characters, short paragraphs. Touches 2-3: under 300 characters. Conversational, no emojis, no sign-off.
 - Keep the rep's draft structure and voice; change only what's needed.`;
 
   const SCHEMA = {
@@ -75,7 +78,7 @@ Rules:
       system: [{ type: 'text', text: SYSTEM }, { type: 'text', text: `<story_library>\n${library}\n</story_library>`, cache_control: { type: 'ephemeral' } }],
       messages: [{
         role: 'user',
-        content: `<prospect>\n${prospect}\n</prospect>\n\n<touch>${row.touch}</touch>\n\n<current_draft>\n${row.draft}\n</current_draft>\n\nWrite touch ${row.touch} for this prospect${row.touch === 3 ? ', picking the best-fitting story' : ''}.`,
+        content: `<prospect>\n${prospect}\n</prospect>\n\n<touch>${row.touch}</touch>\n\n<current_draft>\n${row.draft}\n</current_draft>\n\nWrite touch ${row.touch} for this prospect${row.touch === 1 ? ', picking the best-fitting story' : ''}.`,
       }],
     });
     if (response.stop_reason === 'refusal') throw new Error('Claude declined this request.');

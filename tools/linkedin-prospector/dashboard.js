@@ -129,9 +129,10 @@ function rowEl(r) {
 function checksEl(k) {
   const mark = (ok, label) => el('span', { class: ok ? 'ok' : 'bad' }, (ok ? '✓ ' : '✗ ') + label);
   return el('div', { class: 'checks' },
-    mark(k.trigger, 'About them'),
-    k.touch === 1 ? mark(k.noPitch, k.noPitch ? 'No pitch' : 'Sounds like a pitch') : null,
-    k.touch === 3 ? mark(k.trust, k.trust ? 'Real proof' : 'Fill in proof') : null,
+    mark(k.trigger, 'Trigger'),
+    k.touch === 1 ? mark(k.you, k.you ? 'Says who you are' : 'Fill in your company line') : null,
+    k.touch === 1 ? mark(k.trust, k.trust ? 'Real proof' : 'Fill in proof') : null,
+    mark(k.softAsk, k.softAsk ? 'Soft ask' : 'Hard ask (meeting/time)'),
     k.placeholders ? null : el('span', { class: 'bad' }, '✗ unfilled {placeholder}'),
     k.buzzwords ? el('span', { class: 'bad' }, '✗ buzzwords') : null,
     el('span', { class: 'muted' }, `${k.length} chars`));
@@ -459,17 +460,29 @@ function renderSettings() {
     const ta = el('textarea', { 'data-touch': t.n }); ta.value = touches[t.n];
     return el('div', { class: 'tpl' }, el('h2', {}, t.label), ta);
   });
+  const LINE_LABELS = {
+    trigger: '{trigger}: why them, why now (touch 1)',
+    tension: '{tension}: the problem that trigger creates (touch 1)',
+    question: '{question}: the soft ask (touch 1)',
+    thought: '{thought}: a new angle for the follow-up (touch 2)',
+    topic: '{topic}: 2-4 word name for the problem (touch 3)',
+  };
   const personaEls = personas.map(p => {
     const lines = { ...LP.DEFAULT_LINES[p.id], ...(S.settings.lines?.[p.id] || {}) };
-    const cx = el('textarea', { 'data-line': p.id, 'data-kind': 'context' }); cx.value = lines.context;
-    const th = el('textarea', { 'data-line': p.id, 'data-kind': 'thought' }); th.value = lines.thought;
+    const fields = Object.entries(LINE_LABELS).map(([k, label]) => {
+      const t = el(k === 'topic' ? 'input' : 'textarea', { 'data-line': p.id, 'data-kind': k });
+      t.value = lines[k] || '';
+      if (k !== 'topic') t.style.minHeight = '54px';
+      return el('label', {}, label, t);
+    });
     const tr = el('input', { 'data-trust': p.id }); tr.value = trust[p.id];
-    return el('div', { class: 'tpl' }, el('h2', {}, p.label),
-      el('label', {}, '{context}: touch 1, about them, no pitch', cx),
-      el('label', {}, '{thought}: touch 2, the problem in plain words', th),
-      el('label', {}, '{trust}: touch 3, one real customer story or number', tr));
+    return el('div', { class: 'tpl' }, el('h2', {}, p.label), ...fields,
+      el('label', {}, '{trust}: one real customer result (touch 1)', tr));
   });
-  $('#templates').replaceChildren(el('h2', {}, 'Sequence'), ...touchEls, el('h2', {}, 'Lines by persona'), ...personaEls);
+  const you = el('input', { id: 's-you' }); you.value = S.settings.you || LP.DEFAULT_YOU;
+  $('#templates').replaceChildren(
+    el('label', {}, '{you}: your company + one line on what you help with', you),
+    el('h2', {}, 'Messages'), ...touchEls, el('h2', {}, 'Lines by persona'), ...personaEls);
 }
 
 $('#save-settings').onclick = async () => {
@@ -481,6 +494,7 @@ $('#save-settings').onclick = async () => {
   S.settings.anthropicKey = $('#s-anthropic').value.trim();
   S.settings.stories = $('#s-stories').value;
   S.settings.followupDays = Math.max(1, Number($('#s-followup').value) || 3);
+  S.settings.you = $('#s-you').value.trim();
   S.settings.touches = Object.fromEntries([...document.querySelectorAll('[data-touch]')].map(t => [t.dataset.touch, t.value]));
   S.settings.lines = {};
   for (const t of document.querySelectorAll('[data-line]')) {

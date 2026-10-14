@@ -90,11 +90,11 @@
     <p class="muted">Claude only uses facts from this library. If no story fits a prospect, the draft keeps its [TRUST] placeholder.</p>
   </div>
   <div class="card">
-    <h2>Message sequence (no connect-and-pitch)</h2>
-    <p class="muted">Based on 30MPC's outbound sequence: people hate a connect-and-pitch, so the pitch is held back.
-      <b>Touch 1</b> is context only: about them, no product, no meeting ask. <b>Touch 2</b> bubbles up one thought about
-      the problem (the Tension). <b>Touch 3</b> bubbles up one real customer story (the Trust).
-      Placeholders: {firstName} {company} {vertical} {region} {title} {context} {thought} {trust}</p>
+    <h2>Messages (Triple T)</h2>
+    <p class="muted"><b>Touch 1</b> is the full Triple T in one short message: a specific <b>Trigger</b> (why them, why now),
+      the <b>Tension</b> it creates, who you are in one line plus real proof (<b>Trust</b>), and a soft question. No hard
+      meeting ask. <b>Touches 2-3</b> are short follow-ups if there's no reply.
+      Placeholders: {firstName} {company} {vertical} {region} {title} {trigger} {tension} {you} {trust} {question} {thought} {topic}</p>
     <label>Days to wait before the next touch is due <input id="s-followup" type="number" min="1" style="width:80px"></label>
     <div id="templates"></div>
     <button id="save-settings" class="primary">Save settings</button>

@@ -1,7 +1,15 @@
 {
   "name": "linkedin-outreach",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Finds recent LinkedIn and Sales Navigator connections on your account list, rules out anyone you've already talked to (LinkedIn, Sales Nav, Outlook mail and calendar), and drafts Triple T messages backed by real customer stories. You click Send.",
-  "author": { "name": "Ethan Shapiro" },
-  "keywords": ["linkedin", "sales-navigator", "prospecting", "outreach", "triple-t"]
+  "author": {
+    "name": "Ethan Shapiro"
+  },
+  "keywords": [
+    "linkedin",
+    "sales-navigator",
+    "prospecting",
+    "outreach",
+    "triple-t"
+  ]
 }

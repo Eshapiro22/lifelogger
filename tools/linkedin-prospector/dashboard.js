@@ -181,6 +181,11 @@ chrome.runtime.onMessage.addListener(async m => {
 // 20-45s pause between searches so it looks like a person working through a
 // list. Only reads; never types or sends.
 let liStop = false;
+// Seconds to pause between people: [min, max], picked at random in between.
+function liDelay() {
+  const [lo, hi] = S.settings.liDelaySec || [20, 45];
+  return [Math.max(0, Number(lo) || 0), Math.max(Number(lo) || 0, Number(hi) || 0)];
+}
 async function linkedinTab() {
   let [tab] = await chrome.tabs.query({ url: 'https://www.linkedin.com/messaging/*' });
   if (!tab) tab = await chrome.tabs.create({ url: 'https://www.linkedin.com/messaging/', active: false });
@@ -209,8 +214,11 @@ $('#li-check').onclick = async () => {
   const wanted = ['review', 'ready'].includes(filter) ? [filter] : ['review', 'ready'];
   const rows = LP.buildRows(S).filter(r => wanted.includes(r.status));
   if (!rows.length) { status('Nobody to check in this view.'); return; }
-  const mins = Math.round(rows.length * 32 / 60);
-  if (!confirm(`Check LinkedIn messages for ${rows.length} people?\n\nIt searches one person every 20-45 seconds (about ${mins} min). Leave the LinkedIn messaging tab open; you can keep working in other tabs.`)) return;
+  const [lo, hi] = liDelay();
+  // ~6s for the search itself + the pause between people.
+  const mins = Math.max(1, Math.round(rows.length * (6 + (lo + hi) / 2) / 60));
+  const pause = lo === hi ? `${lo}s` : `${lo}-${hi}s`;
+  if (!confirm(`Check LinkedIn messages for ${rows.length} people?\n\nPause between people: ${pause} (change in Settings). About ${mins} min. Leave the LinkedIn messaging tab open; you can keep working in other tabs.`)) return;
   liStop = false;
   $('#li-check').hidden = true; $('#li-stop').hidden = false;
   let tab;
@@ -229,7 +237,6 @@ $('#li-check').onclick = async () => {
       status(`LinkedIn check for ${r.person.name} failed: ${e.message}`);
       if (errors >= 3) { status(`Stopped after 3 failed searches (${e.message}). Check that the LinkedIn messaging tab is open and signed in.`); break; }
     }
-    const [lo, hi] = S.settings.liDelaySec || [20, 45];   // seconds between searches
     if (i < rows.length && !liStop) await sleep((lo + Math.random() * (hi - lo)) * 1000);
   }
   if (errors < 3) status(liStop ? `Stopped after ${i} of ${rows.length}.` : `Checked LinkedIn messages for ${i} people.`);
@@ -509,6 +516,7 @@ function renderSettings() {
   $('#s-myname').value = S.settings.myName || '';
   $('#s-outlookurl').value = S.settings.outlookUrl || '';
   $('#s-outlookfresh').value = S.settings.outlookFreshHours ?? 24;
+  [$('#s-lidelaymin').value, $('#s-lidelaymax').value] = liDelay();
   $('#s-msclient').value = S.settings.msClientId || '';
   $('#s-mstenant').value = S.settings.msTenant || '';
   $('#s-anthropic').value = S.settings.anthropicKey || '';
@@ -551,6 +559,8 @@ $('#save-settings').onclick = async () => {
   S.settings.myName = $('#s-myname').value.trim();
   S.settings.outlookUrl = $('#s-outlookurl').value.trim() || 'https://outlook.office.com/mail/';
   S.settings.outlookFreshHours = Math.max(0, Number($('#s-outlookfresh').value) || 0);
+  const dMin = Math.max(1, Number($('#s-lidelaymin').value) || 1);
+  S.settings.liDelaySec = [dMin, Math.max(dMin, Number($('#s-lidelaymax').value) || dMin)];
   S.settings.msClientId = $('#s-msclient').value.trim();
   S.settings.msTenant = $('#s-mstenant').value.trim();
   S.settings.anthropicKey = $('#s-anthropic').value.trim();

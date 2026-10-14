@@ -69,6 +69,14 @@
     <label>Your name as it appears on LinkedIn (used to read messages.csv) <input id="s-myname"></label>
   </div>
   <div class="card">
+    <h2>LinkedIn message check</h2>
+    <p class="muted">"Check LinkedIn messages" searches your inbox one person at a time. Each search itself takes a few
+      seconds; this is the extra pause between people, picked at random between the two numbers. Shorter is faster;
+      longer looks more like a person working through a list.</p>
+    <label>Pause between people, minimum (seconds) <input id="s-lidelaymin" type="number" min="1" style="width:80px"></label>
+    <label>Pause between people, maximum (seconds) <input id="s-lidelaymax" type="number" min="1" style="width:80px"></label>
+  </div>
+  <div class="card">
     <h2>Outlook check</h2>
     <p class="muted">Uses Outlook on the web in a Chrome tab where you're already signed in: it searches each person's
       name and reads who the results are from. Nothing to set up. Meeting invites and accept/decline emails show up

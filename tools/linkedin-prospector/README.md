@@ -18,8 +18,7 @@ sends anything.
    - *Not a prospect*: the company was found but isn't on your list.
 3. **Checks prior contact** so you don't double-reach-out:
    - LinkedIn messages (from `messages.csv`, or from captures of the LinkedIn / Sales Nav inbox)
-   - Outlook mail (Microsoft 365): emails from them or to them
-   - Outlook calendar: past meetings (last 12 months) or upcoming meetings (next 90 days) with them
+   - Outlook (searched in your own Outlook tab): emails from them or to them, including meeting invites and replies
    - Anything sent through this tool before (the sent log)
 
    If they replied, emailed you, or met with you → *Don't message*.
@@ -43,28 +42,28 @@ sends anything.
    - Fill in the **Trust** lines with real customer proof. Drafts stay marked
      "✗ Trust" until the `[TRUST: …]` placeholders are replaced.
 
-### Outlook check (Microsoft 365, one-time setup)
+### Outlook check (no setup)
 
-This uses an app registration in your company's Entra ID (Azure AD). Data only
-goes between your browser and Microsoft.
+The extension uses **Outlook on the web in a Chrome tab where you're already signed in**.
+For each person it types their name into Outlook's search box and reads who the results
+are from:
 
-1. Go to <https://entra.microsoft.com> → **App registrations** → **New registration**.
-   For supported account types, choose *Accounts in this organizational directory only*.
-2. Under **Authentication**, add a platform: **Single-page application**. Paste the
-   redirect URI shown on the extension's Settings tab (it looks like `https://<extension-id>.chromiumapp.org/`).
-3. Under **API permissions**, add Microsoft Graph *delegated* permissions:
-   `Mail.Read`, `Calendars.Read`, `User.Read`, `offline_access`.
-4. Copy the **Application (client) ID** and the **Directory (tenant) ID** into Settings and save.
-   The first **Check Outlook** opens a Microsoft sign-in window.
+- **An email from them** (including meeting invites or accept/decline replies) → *Don't message*
+- **Only emails from you, no reply** → *Review first*
+- **Nothing found** → no Outlook flag
+- **Couldn't search or read the results** → *Review first*, never *Ready*
 
-**Admin consent:** many companies block users from consenting to apps that read
-mail. If sign-in says *"Need admin approval"*, IT has to grant consent for this
-app registration, or register it for you. The extension only needs read access
-and never sends email.
+If Outlook isn't open, the extension opens it in a background tab. If your company uses a
+different Outlook address (for example `https://outlook.cloud.microsoft/mail/`), set it in Settings.
+Leave the Outlook tab on the mail view while checks run.
 
-The check matches people by name (and by email if it came from `Connections.csv`).
-Someone who emails from an address that doesn't contain their name, and whose
-display name differs from LinkedIn, can be missed.
+Limits: this checks mail search, not the calendar directly. Meetings normally leave an invite or
+reply email that the search finds, but a meeting someone else booked with no email to you can be missed.
+
+**Advanced (optional):** with an Entra ID app registration from IT, the extension can use
+Microsoft Graph instead, which also checks the calendar directly. Settings → Outlook check →
+*Advanced* has the fields. Register a *Single-page application* redirect URI (shown there) with
+delegated `Mail.Read`, `Calendars.Read`, `User.Read`, `offline_access`.
 
 ### Claude customer stories (one-time setup)
 
@@ -109,7 +108,7 @@ To rebuild the vendored SDK (only needed to update it): `npm install && npm run 
 3. In the dashboard, click **Check Outlook**, then **Draft Ready with Claude**.
 4. Work the **Ready** tab: edit the draft → **Check & open** → review → click Send in LinkedIn → **Mark sent**.
    **Check & open** runs a last-second check before anything is typed:
-   - re-checks Outlook (if set up), and stops if they've emailed or met with you
+   - searches Outlook (in your Outlook tab) and stops if they've emailed you or sent/accepted a meeting
    - opens their profile and their LinkedIn message box, and reads the conversation:
      - **they've written to you before** → red STOP banner, nothing typed, and the dashboard moves them to *Don't message*
      - **you've written, no reply** → amber banner, nothing typed, moved to *Review first* as a follow-up

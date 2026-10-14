@@ -66,8 +66,10 @@
     if (live?.result === 'messaged') flag = flag || `You've messaged them before with no reply (seen in the conversation on ${live.at.slice(0, 10)}) — follow-up?`;
     if (li?.iMessaged && !li.theyMessaged) flag = flag || `You messaged them on LinkedIn ${li.lastMine || ''}, no reply — follow-up rather than a first touch?`;
     if (sent) flag = flag || `Already sent from this tool on ${sent.date.slice(0, 10)}`;
-    if (g?.mail?.toThem?.length) flag = flag || `You emailed them ("${g.mail.toThem[0].subject}", ${g.mail.toThem[0].date}), no reply found`;
-    if (g?.error) notes.push(`Outlook check failed: ${g.error}`);
+    if (g?.mail?.toThem?.length && !g.mail.fromThem?.length) flag = flag || `You emailed them ("${g.mail.toThem[0].subject}", ${g.mail.toThem[0].date}), no reply found`;
+    if (g?.error) flag = flag || `Couldn't check Outlook (${g.error}); check before sending`;
+    if (g?.unreadable) flag = flag || "Outlook search showed results the extension couldn't read; check the Outlook tab";
+    if (g?.via === 'outlook-web') notes.push('Outlook checked via mail search (meeting invites included; calendar not checked directly)');
     if (!g) notes.push('Outlook mail & calendar not checked yet');
     if (!s.liMessages) notes.push('No messages.csv imported — LinkedIn reply check is limited to inbox captures');
     return { skip, flag, notes, sent: !!sent };

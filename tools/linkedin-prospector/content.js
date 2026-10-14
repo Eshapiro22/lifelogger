@@ -168,6 +168,57 @@
     return { total, rounds };
   }
 
+  // ---------- Outlook on the web: search for a person ----------
+  // Runs in your own signed-in Outlook tab. Types the person's name into
+  // Outlook's search box and reads the result list (sender + subject).
+  // Meeting invites and accept/decline replies show up in mail search too.
+
+  const isOutlook = /(^|\.)outlook\.(office|office365|live)\.com$|^outlook\.cloud\.microsoft$/.test(location.hostname);
+
+  function outlookSearchBox() {
+    return [...document.querySelectorAll('input[type="search"], input[aria-label*="earch"], #topSearchInput')]
+      .find(i => i.offsetParent) || null;
+  }
+  function outlookResultItems() {
+    const list = document.querySelector('[role="listbox"], [role="list"][aria-label*="essage"], [role="grid"]');
+    return list ? [...list.querySelectorAll('[role="option"], [role="listitem"], [role="row"]')].filter(i => i.offsetParent) : [];
+  }
+  const noResults = () => /we didn.t find anything|no results|nothing found/i.test(document.querySelector('[role="main"], main')?.innerText || '');
+
+  async function outlookSearch({ name, email, myName }) {
+    const input = await waitFor(outlookSearchBox, 15000);
+    if (!input) return { error: "Couldn't find Outlook's search box (are you signed in?)" };
+    const before = outlookResultItems().map(i => i.innerText).join('|');
+    input.focus();
+    input.select();
+    document.execCommand('insertText', false, `"${cleanName(name)}"`);
+    for (const type of ['keydown', 'keypress', 'keyup']) {
+      input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+    }
+    // Wait for the list to change (or a "no results" message), then let it settle.
+    await waitFor(() => noResults() || outlookResultItems().map(i => i.innerText).join('|') !== before, 12000);
+    await wait(1500);
+    if (noResults()) return { readable: true, fromThem: [], toThem: [], total: 0 };
+
+    const them = personKey(name), me = personKey(myName || '');
+    const fromThem = [], toThem = [];
+    const items = outlookResultItems().slice(0, 25);
+    for (const item of items) {
+      const lines = (item.innerText || '').split('\n').map(s => s.trim()).filter(Boolean);
+      const label = item.getAttribute('aria-label') || '';
+      const sender = lines[0] || '';
+      const isDate = l => /^(mon|tue|wed|thu|fri|sat|sun|yesterday|today|\d{1,2}[/:-]\d{1,2})|\b\d{1,2}[/-]\d{1,2}([/-]\d{2,4})?$|\b\d{1,2}:\d{2}\s*(am|pm)?$/i.test(l);
+      const date = lines.find((l, i) => i > 0 && isDate(l)) || '';
+      const subject = lines.find((l, i) => i > 0 && l.length > 3 && !isDate(l)) || '(no subject)';
+      const row = { subject: subject.slice(0, 80), date };
+      const senderKey = personKey(sender);
+      const fromEmail = email && (sender + label).toLowerCase().includes(email.toLowerCase());
+      if (senderKey === them || fromEmail) fromThem.push(row);
+      else if (me && senderKey === me) toThem.push(row);
+    }
+    return { readable: items.length > 0, fromThem, toThem, total: items.length };
+  }
+
   // ---------- Last-second check before sending ----------
   // The dashboard's "Check & open" stores a pending send and opens the
   // person's profile. Here we open their message box, read whatever
@@ -289,7 +340,12 @@
   runPendingSend();
 
   chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-    if (msg.type === 'lp:kind') { reply({ kind: pageKind() }); return; }
+    if (msg.type === 'lp:kind') { reply({ kind: isOutlook ? null : pageKind() }); return; }
+    if (msg.type === 'lp:outlookSearch') {
+      if (!isOutlook) { reply({ error: 'not an Outlook tab' }); return; }
+      outlookSearch(msg).then(reply, e => reply({ error: e.message }));
+      return true;
+    }
     if (msg.type === 'lp:capture') {
       const res = scrape();
       save(res).then(r => reply({ kind: res.kind, ...r }));

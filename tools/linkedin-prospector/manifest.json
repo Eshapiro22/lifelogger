@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkedIn Prospector",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Matches recent LinkedIn connections to your account list, checks prior contact, and drafts Triple T messages for you to send by hand.",
   "permissions": [
     "storage",
@@ -22,7 +22,11 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.linkedin.com/*"
+        "https://www.linkedin.com/*",
+        "https://outlook.office.com/*",
+        "https://outlook.office365.com/*",
+        "https://outlook.cloud.microsoft/*",
+        "https://outlook.live.com/*"
       ],
       "js": [
         "lib/util.js",

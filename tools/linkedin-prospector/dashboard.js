@@ -8,7 +8,7 @@ let filter = 'ready';
 
 async function load() {
   S = await chrome.storage.local.get(KEYS);
-  S.settings = { cutoff: '2026-08-01', myName: 'Ethan Shapiro', msClientId: '', msTenant: '', anthropicKey: '', stories: '', ...(S.settings || {}) };
+  S.settings = { cutoff: '2026-08-01', myName: 'Ethan Shapiro', msClientId: '', msTenant: '', outlookUrl: 'https://outlook.office.com/mail/', anthropicKey: '', stories: '', ...(S.settings || {}) };
 }
 const save = obj => chrome.storage.local.set(obj);
 
@@ -133,12 +133,12 @@ function checksEl(k) {
 // the live LinkedIn conversation before typing anything.
 async function checkAndOpen(r, text) {
   const p = r.person;
-  if (S.settings.msClientId) {
-    status(`Re-checking Outlook for ${p.name}…`);
-    try {
-      S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await LP.checkPerson(p, msCfg()) };
-      await save({ contactChecks: S.contactChecks });
-    } catch (e) { status(`Outlook check failed (${e.message}); LinkedIn check will still run.`); }
+  status(`Checking Outlook for ${p.name}…`);
+  try {
+    S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await checkOutlook(p) };
+    await save({ contactChecks: S.contactChecks });
+  } catch (e) {
+    if (!confirm(`Couldn't check Outlook for ${p.name}: ${e.message}\n\nContinue to LinkedIn anyway?`)) { status(''); return; }
   }
   const h = LP.history(r.key, S);
   if (h.skip && !confirm(`Stop: ${h.skip}\n\nOpen their profile anyway?`)) { render(); return; }
@@ -165,10 +165,50 @@ chrome.runtime.onMessage.addListener(async m => {
 const msCfg = () => ({ clientId: S.settings.msClientId, tenant: S.settings.msTenant });
 const status = t => { $('#status').textContent = t; };
 
+// ---------- Outlook on the web (default, no setup) ----------
+const OUTLOOK_TABS = ['https://outlook.office.com/*', 'https://outlook.office365.com/*',
+  'https://outlook.cloud.microsoft/*', 'https://outlook.live.com/*'];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function outlookTab() {
+  let [tab] = await chrome.tabs.query({ url: OUTLOOK_TABS });
+  if (!tab) {
+    tab = await chrome.tabs.create({ url: S.settings.outlookUrl || 'https://outlook.office.com/mail/', active: false });
+    status('Opened Outlook in a background tab. If it asks you to sign in, do that, then try again.');
+  }
+  for (let i = 0; i < 60; i++) {           // wait up to ~30s for it to load
+    tab = await chrome.tabs.get(tab.id);
+    if (tab.status === 'complete') break;
+    await sleep(500);
+  }
+  return tab;
+}
+
+async function outlookWebCheck(person) {
+  const tab = await outlookTab();
+  let res, lastErr = '';
+  for (let attempt = 0; attempt < 6 && !res; attempt++) {   // content script may still be starting
+    try {
+      res = await chrome.tabs.sendMessage(tab.id, { type: 'lp:outlookSearch', name: person.name, email: person.email || '', myName: S.settings.myName });
+    } catch (e) { lastErr = e.message; await sleep(2000); }
+  }
+  if (!res) throw new Error(`Outlook tab didn't respond (${lastErr}); make sure you're signed in to Outlook on the web.`);
+  if (res.error) throw new Error(res.error);
+  return {
+    mail: { fromThem: res.fromThem, toThem: res.toThem }, calendar: { past: [], upcoming: [] },
+    via: 'outlook-web', unreadable: !res.readable && res.total !== 0, checkedAt: new Date().toISOString(),
+  };
+}
+
+// Graph if an app registration was configured, otherwise Outlook on the web.
+async function checkOutlook(person) {
+  return S.settings.msClientId ? LP.checkPerson(person, msCfg()) : outlookWebCheck(person);
+}
+
 async function checkOne(r) {
   status(`Checking Outlook for ${r.person.name}…`);
   try {
-    S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await LP.checkPerson(r.person, msCfg()) };
+    S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await checkOutlook(r.person) };
   } catch (e) { status(e.message); return; }
   await save({ contactChecks: S.contactChecks });
   status(`Checked ${r.person.name}.`);
@@ -181,12 +221,13 @@ $('#outlook-check').onclick = async () => {
   const btn = $('#outlook-check');
   btn.disabled = true;
   try {
-    await LP.msGetToken(msCfg());
+    if (S.settings.msClientId) await LP.msGetToken(msCfg());
+    else await outlookTab();
     S.contactChecks = { ...(S.contactChecks || {}) };
     let i = 0;
     for (const r of rows) {
       status(`Outlook: ${++i}/${rows.length} — ${r.person.name}`);
-      try { S.contactChecks[r.key] = await LP.checkPerson(r.person, msCfg()); }
+      try { S.contactChecks[r.key] = await checkOutlook(r.person); }
       catch (e) { S.contactChecks[r.key] = { error: e.message, checkedAt: new Date().toISOString() }; }
     }
     await save({ contactChecks: S.contactChecks });
@@ -319,6 +360,7 @@ $('#f-stories').onchange = async e => {
 
 function renderSettings() {
   $('#s-myname').value = S.settings.myName || '';
+  $('#s-outlookurl').value = S.settings.outlookUrl || '';
   $('#s-msclient').value = S.settings.msClientId || '';
   $('#s-mstenant').value = S.settings.msTenant || '';
   $('#s-anthropic').value = S.settings.anthropicKey || '';
@@ -337,6 +379,7 @@ function renderSettings() {
 
 $('#save-settings').onclick = async () => {
   S.settings.myName = $('#s-myname').value.trim();
+  S.settings.outlookUrl = $('#s-outlookurl').value.trim() || 'https://outlook.office.com/mail/';
   S.settings.msClientId = $('#s-msclient').value.trim();
   S.settings.msTenant = $('#s-mstenant').value.trim();
   S.settings.anthropicKey = $('#s-anthropic').value.trim();

@@ -188,16 +188,30 @@
   async function outlookSearch({ name, email, myName }) {
     const input = await waitFor(outlookSearchBox, 15000);
     if (!input) return { error: "Couldn't find Outlook's search box (are you signed in?)" };
-    const before = outlookResultItems().map(i => i.innerText).join('|');
     input.focus();
     input.select();
     document.execCommand('insertText', false, `"${cleanName(name)}"`);
+    await wait(150); // let any search-suggestion dropdown render before we start watching
+
+    // Watch the page for Outlook re-rendering the results. This is both faster
+    // than fixed waits and safer: two searches in a row with identical (e.g.
+    // empty) results still count as "Outlook answered", never as stale.
+    const root = document.querySelector('[role="main"], main') || document.body;
+    let changes = 0, lastChange = 0;
+    const mo = new MutationObserver(() => { changes++; lastChange = Date.now(); });
+    mo.observe(root, { childList: true, subtree: true, characterData: true });
+    const sent = Date.now();
     for (const type of ['keydown', 'keypress', 'keyup']) {
       input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
     }
-    // Wait for the list to change (or a "no results" message), then let it settle.
-    await waitFor(() => noResults() || outlookResultItems().map(i => i.innerText).join('|') !== before, 12000);
-    await wait(1500);
+    const answered = await waitFor(() => changes > 0, 10000, 100);
+    // Done once the page has been quiet for 400ms and shows results or "no results".
+    if (answered) {
+      await waitFor(() => Date.now() - lastChange > 400 && Date.now() - sent > 700
+        && (noResults() || outlookResultItems().length > 0), 10000, 100);
+    }
+    mo.disconnect();
+    if (!answered) return { error: "Outlook search didn't respond" };
     if (noResults()) return { readable: true, fromThem: [], toThem: [], total: 0 };
 
     const them = personKey(name), me = personKey(myName || '');
@@ -243,12 +257,12 @@
   }
 
   const wait = ms => new Promise(r => setTimeout(r, ms));
-  async function waitFor(fn, timeout = 8000) {
+  async function waitFor(fn, timeout = 8000, every = 250) {
     const end = Date.now() + timeout;
     while (Date.now() < end) {
       const v = fn();
       if (v) return v;
-      await wait(250);
+      await wait(every);
     }
     return null;
   }

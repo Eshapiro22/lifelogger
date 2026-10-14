@@ -71,6 +71,11 @@ If Outlook isn't open, the extension opens it in a background tab. If your compa
 different Outlook address (for example `https://outlook.cloud.microsoft/mail/`), set it in Settings.
 Leave the Outlook tab on the mail view while checks run.
 
+Speed: each search finishes as soon as Outlook finishes drawing its results. A result is
+reused for 24 hours (changeable in Settings), so the batch skips people checked recently,
+and **Check & open** doesn't search again right after a batch. To force a fresh search,
+use the row's **Check Outlook** button.
+
 Limits: this checks mail search, not the calendar directly. Meetings normally leave an invite or
 reply email that the search finds, but a meeting someone else booked with no email to you can be missed.
 

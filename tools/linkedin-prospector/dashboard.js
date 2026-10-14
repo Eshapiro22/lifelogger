@@ -142,10 +142,14 @@ function checksEl(k) {
 // the live LinkedIn conversation before typing anything.
 async function checkAndOpen(r, text) {
   const p = r.person;
-  status(`Checking Outlook for ${p.name}…`);
+  const fresh = freshOutlook(r.key);
+  if (fresh) status(`Using the Outlook check from ${Math.max(1, Math.round((Date.now() - Date.parse(fresh.checkedAt)) / 36e5))}h ago for ${p.name}…`);
+  else status(`Checking Outlook for ${p.name}…`);
   try {
-    S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await checkOutlook(p) };
-    await save({ contactChecks: S.contactChecks });
+    if (!fresh) {
+      S.contactChecks = { ...(S.contactChecks || {}), [r.key]: await checkOutlook(p) };
+      await save({ contactChecks: S.contactChecks });
+    }
   } catch (e) {
     if (!confirm(`Couldn't check Outlook for ${p.name}: ${e.message}\n\nContinue to LinkedIn anyway?`)) { status(''); return; }
   }
@@ -270,6 +274,13 @@ async function outlookWebCheck(person) {
   };
 }
 
+// A recent, successful Outlook result is reused instead of searching again.
+function freshOutlook(key) {
+  const c = S.contactChecks?.[key];
+  const hours = Number(S.settings.outlookFreshHours ?? 24);
+  return c && !c.error && !c.unreadable && c.checkedAt && (Date.now() - Date.parse(c.checkedAt)) < hours * 36e5 ? c : null;
+}
+
 // Graph if an app registration was configured, otherwise Outlook on the web.
 async function checkOutlook(person) {
   return S.settings.msClientId ? LP.checkPerson(person, msCfg()) : outlookWebCheck(person);
@@ -287,7 +298,10 @@ async function checkOne(r) {
 
 // Only check people who could actually get a message (skips non-prospects).
 $('#outlook-check').onclick = async () => {
-  const rows = LP.buildRows(S).filter(r => ['ready', 'review'].includes(r.status));
+  const all = LP.buildRows(S).filter(r => ['ready', 'review'].includes(r.status));
+  const rows = all.filter(r => !freshOutlook(r.key));
+  const skipped = all.length - rows.length;
+  if (!rows.length) { status(`Everyone here was checked in the last ${S.settings.outlookFreshHours ?? 24}h. Use a row's "Check Outlook" to force a re-check.`); return; }
   const btn = $('#outlook-check');
   btn.disabled = true;
   try {
@@ -301,7 +315,7 @@ $('#outlook-check').onclick = async () => {
       catch (e) { S.contactChecks[r.key] = { error: e.message, checkedAt: new Date().toISOString() }; }
     }
     await save({ contactChecks: S.contactChecks });
-    status(`Checked ${rows.length} people against Outlook mail & calendar.`);
+    status(`Checked ${rows.length} people against Outlook${skipped ? ` (skipped ${skipped} checked in the last ${S.settings.outlookFreshHours ?? 24}h)` : ''}.`);
   } catch (e) { status(e.message); }
   btn.disabled = false;
   render();
@@ -431,6 +445,7 @@ $('#f-stories').onchange = async e => {
 function renderSettings() {
   $('#s-myname').value = S.settings.myName || '';
   $('#s-outlookurl').value = S.settings.outlookUrl || '';
+  $('#s-outlookfresh').value = S.settings.outlookFreshHours ?? 24;
   $('#s-msclient').value = S.settings.msClientId || '';
   $('#s-mstenant').value = S.settings.msTenant || '';
   $('#s-anthropic').value = S.settings.anthropicKey || '';
@@ -460,6 +475,7 @@ function renderSettings() {
 $('#save-settings').onclick = async () => {
   S.settings.myName = $('#s-myname').value.trim();
   S.settings.outlookUrl = $('#s-outlookurl').value.trim() || 'https://outlook.office.com/mail/';
+  S.settings.outlookFreshHours = Math.max(0, Number($('#s-outlookfresh').value) || 0);
   S.settings.msClientId = $('#s-msclient').value.trim();
   S.settings.msTenant = $('#s-mstenant').value.trim();
   S.settings.anthropicKey = $('#s-anthropic').value.trim();

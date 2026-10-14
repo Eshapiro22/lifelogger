@@ -72,6 +72,8 @@
       name and reads who the results are from. Nothing to set up. Meeting invites and accept/decline emails show up
       in this search too.</p>
     <label>Your Outlook web address <input id="s-outlookurl" placeholder="https://outlook.office.com/mail/"></label>
+    <label>Reuse an Outlook result for this many hours before searching again (0 = always search)
+      <input id="s-outlookfresh" type="number" min="0" style="width:80px"></label>
     <details><summary class="muted">Advanced: Microsoft Graph instead (needs an app registration from IT; also checks the calendar directly)</summary>
       <label>Application (client) ID <input id="s-msclient" placeholder="00000000-0000-0000-0000-000000000000"></label>
       <label>Directory (tenant) ID — leave blank to use "organizations" <input id="s-mstenant"></label>

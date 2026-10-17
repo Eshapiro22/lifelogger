@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Wodify Workout Exporter</h1>
+  <p id="tab-status" class="muted"></p>
+
+  <section>
+    <h2>1. Capture</h2>
+    <p class="muted">Open the Workout tab on a day you can see, then enter a few words from it and its date.</p>
+    <label>Text from that workout <input id="match" placeholder="e.g. Squat clean"></label>
+    <label>Date of that workout <input id="date" type="date"></label>
+    <button id="capture">Capture workout request</button>
+  </section>
+
+  <section>
+    <h2>2. Download every day</h2>
+    <div class="row">
+      <label>From <input id="from" type="date" value="2012-01-01"></label>
+      <label>To <input id="to" type="date"></label>
+    </div>
+    <div class="row">
+      <button id="start">Start</button>
+      <button id="stop" class="secondary">Stop</button>
+    </div>
+  </section>
+
+  <p id="status"></p>
+
+  <section>
+    <h2>3. Export</h2>
+    <p id="count" class="muted"></p>
+    <div class="row">
+      <button data-format="md">Markdown</button>
+      <button data-format="csv">CSV</button>
+      <button data-format="json">JSON</button>
+    </div>
+    <button id="clear" class="link">Clear all saved data</button>
+  </section>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

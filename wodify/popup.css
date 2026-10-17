@@ -1,0 +1,16 @@
+:root { color-scheme: light dark; --accent: #d92b32; --muted: #888; --border: #8884; }
+body { width: 320px; margin: 0; padding: 12px 14px; font: 13px/1.4 system-ui, sans-serif; }
+h1 { font-size: 15px; margin: 0 0 4px; }
+h2 { font-size: 13px; margin: 0 0 6px; }
+section { border-top: 1px solid var(--border); padding: 10px 0; }
+.muted { color: var(--muted); margin: 0 0 8px; }
+label { display: block; margin-bottom: 8px; }
+input { display: block; width: 100%; box-sizing: border-box; margin-top: 2px; padding: 5px 6px; font: inherit; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+button { padding: 6px 10px; font: inherit; border: 0; border-radius: 6px; background: var(--accent); color: #fff; cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button.secondary { background: transparent; color: inherit; border: 1px solid var(--border); }
+button.link { background: none; color: var(--muted); padding: 6px 0 0; text-decoration: underline; }
+#status { min-height: 1.4em; margin: 0; font-weight: 600; }
+#status.error { color: var(--accent); }

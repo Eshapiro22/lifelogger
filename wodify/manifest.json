@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Wodify Workout Exporter",
+  "version": "1.0.0",
+  "description": "Download every workout posted to your gym's Wodify Workout tab.",
+  "permissions": ["storage", "unlimitedStorage", "downloads"],
+  "host_permissions": ["*://*.wodify.com/*"],
+  "action": { "default_popup": "popup.html", "default_title": "Wodify Workout Exporter" },
+  "content_scripts": [
+    {
+      "matches": ["*://*.wodify.com/*"],
+      "js": ["page-hook.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.wodify.com/*"],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

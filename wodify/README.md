@@ -1,47 +1,39 @@
-# Wodify workout exporter
+# Wodify Workout Exporter (Chrome extension)
 
-Downloads every workout posted to your gym's Wodify **Workout** tab, one day at a time, and saves them as JSON, CSV and Markdown.
+Downloads every workout posted to your gym's Wodify **Workout** tab and exports them as Markdown, CSV or JSON.
+It uses the Wodify tab you're already logged into, so there's nothing to install besides the extension.
 
-It runs on **your computer** (Mac or Windows), not your phone. You log in yourself in the browser window it opens, so your password never goes into the script.
+## Install
 
-## Setup (once)
+1. Download this `wodify/` folder.
+2. In Chrome, go to `chrome://extensions` and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and pick the `wodify/` folder.
+4. Pin the extension from the puzzle-piece menu so its icon is easy to reach.
 
-1. Install Node.js 18+ from https://nodejs.org
-2. In a terminal, from this `wodify/` folder:
-   ```
-   npm install
-   npx playwright install chromium
-   ```
+## Use
 
-## Run
+1. Log in to Wodify in Chrome and open the **Workout** tab. If Wodify was already open, reload it.
+2. Pick a day whose workout you can see, for example Sat, Oct 17.
+3. Click the extension icon:
+   - **Text from that workout**: a few words you can see, e.g. `Squat clean`
+   - **Date of that workout**: that day
+   - Click **Capture workout request**. If it doesn't say "captured", switch to another day and back in Wodify.
+4. Set **From** (default 2012-01-01) and click **Start**. Keep the Wodify tab open. You can close the popup;
+   it keeps going and you can reopen the popup to check progress.
+5. When it says **Finished**, click **Markdown**, **CSV** or **JSON** to download.
 
-```
-node export-workouts.mjs run --match "Squat clean" --date 2026-10-17
-```
+If it stops (closed tab, expired login), log in again, capture again, and press **Start**. Days already
+downloaded are skipped.
 
-- `--match`: a few words from a workout you can see in the app.
-- `--date`: the day that workout is from (YYYY-MM-DD).
-- Optional: `--from 2015-01-01` (default 2012-01-01), `--to YYYY-MM-DD` (default today),
-  `--delay 400` (milliseconds between requests), `--url` (Wodify web address, default `https://app.wodify.com`).
+## How it works
 
-A browser window opens. Log in, open **Workout**, and pick the `--date` day. When that workout loads,
-the script picks it up and starts fetching every date on its own, newest first. Leave the window open until it finishes.
+The extension watches the requests the Wodify page makes. When a response contains your text, it takes that
+request as "load the workout for this date" and sends it again for each date from newest to oldest,
+about 2–3 per second. Everything stays in your browser. Nothing is sent anywhere else.
 
-If it stops partway (closed laptop, expired login), run the same command again. Days already downloaded are skipped.
+## Limits
 
-## Output (`output/`)
-
-- `workouts.md`: easy to read, newest first
-- `workouts.csv`: open in Excel or Google Sheets
-- `workouts.json`: for other tools
-- `raw/YYYY-MM-DD.txt`: the untouched response for each day
-
-`node export-workouts.mjs extract` rebuilds the three files from `raw/` without downloading again.
-
-## Notes
-
-- It only fetches the program selected in the dropdown (for example "WOD"). For another program,
-  such as a competition class, pick it in the dropdown before the script captures the request, and
-  move the old `output/` folder out of the way first.
-- The text cleanup is generic. If the output has junk lines, send one file from `raw/` and the cleanup can be tuned for it.
-- `output/` and `.browser-profile/` (which holds your login session) are git-ignored. Don't commit or share them.
+- It only grabs the program selected in Wodify's dropdown (e.g. "WOD"). For another program, pick it in the
+  dropdown, click **Clear all saved data** (export first!), and repeat.
+- The text cleanup is generic. If the export has junk lines, share a sample and it can be tuned.
+- It only runs on `*.wodify.com` pages.

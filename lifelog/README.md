@@ -27,6 +27,13 @@ personal Mac (or the other way), then:
 python3 lifelog.py merge out-personal-mac out-work-mac
 ```
 
+If IT blocks Full Disk Access (work Mac), export the memos instead: in Voice
+Memos select the recordings, drag them into a Finder folder, move that folder to
+a Mac that can transcribe, and run
+`python3 lifelog.py voice --dir <folder> --transcribe --out out-workmemos`.
+Dates come from the audio's embedded metadata when present; rows marked
+"DATE UNVERIFIED" need checking against the Voice Memos list.
+
 `amhurst_mac_combined.csv` keeps only `house` + `review` rows, with duplicates removed.
 Paste it into the **Mac activity** tab of the sheet, then go through every `review` row.
 

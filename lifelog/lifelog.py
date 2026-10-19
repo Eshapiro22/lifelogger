@@ -159,12 +159,35 @@ def memos_from_db(folder):
     return memos
 
 
+def recorded_at(path):
+    """(start, how). Exported memos get a new file date, so prefer the
+    recording date embedded in the audio, then Spotlight, then mtime."""
+    try:
+        out = subprocess.run(["ffprobe", "-v", "quiet", "-show_entries", "format_tags=creation_time",
+                              "-of", "default=nw=1:nk=1", str(path)],
+                             capture_output=True, text=True, timeout=30).stdout.strip()
+        if out:
+            return datetime.fromisoformat(out.replace("Z", "+00:00")), "embedded"
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+    try:
+        out = subprocess.run(["mdls", "-raw", "-name", "kMDItemContentCreationDate", str(path)],
+                             capture_output=True, text=True, timeout=30).stdout.strip()
+        if out and out != "(null)":
+            return datetime.strptime(out, "%Y-%m-%d %H:%M:%S %z"), "spotlight"
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc), "file date"
+
+
 def memos_from_files(folder):
     memos = []
     for p in folder.iterdir():
         if p.suffix.lower() in AUDIO_EXT:
+            start, how = recorded_at(p)
             memos.append({
-                "start": datetime.fromtimestamp(p.stat().st_mtime, timezone.utc),
+                "start": start,
+                "date_source": how,
                 "duration": audio_duration(p),
                 "path": p,
                 "title": p.stem,
@@ -182,15 +205,15 @@ def load_whisper(model_name):
 
 
 def cmd_voice(args, kw):
-    folders = [d for d in VOICE_DIRS if d.exists()]
-    if not folders:
+    folders = [Path(args.dir).expanduser()] if args.dir else [d for d in VOICE_DIRS if d.exists()]
+    if not folders or not folders[0].is_dir():
         sys.exit("No Voice Memos folder found. Grant Terminal Full Disk Access, and check "
                  "Voice Memos > Settings that iCloud sync is on so iPhone memos land on this Mac.")
     since = parse_since(args.since)
     model = load_whisper(args.model) if args.transcribe else None
     rows = []
     for folder in folders:
-        memos = memos_from_db(folder)
+        memos = None if args.dir else memos_from_db(folder)
         method = "database"
         if memos is None:
             memos, method = memos_from_files(folder), "file dates"
@@ -214,6 +237,8 @@ def cmd_voice(args, kw):
             if hits:
                 desc += f" [matched: {', '.join(sorted(set(hits)))}]"
             conf = "high (recording length)" if transcript else "medium (title only, verify)"
+            if m.get("date_source") == "file date":
+                conf += "; DATE UNVERIFIED (export date), check against Voice Memos list"
             rows.append(row(m["start"], m["start"] + timedelta(seconds=dur), "Voice memo",
                             label, desc, str(m["path"] or ""), conf))
     write_csv(rows, Path(args.out) / "voice_memos.csv")
@@ -312,6 +337,7 @@ def main():
         s.add_argument("--out", default=str(HERE / f"out-{socket.gethostname().split('.')[0]}"))
     sub.choices["voice"].add_argument("--transcribe", action="store_true",
                                       help="transcribe locally with Whisper (slow, more accurate)")
+    sub.choices["voice"].add_argument("--dir", help="folder of memos exported from the Voice Memos app")
     sub.choices["voice"].add_argument("--model", default="base", help="whisper model: tiny/base/small/medium")
     m = sub.add_parser("merge")
     m.add_argument("dirs", nargs="+")

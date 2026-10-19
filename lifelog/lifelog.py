@@ -206,7 +206,9 @@ def load_whisper(model_name):
 
 def cmd_voice(args, kw):
     folders = [Path(args.dir).expanduser()] if args.dir else [d for d in VOICE_DIRS if d.exists()]
-    if not folders or not folders[0].is_dir():
+    if args.dir and not folders[0].is_dir():
+        sys.exit(f"Folder not found: {folders[0]}. Check the path (drag the folder into Terminal to paste it).")
+    if not folders:
         sys.exit("No Voice Memos folder found. Grant Terminal Full Disk Access, and check "
                  "Voice Memos > Settings that iCloud sync is on so iPhone memos land on this Mac.")
     since = parse_since(args.since)

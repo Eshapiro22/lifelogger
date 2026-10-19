@@ -162,6 +162,10 @@ def memos_from_db(folder):
 def recorded_at(path):
     """(start, how). Exported memos get a new file date, so prefer the
     recording date embedded in the audio, then Spotlight, then mtime."""
+    # Raw Voice Memos files are named "YYYYMMDD HHMMSS[-ID].m4a" in local time.
+    m = re.match(r"(\d{8} \d{6})", path.name)
+    if m:
+        return datetime.strptime(m.group(1), "%Y%m%d %H%M%S").astimezone(), "file name"
     try:
         out = subprocess.run(["ffprobe", "-v", "quiet", "-show_entries", "format_tags=creation_time",
                               "-of", "default=nw=1:nk=1", str(path)],
